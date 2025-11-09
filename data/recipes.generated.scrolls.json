@@ -1,0 +1,4972 @@
+{
+  "Scroll: CalltoWorship": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CalltoWorship",
+        "level": 0,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CureMinorWounds": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CureMinorWounds",
+        "level": 0,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Guidance": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Guidance",
+        "level": 0,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MealBlessing": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MealBlessing",
+        "level": 0,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Mend": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Mend",
+        "level": 0,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PredictWeather": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PredictWeather",
+        "level": 0,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Virtue": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Virtue",
+        "level": 0,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Ward": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Ward",
+        "level": 0,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: WatertoWine": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "WatertoWine",
+        "level": 0,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CureLightWounds": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CureLightWounds",
+        "level": 1,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CauseLightWounds": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CauseLightWounds",
+        "level": 1,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: DetectEvil": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "DetectEvil",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: DetectGood": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "DetectGood",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: DetectMagic": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "DetectMagic",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Light": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Light",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Darkness": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Darkness",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ProtectionFromEvil": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ProtectionFromEvil",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ProtectionFromGood": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ProtectionFromGood",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PurifyFoodandWater": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PurifyFoodandWater",
+        "level": 1,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: RemoveFear": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "RemoveFear",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CauseFear": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CauseFear",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ResistCold": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ResistCold",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Censure": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Censure",
+        "level": 1,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Command": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Command",
+        "level": 1,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Sanctuary": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Sanctuary",
+        "level": 1,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Bless": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Bless",
+        "level": 2,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Bane": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Bane",
+        "level": 2,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CharmAnimal": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CharmAnimal",
+        "level": 2,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: FindTraps": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "FindTraps",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: HoldPerson": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "HoldPerson",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ResistFire": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ResistFire",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Silence15": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Silence15",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SpeakwithAnimals": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SpeakwithAnimals",
+        "level": 2,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SpiritualHammer": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SpiritualHammer",
+        "level": 2,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: GentleRepose": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "GentleRepose",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: RemoveParalysis": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "RemoveParalysis",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: RestoreHealth": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "RestoreHealth",
+        "level": 2,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ContinualLight": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ContinualLight",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ContinualDarkness": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ContinualDarkness",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CureBlindness": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CureBlindness",
+        "level": 3,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CauseBlindness": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CauseBlindness",
+        "level": 3,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CureDisease": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CureDisease",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CauseDisease": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CauseDisease",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: GrowthofAnimals": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "GrowthofAnimals",
+        "level": 3,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: LocateObject": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "LocateObject",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: RemoveCurse": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "RemoveCurse",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: BestowCurse": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "BestowCurse",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SpeakwithDead": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SpeakwithDead",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Striking": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Striking",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CureDeafness": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CureDeafness",
+        "level": 3,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Tongues": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Tongues",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: WaterBreathing": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "WaterBreathing",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: AnimateDead": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "AnimateDead",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CreateWater": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CreateWater",
+        "level": 1,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CureSeriousWounds": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CureSeriousWounds",
+        "level": 4,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CauseSeriousWounds": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CauseSeriousWounds",
+        "level": 4,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: DispelMagic": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "DispelMagic",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: NeutralizePoison": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "NeutralizePoison",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PoisonTouch": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PoisonTouch",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ProtectionEvil10": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ProtectionEvil10",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ProtectionGood10": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ProtectionGood10",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SpeakwithPlants": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SpeakwithPlants",
+        "level": 4,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: StickstoSnakes": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "StickstoSnakes",
+        "level": 4,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: HoldMonster": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "HoldMonster",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MagicMirror": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MagicMirror",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: StoneShape": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "StoneShape",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Commune": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Commune",
+        "level": 5,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CreateFood": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CreateFood",
+        "level": 5,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: DispelEvil": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "DispelEvil",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: InsectPlague": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "InsectPlague",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Quest": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Quest",
+        "level": 5,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: RaiseDead": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "RaiseDead",
+        "level": 5,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: TrueSeeing": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "TrueSeeing",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: WallofFire": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "WallofFire",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PlaneShift": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PlaneShift",
+        "level": 5,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: RingofLesserHealing": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "RingofLesserHealing",
+        "level": 5,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: WallofStone": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "WallofStone",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Mummify": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Mummify",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: AnimateObjects": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "AnimateObjects",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: BladeBarrier": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "BladeBarrier",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: FindthePath": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "FindthePath",
+        "level": 6,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Heal": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Heal",
+        "level": 6,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Harm": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Harm",
+        "level": 6,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Regenerate": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Regenerate",
+        "level": 6,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Restoration": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Restoration",
+        "level": 6,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SpeakwithMonsters": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SpeakwithMonsters",
+        "level": 6,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: WordofRecall": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "WordofRecall",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ControlUndead": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ControlUndead",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: UndeathtoDeath": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "UndeathtoDeath",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Anti-MagicShell": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Anti-MagicShell",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ControlWeather": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ControlWeather",
+        "level": 7,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Earthquake": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Earthquake",
+        "level": 7,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: FireStorm": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "FireStorm",
+        "level": 7,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: HolyWord": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "HolyWord",
+        "level": 7,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Resurrection": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Resurrection",
+        "level": 7,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: RingofGreaterHealing": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "RingofGreaterHealing",
+        "level": 7,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: WindWalk": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "WindWalk",
+        "level": 7,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: AstralProjection": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "AstralProjection",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Gate": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Gate",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ArcaneBlast": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ArcaneBlast",
+        "level": 0,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ArcaneDagger": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ArcaneDagger",
+        "level": 0,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ArcaneDart": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ArcaneDart",
+        "level": 0,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: AnimateTool": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "AnimateTool",
+        "level": 0,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Clean": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Clean",
+        "level": 0,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Flare": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Flare",
+        "level": 0,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Flavor": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Flavor",
+        "level": 0,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Inscribe": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Inscribe",
+        "level": 0,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Irritate": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Irritate",
+        "level": 0,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Knot": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Knot",
+        "level": 0,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MageHand": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MageHand",
+        "level": 0,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: OpenClose": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "OpenClose",
+        "level": 0,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SummonVermin": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SummonVermin",
+        "level": 0,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Transfigure": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Transfigure",
+        "level": 0,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ReadMagic": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ReadMagic",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CharmPerson": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CharmPerson",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: FloatingDisc": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "FloatingDisc",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: HoldPortal": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "HoldPortal",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MagicMissile": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MagicMissile",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MagicMouth": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MagicMouth",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ReadLanguages": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ReadLanguages",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Shield": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Shield",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Sleep": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Sleep",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Ventriloquism": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Ventriloquism",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Alarm": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Alarm",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MageArmor": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MageArmor",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Mount": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Mount",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: UnseenServant": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "UnseenServant",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: DetectInvisible": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "DetectInvisible",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Invisibility": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Invisibility",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Knock": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Knock",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Levitate": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Levitate",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MindReading": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MindReading",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MirrorImage": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MirrorImage",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PhantasmalForce": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PhantasmalForce",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Web": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Web",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: WizardLock": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "WizardLock",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: AnalyzeMagic": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "AnalyzeMagic",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Familiar": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Familiar",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Clairvoyance": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Clairvoyance",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Darkvision": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Darkvision",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Fireball": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Fireball",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Fly": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Fly",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Haste": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Haste",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Slow": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Slow",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Invisible10": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Invisible10",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: LightningBolt": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "LightningBolt",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ProtectionNormalMissiles": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ProtectionNormalMissiles",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Clairaudience": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Clairaudience",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: GaseousForm": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "GaseousForm",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ImmunitytoNormalWeapons": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ImmunitytoNormalWeapons",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CharmMonster": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CharmMonster",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Confusion": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Confusion",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: DimensionDoor": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "DimensionDoor",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: GrowthofPlants": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "GrowthofPlants",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ShrinkPlants": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ShrinkPlants",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: HallucinatoryTerrain": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "HallucinatoryTerrain",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: IceStorm": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "IceStorm",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Massmorph": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Massmorph",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PolymorphOther": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PolymorphOther",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PolymorphSelf": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PolymorphSelf",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: WizardEye": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "WizardEye",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ImprovedInvisibility": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ImprovedInvisibility",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Drainblade": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Drainblade",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Cloudkill": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Cloudkill",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ConjureElemental": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ConjureElemental",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Feeblemind": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Feeblemind",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Restoremind": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Restoremind",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MagicJar": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MagicJar",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Passwall": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Passwall",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Telekinesis": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Telekinesis",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Teleport": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Teleport",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PrivateSanctum": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PrivateSanctum",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Stoneskin": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Stoneskin",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: DeathSpell": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "DeathSpell",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Disintegrate": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Disintegrate",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: FleshToStone": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "FleshToStone",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: StoneToFlesh": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "StoneToFlesh",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Geas": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Geas",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: InvisibleStalker": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "InvisibleStalker",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: LowerWater": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "LowerWater",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ProjectedImage": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ProjectedImage",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Reincarnate": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Reincarnate",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: WallofIron": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "WallofIron",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Permanency": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Permanency",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: RevealMagic": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "RevealMagic",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: DelayedBlastFireball": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "DelayedBlastFireball",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: GreaterTeleport": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "GreaterTeleport",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Longevity": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Longevity",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MassInvisibility": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MassInvisibility",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PhaseDoor": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PhaseDoor",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PowerWordStun": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PowerWordStun",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Sword": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Sword",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: WychlampAura": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "WychlampAura",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: AudibleGlamer": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "AudibleGlamer",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ChangeSelf": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ChangeSelf",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ColorSpray": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ColorSpray",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: DancingLights": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "DancingLights",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: DetectIllusion": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "DetectIllusion",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: GazeReflection": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "GazeReflection",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PhantasmalImage": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PhantasmalImage",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: AlterSelf": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "AlterSelf",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Blur": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Blur",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: DispelIllusion": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "DispelIllusion",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: HypnoticPattern": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "HypnoticPattern",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Obscurement": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Obscurement",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PhantomTrap": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PhantomTrap",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: RopeTrick": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "RopeTrick",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ColorCloud": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ColorCloud",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Displacement": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Displacement",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: IllusoryScript": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "IllusoryScript",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: IllusoryWall": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "IllusoryWall",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PhantomMessenger": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PhantomMessenger",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PhantomSteed": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PhantomSteed",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ShadowDoor": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ShadowDoor",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SpectralForce": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SpectralForce",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: StinkingCloud": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "StinkingCloud",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: AdvancedIllusion": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "AdvancedIllusion",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PhantasmalKiller": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PhantasmalKiller",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: RainbowPattern": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "RainbowPattern",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SolidFog": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SolidFog",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Suggestion": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Suggestion",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Dream": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Dream",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MirageArcana": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MirageArcana",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Mislead": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Mislead",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Nightmare": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Nightmare",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ProgrammedIllusion": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ProgrammedIllusion",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Seeming": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Seeming",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: GreaterFear": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "GreaterFear",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: FalseVision": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "FalseVision",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MassSuggestion": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MassSuggestion",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PermanentIllusion": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PermanentIllusion",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ShadowWalk": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ShadowWalk",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Maze": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Maze",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Veil": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Veil",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Demand": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Demand",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Insanity": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Insanity",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PrismaticSpray": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PrismaticSpray",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ScintillatingPattern": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ScintillatingPattern",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Screen": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Screen",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Shades": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Shades",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Vision": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Vision",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Weird": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Weird",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: AnimalFriendship": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "AnimalFriendship",
+        "level": 1,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: DetectSnaresandPits": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "DetectSnaresandPits",
+        "level": 1,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Entangle": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Entangle",
+        "level": 1,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: FaerieFire": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "FaerieFire",
+        "level": 1,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PassWithoutTrace": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PassWithoutTrace",
+        "level": 1,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Goodberry": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Goodberry",
+        "level": 1,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Shillelagh": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Shillelagh",
+        "level": 1,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: HeatMetal": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "HeatMetal",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ChillMetal": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ChillMetal",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ObscuringMists": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ObscuringMists",
+        "level": 2,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ProduceFlameCold": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ProduceFlameCold",
+        "level": 2,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SlowPoison": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SlowPoison",
+        "level": 2,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: WarpWood": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "WarpWood",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Barkskin": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Barkskin",
+        "level": 2,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Tree": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Tree",
+        "level": 2,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: AssumeAnimalForm": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "AssumeAnimalForm",
+        "level": 3,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CallLightning": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CallLightning",
+        "level": 3,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: HoldAnimal": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "HoldAnimal",
+        "level": 3,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PlantGrowth": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PlantGrowth",
+        "level": 3,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ProtectionFromFire": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ProtectionFromFire",
+        "level": 3,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Quench": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Quench",
+        "level": 3,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CallWoodlandBeings": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CallWoodlandBeings",
+        "level": 4,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ControlTemperature10": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ControlTemperature10",
+        "level": 4,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ProtectionFromLightning": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ProtectionFromLightning",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SummonAnimals1": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SummonAnimals1",
+        "level": 4,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: TreeSanctuary": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "TreeSanctuary",
+        "level": 4,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CommuneWithNature": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CommuneWithNature",
+        "level": 5,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ControlWinds": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ControlWinds",
+        "level": 5,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: FlameStrike": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "FlameStrike",
+        "level": 5,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: RocktoMud": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "RocktoMud",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MudtoRock": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MudtoRock",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SummonAnimals2": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SummonAnimals2",
+        "level": 5,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Blight": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Blight",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: AnimateNaturalObjects": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "AnimateNaturalObjects",
+        "level": 6,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: FindThePath": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "FindThePath",
+        "level": 6,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PartWater": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PartWater",
+        "level": 6,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: PassTree": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "PassTree",
+        "level": 6,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SummonAnimals3": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SummonAnimals3",
+        "level": 6,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: WeatherSummoning": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "WeatherSummoning",
+        "level": 6,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: RepelWood": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "RepelWood",
+        "level": 6,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Changestaff": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Changestaff",
+        "level": 7,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CreepingDoom": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CreepingDoom",
+        "level": 7,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: TransmuteMetaltoWood": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "TransmuteMetaltoWood",
+        "level": 7,
+        "class": "cleric"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: BreakRestrictions": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "BreakRestrictions",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: EnhanceArmor": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "EnhanceArmor",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: WeakenArmor": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "WeakenArmor",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: EnhanceWeapon": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "EnhanceWeapon",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: WeakenWeapon": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "WeakenWeapon",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Repair": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Repair",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Activate": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Activate",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MinorWarding": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MinorWarding",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: RetrieveEnergy": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "RetrieveEnergy",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ChannelBlast": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ChannelBlast",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Hardness": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Hardness",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: WeakenItem": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "WeakenItem",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: HoldConstruct": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "HoldConstruct",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: LordoftheRings": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "LordoftheRings",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: OvertakeItem": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "OvertakeItem",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SeriousRepair": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SeriousRepair",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CharmConstructs": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CharmConstructs",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: GreaterWarding": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "GreaterWarding",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MassArmorEnhancement": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MassArmorEnhancement",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MassWeaponEnhancement": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MassWeaponEnhancement",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MinorCreation": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MinorCreation",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MinorSpellImmunity": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MinorSpellImmunity",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SecretChest": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SecretChest",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: StarlightBlade": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "StarlightBlade",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: GuardsandWards": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "GuardsandWards",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MajorSpellImmunity": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MajorSpellImmunity",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MoveEarth": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MoveEarth",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Disjunction": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Disjunction",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: DominateConstruct": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "DominateConstruct",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MajorCreation": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MajorCreation",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Embalm": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Embalm",
+        "level": 0,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: NegateStench": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "NegateStench",
+        "level": 0,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CallPoltergeist": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CallPoltergeist",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Chill": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Chill",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CorpseServant": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CorpseServant",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: DecayFlesh": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "DecayFlesh",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: LocateCorpse": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "LocateCorpse",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ProtectionFromUndead": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ProtectionFromUndead",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ProtectionFromLiving": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ProtectionFromLiving",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Stench": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Stench",
+        "level": 1,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Boneskin": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Boneskin",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CommandUndead": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CommandUndead",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: FireskullFamiliar": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "FireskullFamiliar",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: GhoulishHands": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "GhoulishHands",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MaggotSpray": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MaggotSpray",
+        "level": 2,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Ectoplasm": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Ectoplasm",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Fossilize": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Fossilize",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: HaltUndead": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "HaltUndead",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ProtectionUndead10": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ProtectionUndead10",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: ProtectionLiving10": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "ProtectionLiving10",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: RayofExhaustion": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "RayofExhaustion",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SpiritWrack": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SpiritWrack",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SummonSpirit": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SummonSpirit",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: VampiricTouch": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "VampiricTouch",
+        "level": 3,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: BlackTentacles": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "BlackTentacles",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CorpseFeast": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CorpseFeast",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Enervation": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Enervation",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: GraveSanctuary": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "GraveSanctuary",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Reanimation": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Reanimation",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: RotFlesh": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "RotFlesh",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: WallofBones": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "WallofBones",
+        "level": 4,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: MaskofLife": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "MaskofLife",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SymbolofPain": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SymbolofPain",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: WavesofFatigue": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "WavesofFatigue",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Eyebite": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Eyebite",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SymbolofFear": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SymbolofFear",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: Undeath": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "Undeath",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: CallHorseman": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "CallHorseman",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: FingerofDeath": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "FingerofDeath",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  },
+  "Scroll: SymbolofDeath": {
+    "type": "spell_scroll",
+    "effects": [
+      {
+        "spell": "SymbolofDeath",
+        "level": 7,
+        "class": "arcane"
+      }
+    ],
+    "min_level": {
+      "default": 1,
+      "spellcrafter": 1
+    }
+  }
+}

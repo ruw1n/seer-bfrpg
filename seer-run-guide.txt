@@ -1,0 +1,202 @@
+SEER BOT — SIMPLE INSTALL & RUN GUIDE (Windows, macOS, Linux)
+Last updated: 2025-11-09
+
+This guide is for non‑technical users. Follow it in order. If you get stuck, read the Troubleshooting section at the end.
+
+WHAT YOU NEED
+-------------
+1) A Discord account.
+2) A server where you have permission to invite a bot (you need the Manage Server permission).
+3) A computer with internet access.
+
+PART A — CREATE YOUR DISCORD BOT & TOKEN (ONE TIME)
+---------------------------------------------------
+1) Open https://discord.com/developers/applications and sign in.
+2) Click "New Application". Name it something like "Seer". Accept the terms.
+3) In the left sidebar, click "Bot", then "Add Bot" → "Yes, do it!".
+4) Still on the Bot page:
+   • Click "Reset Token" if you don’t see a token yet, then click "Copy" to copy your token.
+     KEEP THIS SECRET. Anyone who has it can control your bot.
+   • Turn ON the **MESSAGE CONTENT INTENT** (required). Also turn on **SERVER MEMBERS INTENT** (optional).
+   • (Optional) Upload an avatar image for your bot.
+
+5) Invite the bot to your server:
+   • Go to "OAuth2" → "URL Generator".
+   • Under "Scopes" check:  bot, applications.commands
+   • Under "Bot Permissions" check at least:
+       - Read Messages/View Channels
+       - Send Messages
+       - Read Message History
+       - Embed Links
+       - Attach Files
+       - Add Reactions
+     (If you want the bot to delete its own helper messages, also add "Manage Messages").
+   • Copy the generated URL at the bottom, paste it into your browser, and choose the server to invite the bot to.
+   • After authorizing, the bot joins your server but will be offline until you run it on your computer (Part C).
+
+PART B — INSTALL PYTHON (ONE TIME)
+----------------------------------
+You need Python 3.10 or newer.
+
+Windows
+  1) Download Python from https://www.python.org/downloads/ (choose the latest 3.x).
+  2) Run the installer. IMPORTANT: check the box "Add Python to PATH". Then click "Install Now".
+
+macOS
+  Option A (simple): Download the latest 3.x macOS installer from https://www.python.org/downloads/
+  Option B (Homebrew users): Open Terminal and run:  brew install python@3.12
+
+Linux (Debian/Ubuntu)
+  Open Terminal and run:
+    sudo apt update
+    sudo apt install -y python3 python3-venv python3-pip
+
+PART C — GET THE BOT FILES
+---------------------------
+Put the Seer bot folder somewhere easy (e.g., Desktop/seer). You should have files like:
+  cogs/ (folder with combat.py, initiative.py, spells.py, etc.)
+  data/ (items/spells/monsters lists)
+  requirements.txt
+  bot.py
+  README.md, howto.txt
+
+PART D — RUN THE BOT
+--------------------
+You will do these steps each time you want to start the bot. The first time includes a couple of one‑time steps.
+
+1) Open a terminal in the bot folder.
+
+   Windows
+     • Press Windows key, type "PowerShell", open it.
+     • Type:  cd "C:\\path\\to\\seer"   (example: cd "C:\\Users\\You\\Desktop\\seer")
+
+   macOS / Linux
+     • Open Terminal.
+     • Type:  cd ~/path/to/seer   (example: cd ~/Desktop/seer)
+
+2) (First time only) Create a virtual environment (keeps Seer’s libraries separate).
+     python -m venv .venv
+
+3) Activate the virtual environment.
+   Windows (PowerShell):
+     .\\.venv\\Scripts\\Activate.ps1
+     (If you get a policy error, run once:  Set-ExecutionPolicy -Scope CurrentUser RemoteSigned)
+   Windows (Command Prompt/cmd.exe):
+     .venv\\Scripts\\activate.bat
+   macOS / Linux:
+     source .venv/bin/activate
+
+   Your prompt should now show (.venv). If not, try again.
+
+4) (First time only) Install the bot’s libraries:
+     python -m pip install --upgrade pip
+     pip install -r requirements.txt
+
+5) Create a file named .env in the same folder as main.py with exactly this inside (replace the dots with your token):
+     DISCORD_TOKEN=your-super-secret-token-here
+
+   Save the file. (The file name is literally ".env" — on Windows Notepad you may need to choose "All Files (*.*)" in Save dialog.)
+
+6) Start the bot:
+     python main.py
+   (If your entry file is named differently, use that filename instead.)
+
+7) You should see the bot go ONLINE in your Discord server within a few seconds.
+   In a text channel, type:  !help
+
+   If you see a help listing, you’re good!
+
+PART E — MAKE IT EASY TO START NEXT TIME (OPTIONAL)
+---------------------------------------------------
+Windows (double-click launcher)
+  • Create a new text file in the bot folder named run-seer.bat and put this in it:
+      @echo off
+      call .\\.venv\\Scripts\\activate.bat
+      python main.py
+      pause
+  • Double-click run-seer.bat to start the bot. The window stays open so you can see logs.
+
+macOS/Linux (simple script)
+  • Create run-seer.sh with:
+      #!/usr/bin/env bash
+      source .venv/bin/activate
+      python main.py
+  • Make it executable:  chmod +x run-seer.sh
+  • Run it:  ./run-seer.sh
+
+Linux (server-style, keeps running when you log out)
+  • Use screen or tmux:
+      sudo apt install -y screen
+      screen -S seer
+      source .venv/bin/activate && python main.py
+      # detach with Ctrl+A then D; reattach later with: screen -r seer
+
+FIRST STEPS INSIDE DISCORD
+--------------------------
+1) Create a channel like #seer-bot or #basic-fantasy.
+2) In that channel type:  !help
+3) Make your first character:
+     !charcreate
+     !char YourCharacterName
+     !stats
+4) Try a few utilities:
+     !coins
+     !bag
+     !sb         (shows prepared spells and slot bubbles)
+     !prepare Sleep
+     !cast Sleep go1 -i   (simulate a cast without spending a slot)
+
+WHERE THE BOT SAVES THINGS
+--------------------------
+• characters/  — contains your <name>.coe files (player characters). Back this up periodically.
+• data/        — items, monsters, and rules lists. You normally don’t edit these unless you’re customizing.
+• logs/        — (if present) text logs of runs.
+
+UPDATING THE BOT
+----------------
+1) Stop the bot (Ctrl+C in the terminal window).
+2) Replace the bot folder with the new version (or git pull if you used Git).
+3) Activate the virtual environment again.
+4) Run: pip install -r requirements.txt
+5) Start it: python main.py
+
+TROUBLESHOOTING
+---------------
+Bot won’t show online
+  • Check you used the correct token in .env (no spaces). If you pasted extra spaces/quotes, fix them.
+  • In the Developer Portal, on the Bot page, click "Reset Token", copy the new token, update .env, restart.
+  • Make sure you enabled "MESSAGE CONTENT INTENT" on the Bot page.
+  • Ensure your PC has internet and your firewall isn’t blocking Python.
+
+I type !help and nothing happens
+  • The bot needs permission to read and send messages in that channel (and to read message history).
+  • Check the bot’s role permissions and the channel overrides.
+  • If slash commands work but !help doesn’t: verify **Message Content Intent** is ON and restart the bot.
+  • Make sure your server region/outage isn’t an issue (rare).
+
+"pip is not recognized" (Windows)
+  • Use: python -m pip install -r requirements.txt
+
+"ModuleNotFoundError" when starting
+  • You skipped the "pip install -r requirements.txt" step or you installed outside the virtual env. Activate the env and install again.
+
+"CommandNotFoundError" or "PermissionError" activating venv on Windows
+  • Open PowerShell as Administrator once and run:
+      Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+    Then close and reopen PowerShell and try activation again.
+
+It says "You do not have permission to invite this bot"
+  • You need the "Manage Server" permission on the Discord server to invite bots.
+  • Ask an admin to either grant it to you temporarily or invite the bot for you.
+
+I want the bot to keep running after I close the window
+  • On Linux, use screen/tmux (see above) or set up a systemd service.
+  • On Windows/macOS, leave the terminal open; for 24/7 hosting consider a VPS or a Raspberry Pi.
+
+SAFETY & PRIVACY
+----------------
+• Keep your token secret. If you accidentally post it, immediately "Reset Token" in the Developer Portal and update your .env.
+• Don’t run the bot as an Administrator.
+• Back up your "characters/" folder if you care about your game data.
+
+Happy adventuring!

@@ -1,0 +1,191 @@
+Seer (BFRPG) — Player & GM Guide
+================================
+
+This guide explains how to use the Seer Discord bot for Basic Fantasy RPG. It’s organized for quick reference, with concise “how to” steps for players and a toolbox section for GMs.
+
+Conventions & Tips
+------------------
+• Commands begin with `!`. Examples: `!char Steve`, `!a longsword`, `!cast sleep -i`  
+• Names are case‑insensitive and support partial matches where noted.  
+• An “ACTIVE character” means the one you selected with `!char`.  
+• Many commands require your .coe character file to exist (created via `!charcreate`).  
+• GM‑only commands require an active battle channel / initiative where applicable.  
+• Some commands accept `-dm` or `-private` to DM you instead of posting publicly, and `-p` or `-public` to force public posts.
+
+Quick Start for Players
+-----------------------
+1) Make a character
+   • `!charcreate` – guided creation flow (creates `<name>.coe` file)  
+   • `!reroll` – reroll starting stats (L1 only)  
+   • `!swap STR DEX` – swap two abilities (L1 only)
+
+2) Select your active PC
+   • `!char <name>` – sets your active character
+
+3) See your sheet
+   • `!stats` – shows HP, AC, ability modifiers, save DCs, etc.  
+   • `!portrait` – set or view your character’s portrait
+
+4) Money and inventory
+   • `!coins` – show and modify your coin totals  
+   • `!bag` – view bag (storage) with gear weight & coins
+   • `!eq` – view equipped items  
+   • `!equip <item>` – equip armor/shield/weapon/other  
+   • `!unequip <slot|name>` – remove something equipped  
+   • `!carry "<item name>" [qty]` / `!uncarry <slot|name>` – manage carried misc items  
+   • `!additem "<item name>" [qty]` – add a listed item to inventory  
+   • Buying & selling: `!shop`, `!buy <item>`, `!sell <item>`  
+   • Give to others: `!give <item> <target>`; Drop: `!drop <item> [qty|all]`
+
+5) Combat (players)
+   • Start or join initiative: `!init`, `!join`, `!leave`, `!list`  
+   • Your turn to attack: `!a <weapon> [opts]`  (e.g., `!a spear goblin -b 2`)  
+   • Defend instead of attacking: `!defend` (+4 AC until your next turn)  
+   • Track HP: `!hp +/-N` or just `!hp` to show  
+   • End & loot: `!end` (GM), `!tally`, `!loot`
+
+6) Checks, skills, and saves
+   • Ability check (roll-under): `!c <stat>` (e.g., `!c INT`)  
+   • Skill check: `!s <skill> [±N] [target]` (thief skills handled)  
+   • Saving throw: `!save <type> [±N] [target]`  
+   • Roll dice with math: `!r 2d6+3` (supports multiple expressions)
+
+7) Exploration & travel
+   • Secret doors: `!door`  
+   • Trap search: `!trap`  
+   • Advance time (turns): `!nt N` (exploration mode)  
+   • Order ping: `!t`  
+   • Forage while traveling: `!forage [-d days] [-n people] [-dm]`  
+   • Hunt a full day: `!hunt <terrain> [-no-wander] [-dm]`  
+   • Encounters: `!e dungeon <avgLvl>` | `!e <terrain>` | `!e <monster>` | `!e town`
+
+8) Leveling & XP
+   • View/adjust XP: `!xp` (players), `!addxp N` (manual add)  
+   • Level up: `!levelup` (when thresholds reached)  
+   • Restoration / negative levels: `!restore`
+
+Spellcasting (Players)
+----------------------
+• Prepare & slots
+  - `!sb` – show prepared spells and slot bubbles  
+  - `!sb all` – show everything you can prepare, underlining prepared  
+  - `!prepare <Spell> [xN]` – prepare spells (class rules obeyed)  
+  - `!unprepare <Spell>` – remove prepared instances  
+  - `!ss` – adjust remaining slots (manual fix)
+
+• Casting & concentration
+  - `!cast <Spell> [alias options]` – cast and auto-run any supported effect/alias  
+  - `!conc` – show concentration status  
+  - `!conc drop` – drop concentration (end ongoing effect)
+
+• Scrolls, wands, staves & potions
+  - `!read <Scroll>` (Read a scroll; consumes unless `-i`)  
+  - `!readmagic` (mark a scroll as deciphered)  
+  - `!scrolls` (list your scroll instances)  
+  - `!givescroll`, `!removescroll`, `!prunescrolls`  
+  - `!wand`, `!staff`, `!potion`, `!item` – use items from your bag  
+  - `!charges` – show/edit wand/staff charges
+
+• Monster spell actions (GM has extras)
+  - `!mcast` (monster innate casting)  
+  - `!maddspell` (add uses to monster’s innate list)  
+  - GM utility: `!ignite <targets>` to ignite webbed creatures
+
+Combat & Initiative (Players + GM)
+----------------------------------
+Core loop
+  • Players: `!join`, take turns with `!a`, `!defend`, track `!hp`, etc.  
+  • GM: `!init`, `!list`, `!status`, `!track`, `!remove`, `!end`
+
+Special monster/condition helpers (mostly GM-only)
+  • Area/auras/effects: `!breath`, `!spray`, `!spore`, `!stench`, `!spin`, `!thunderclap`, `!gaze`, `!slow`, `!ward`, `!dance`, `!charm`, `!goo`  
+  • Attack helpers: `!slam` (monster attack on its turn), `!aoo` (attack of opportunity), `!lightning` (Storm Giant toss), `!spit` (cobra), `!brush` (remove maggots)  
+  • Status tools: `!cure`, `!conloss`, `!strloss`, `!rouse`, `!unpoly`, `!invis`  
+  • Rolls for monsters: `!msave`, `!morale`, `!react`, `!surprise`
+  • Spawning & removal: `!mon`, `!remove`  
+  • Lair/treasure & bookkeeping: `!lair`, `!treasure`, `!tally`, `!loot`
+
+Economy & Inventory (Players)
+-----------------------------
+• Coins & gear weight  
+  - `!coins` – show and modify coins; coin weight counts toward encumbrance  
+  - `!bag` – Bag view (storage) shows gear and coin weight breakdown  
+• Shops & trading  
+  - `!shop [filter]`, `!buy <item>`, `!sell <item>`, `!give <item> <PC>`  
+• Equip & manage  
+  - `!equip`, `!unequip`, `!carry`, `!uncarry`, `!drop`, `!additem`  
+• Item charges & magic items  
+  - `!charges`, `!wand`, `!staff`, `!potion`, `!item`
+
+Crafting System (Players & GM)
+------------------------------
+What you can craft
+  • Scrolls, potions, wands, staves, and magic gear per BFRPG norms (plus custom recipes baked into the bot).  
+  • Some items are single‑use and support batching doses; others track charges.
+
+Listing & starting projects
+  • `!craft list [<filter>] [-p N]` – browse craftables (paged)
+  • `!craft start "<RecipeName>" [-doses N] [-safe]` – start a project
+  • `-safe` mode: +25% success chance, but ×2 time and ×2 cost
+  • Many recipes allow parameters; examples are shown in the list UI
+
+Tracking & resolving
+  • `!craft status` – see your current projects and timers  
+  • `!craft due` – list projects ready to resolve  
+  • `!craft resolve [<project-id>|all]` – roll completion & apply results  
+  • `!craft cancel <project-id>` – cancel a project (lose materials)  
+  • `!craftdump` – (GM/dev) export a simplified JSON catalog for review
+
+Costs, time, and success (rules of thumb)
+  • Base chance is derived from the recipe / spell level.  
+  • Single‑use items may use an “equivalent level” to compute time/cost.  
+  • Weapons/armor use an “effective bonus” formula to scale complexity.  
+  • Class usability: adding `any_class` on an effect costs +1000 gp per effect.  
+  • “Safe” crafting: +25% success, but double time and double cost.  
+  • Spellcrafter class perks (if your class qualifies):
+      – +25% base success chance (class feature)  
+      – Half time at level 6+  
+      – −25% cost at level 9+  
+
+Strongholds (Players & GM)
+--------------------------
+Followers & establishment
+  • `!followers <PC>` – rolls randomized followers by class family when a PC builds a class‑appropriate stronghold or temple.  
+  • Results include counts by type and quick build notes to seed roleplay.
+
+Stronghold calculator
+  • `!shcalc <width> <length> <floors> [--wall <wood|softstone|hardstone|hewn|dressed>] [-thickness <ft>] [-moat] [-keep] [-gatehouse] [-towers N] [-rooms N] [-materials-only]`  
+  • Outputs costs, man‑hours, timelines, and a breakdown of materials vs. labor.  
+  • Use `-materials-only` if you just want the shopping list.
+
+Digging / excavation
+  • `!shdig <earth|softstone|hardstone> <cubic-yards> [-crew N] [-workdays N]`  
+  • Gives realistic excavation days based on material hardness and crew size.
+
+NPCs & Parties (GM)
+-------------------
+• `!npcparty` – Generate modular monster‑style human parties (templates in /monsters), then spawn with `!mon` to populate encounters or factions.  
+• Use `!e town` for quick RP prompts and NPC hooks; `!e <terrain>` for wilderness; `!e dungeon <avgLvl>` for traditional wandering checks.  
+• `!react` and `!morale` integrate with your spawned monsters for social and combat flow.
+
+GM Toolbox (At a Glance)
+------------------------
+• Start/supervise battle: `!init`, `!list`, `!status`, `!track`, `!remove`, `!end`  
+• Spawn monsters: `!mon`, adjust: `!hd`, clear: `!ds`, set flags: `!status`  
+• Damage/heal: `!damage`, `!heal`, rouse KO: `!rouse`  
+• Crowd control & hazards: `!breath`, `!spray`, `!spore`, `!stench`, `!spin`, `!thunderclap`, `!gaze`, `!slow`, `!ward`, `!dance`, `!charm`, `!goo`, `!invis`, `!unpoly`, `!ignite`  
+• Saves & checks for monsters: `!msave`, `!morale`, `!react`, `!surprise`  
+• Treasure & bookkeeping: `!lair`, `!treasure`, `!tally`, `!loot`  
+• Admin/Owner: `!zap` is server‑owner only (dangerous; use with caution).
+
+Appendix: Useful Patterns
+-------------------------
+• Target by name (partial ok): `!a spear go1` or `!spin AI1 go1 go2`  
+• Private vs public posts: many exploration commands support `-dm` or `-private` to DM you instead of posting publicly; use `-p` or `-public` to force public.  
+• When in doubt: `!help <command>` shows detailed usage.
+
+This project includes material from the Basic Fantasy Role-Playing Game © Chris Gonnerman & contributors,
+used under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/). Changes were made.
+Basic Fantasy RPG is not affiliated with or endorsing this project.
+
+— End of file —

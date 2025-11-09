@@ -1,0 +1,92 @@
+[
+  {
+    "name": "Potion: Healing",
+    "type": "potion",
+    "min_level": {
+      "default": 7,
+      "spellcrafter": 3
+    }
+  },
+  {
+    "name": "Potion: Flying",
+    "type": "potion",
+    "min_level": {
+      "default": 7,
+      "spellcrafter": 3
+    }
+  },
+  {
+    "name": "Scroll: Fireball",
+    "type": "spell_scroll",
+    "level": 3,
+    "class": "arcane"
+  },
+  {
+    "name": "WandofFireballs",
+    "type": "wand",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "charges": {
+      "max": 20,
+      "rechargeable": false,
+      "self_recharge": null,
+      "generic_pool": false
+    }
+  },
+  {
+    "name": "StaffofHealing",
+    "type": "staff",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "charges": {
+      "max": 30,
+      "rechargeable": false,
+      "self_recharge": null,
+      "generic_pool": false
+    }
+  },
+  {
+    "name": "BagofHolding",
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "features": [
+      {
+        "kind": "spell_effect",
+        "level": 5
+      }
+    ]
+  },
+  {
+    "name": "MirrorofImprisonment",
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 15000,
+      "chance_minus": 10
+    }
+  },
+  {
+    "name": "GauntletsofOgrePower",
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 8000,
+      "chance_minus": 10
+    }
+  }
+]

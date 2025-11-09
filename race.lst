@@ -1,0 +1,184 @@
+[Human]
+class=Fighter Cleric Druid Magic-User Thief Ranger Barbarian Paladin Scout Assassin Illusionist Necromancer Spellcrafter
+skills=QuickLearner
+desc=Humans come in a broad variety of shapes and sizes. An average Human male in good health stands around six feet tall and weighs around 175 pounds, while females average five feet nine inches and weigh around 145 pounds. Most Humans live around 75 years.//Humans may be any single class, other than the combination classes. They have no minimum or maximum ability score requirements.//Humans learn unusually quickly, gaining a bonus of 10 percent to all experience points earned.
+
+[Elf]
+class=Fighter Cleric Druid Magic-User Thief Ranger Paladin Scout Illusionist Necromancer Spellcrafter Fightermage Magethief 
+para=1
+wand=2
+spell=2
+intmin=9
+conmax=17
+skills=Darkvision SecretDoor GhoulImmune Alert Frail
+openlock=-5
+removetrap=-5
+movesilently=5
+hide=5
+listen=5
+desc=Elves are a slender race, with both males and females standing around five feet tall and weighing around 130 pounds. Most have dark hair, with little or no body or facial hair. Their skin is pale, and they have pointed ears and delicate features. Elves are lithe and graceful, with keen eyesight and hearing. Elves are typically inquisitive, passionate, self-assured, and sometimes haughty. Their typical lifespan is a dozen centuries or more.//Elves may become most classes excluding Barbarian and Assassin, and they are also able to take the combination classes of Fightermage (Fighter plus Magic-User) and Magethief (Thief plus Illusionist). Elves never roll larger than d6 for hit points, regardless of their class.//All Elves have Darkvision with a 60' range. They are so observant that they can find secret doors with even a cursory glance. Elves are immune to the paralyzing attack of ghouls, and are less likely to be surprised in combat.
+
+
+[Half-Elf]
+class=Fighter Cleric Druid Magic-User Thief Ranger Paladin Scout Illusionist Necromancer Spellcrafter Fightermage Magethief 
+intmin=9
+conmax=17
+skills=Darkvision SecretDoor QuickLearner
+wand=1
+spell=1
+desc=Half-elves are the result of crossbreeding between elves and humans. An average half-elf male stands around 5'6" in height, with females averaging an inch shorter. They have pointed ears, but their features tend to favor the human parent a bit more than the elf. Half-elves are well-tolerated by humans in most cases, but are often shunned by elven society.//Half-elves may become members of most classes excluding Barbarian and Assassin, and they can also access the combination classes like elves.//Half-elves have Darkvision with a 30' range. They can find secret doors as well as an elf, and gain a 5 percent bonus on experience points gained.
+
+[Half-Ogre]
+class=Fighter Cleric Druid Barbarian Paladin Scout
+strmin=13
+conmin=13
+wismax=15
+intmax=15
+skills=Large QuickLearner Darkvision
+desc=Half-ogres are the result of crossbreeding between humand and ogres. Such creatures tend to be outcasts within both human and ogrish communities, but they may often be found as leaders in communities of orcs or goblins. Half-ogres are big, averaging around 7 feet in height, broad-shouldered, and rangy. Their features tend to favor the ogrish parent, with dark coarse hair, tan skin, and dark eyes.//Half-ogres roll hit dice one size larger than normal; so a half-ogre Fighter rolls d10's for hit points, while a half-ogre Cleric rolls d8's. Half-ogres gain a 5 percent bonus on all earned experience. Finally, they have Darkvision with a 30' range.
+
+[Half-Orc]
+class=Fighter Cleric Druid Magic-User Thief Ranger Barbarian Paladin Scout Illusionist Necromancer Spellcrafter
+conmin=9
+intmax=17
+skills=QuickLearner Darkvision ReactPlus
+poi=1
+desc=Half-orcs are the result of crossbreeding between humans and orcs. Such creatures tend to be outcasts within human communities, but sometimes rise to positions of leadership within orcish communities. Half-orcs are a bit shorter than humans, and their features tend to favor the orcish parent.//Half-orcs gain a bonus of 5 percent on all earned experience. They have Darkvision with a 60' range, and when dealing with humanoid monsters, a half-orc gains an additional +1 on any reaction die roll, in addition to their Charisma bonus.
+
+[Halfling]
+class=Fighter Cleric Druid Thief Ranger Paladin Scout
+banned=GreatAxe Longbow HeavyXbow Greatsword Maul Quarterstaff Polearm
+poi=4
+wand=4
+spell=4
+para=4
+breath=3
+skills=Aim QuickWit ForestStealth Hide Small
+pickpocket=5
+movesilently=5
+hide=5
+listen=5
+climb=-15
+desc=Halflings are small, slightly stocky folk who stand around three feet tall and weigh around 60 pounds. They have curly brown hair on their heads and feet, but rarely have facial hair. They are usually fair-skinned, often with ruddy cheeks. Halflings are remarkably rugged for their small size. They are dexterous and nimble, capable of moving quietly and remaining very still. They usually go barefoot. Halflings are typically outgoing, unassuming and good-natured. They live about a hundred years.//Halflings are unusually accurate with all sorts of ranged weapons, gaining a bonus to accuracy, and also a bonus to initiative die rolls, due to their quick wit and reactions.//In their preferred forest terrain, they are able to hide very effectively, with a 90 percent chance of success. Even indoors, in dungeons or in non-preferred terrain, any halfling can `!hide` with 70 percent effectiveness, regardless of class.
+
+[Bugbear]
+class=Fighter Cleric Druid Thief Barbarian Paladin Scout
+strmin=13
+dexmin=9
+intmax=15
+chamax=15
+movesilently=20
+hide=10
+skills=Darkvision
+desc=Bugbears look like huge, hairy goblins, standing about 6 feet tall. Their eyes are usually a darkish brown color. Bugbears can move very quietly, but are wild and relatively fearless, and bully smaller humanoids whenever possible.//Bugbears prefer to ambush opponents if they can. When hunting, they often send scouts ahead of the main group. Bugbear attacks are coordinated, and their tactics are sound if not brilliant. They are able to move in nearly complete silence, gaining a large bonus to their `movesilently` skill roll, if a thief or scout.
+
+[Caveman]
+class=Fighter Cleric Druid Thief Ranger Barbarian Paladin Scout
+strmin=13
+dexmin=9
+conmin=9
+intmax=15
+chamax=15
+skills=Alert
+climb=20
+hide=10
+movesilently=10
+openlock=-10
+removetrap=-10
+track=10
+desc=Cavemen are a species closely related to Humans; they are shorter and stockier, and much more heavily muscled. They do not all actually live in caves. Whether they are actually less intelligent than "normal" humans or not is a matter of debate, but it is true that they do not have the facility for language that other human, demi-human, and humanoid races have. However, they do seem to be able to communicate basic information amongst themselves through complex grunts and vocalizations similar to what one might hear from the great apes.//Caveman Clerics and Druids are still able to vocalize their spells despite this language limitation, doing so in peculiar ways that are unrecognizable by other races.//Cavemen are wise in the ways of nature, and make for excellent Druids or Rangers, but they lack the ability to communicate or understand advanced concepts such as arcane spellcasting. Cavemen can 'learn' languages, but only rudimentary concepts are understood.//Cavemen are very attuned to their surroundings, and like Elves are seldom surprised.
+
+[Gnoll]
+class=Fighter Cleric Druid Barbarian Paladin Scout Magic-User Necromancer Spellcrafter
+strmin=13
+conmin=11
+intmax=15
+chamax=15
+skills=Scent Darkvision
+listen=10
+track=10
+poi=4
+para=4
+desc=Gnolls are hyena-headed, evil humanoids that wander in loose tribes. Most gnolls have dirty yellow or reddish-brown fur. An adult male gnoll is about 7' tall and weighs 300 pounds. Gnolls are nocturnal carnivores, preferring intelligent creatures for food because they scream more. Gnoll Fighters are the most common, but they show little discipline when fighting unless they have a strong leader. Gnolls may become arcane spellcasters, but shun the use of illusion magic. Gnolls are generally savage, brutish and cruel.//In its role as a scavenger, a gnoll is especially attuned to scent. A gnoll is able to identify individuals by scent alone. This powerful olfactory sense allows it to determine the presence of concealed or invisible creatures. Gnolls have Darkvision out to 60'. Gnolls may eat raw meat without any ill effects.
+
+[Goblin]
+class=Fighter Cleric Druid Magic-User Thief Barbarian Paladin Scout Illusionist Necromancer Spellcrafter
+banned=GreatAxe Longbow HeavyXbow Greatsword Maul Quarterstaff Polearm
+dexmin=9
+strmax=16
+conmax=16
+skills=SecretDoor Stonecunning Darkvision Small
+openlock=10
+removetrap=10
+desc=Goblins are small, wicked humanoids who favor ambushes, overwhelming odds, dirty tricks, and any other edge they can devise. An adult goblin stands around 3' tall and weighs around 40 pounds. Its eyes are unusually bright and crafty-looking, varying in color from red to yellow. A goblin's skin color ranges from yellow to green to orange to red; usually all members of a single tribe are about the same color. Goblins wear clothing of dark leather.//Crafty and mechanically inclined, a goblin notices secret doors as well as an Elf, and is able to detect slanting passages, traps, shifting walls, and new construction as well as a Dwarf. Like most dark-dwelling races, a Goblin has Darkvision out to 60'.
+
+[Hobgoblin]
+class=Fighter Cleric Druid Magic-User Thief Barbarian Paladin Scout Illusionist Necromancer Spellcrafter
+strmin=9
+chamin=9
+skills=SecretDoor Darkvision
+listen=5
+removetrap=5
+desc=Hobgoblins are the larger cousins of goblins, being about the same size as humans. Their hair colors range from dark reddish-brown to dark gray, and their skin tones are usually red or orange. A hobgoblin's eyes are yellowish or dark brown. Hobgoblins keep their weapons keenly polished and in good repair.//Hobgoblins are cruel and calculating warriors, always looking to exploit those weaker than themselves. They have a strong grasp of strategy and tactics and are capable of carrying out sophisticated battle plans. Under the leadership of a skilled strategist or tactician, their discipline can prove a deciding factor. Hobgoblins hate Elves and attack them first in preference over other opponents. Hobgoblin deities reinforce this militaristic outlook, and their Clerics are able to favor additional weapons as a result, such as the Spear, BattleAxe and Longsword.//While not as mechanically-minded as normal goblins, a hobgoblin is still very alert, noticing secret doors as well as an Elf. Like most dark-dwelling races, a hobgoblin has Darkvision out to 60'.
+
+[Kobold]
+class=Fighter Cleric Druid Magic-User Thief Barbarian Paladin Scout Illusionist Necromancer Spellcrafter
+banned=GreatAxe Longbow HeavyXbow Greatsword Maul Quarterstaff Polearm
+dexmin=11
+strmax=15
+skills=SecretDoor Stonecunning Darkvision Small
+removetrap=15
+openlock=5
+movesilently=5
+hide=5
+poi=4
+desc=Kobolds are small, dog-faced reptilian humanoids. A kobold is 2' tall and weighs about 40 pounds. Kobolds tend to perceive larger races as enemies, and are naturally distrustful when encountered. Regardless, kobolds are cunning foes. They prefer ranged combat, closing only when they can see their foes have been weakened. Whenever they can, kobolds prefer to ambush and set up traps.//A kobold may become any class, excluding the combination classes. Kobolds are masters of trapworks and are otherwise very mechanically inclined. They notice secret doors as well as an Elf and traps as well as a Dwarf. Kobolds have Darkvision out to 90'.
+
+[Lizardman]
+class=Fighter Cleric Druid Barbarian Paladin Scout
+strmin=13
+chamax=15
+skills=Swim Bite
+openlock=-10
+removetrap=-10
+pickpocket=-10
+desc=A lizard man is uaully 6' to 7' feet tall with green, gray, or brown scales. Its tail is used for balance and is 3' to 4' long. Adult males can weigh from 200 to 250 pounds and are always very strong. Lizardmen are largely indifferent to other races, being primarily interested in their own survival. If aroused, however, they are fearsome warriors, using simple but sound tactics.//Lizaard men generally prefer professions associated with nature or survival. Lizardmen have trouble relating to most other races.//Lizardmen are excellent swimmers and can hold their breath for an extended period of time (up to a full turn, or 60 rounds). Lizardmen can bite for 1d4 pounds + Strength modifier in damage, but must forgo any weapon attacks that round. A lizardman fighter can specialize in their own bite.
+
+[Orc]
+class=Fighter Cleric Druid Thief Barbarian Paladin Scout
+strmin=9
+conmin=9
+intmax=15
+chamax=15
+skills=Darkvision
+poi=8
+climb=10
+listen=10
+desc=Orcs are grotesque humanoids bent on war and domination. They have lupine ears, reddish eyes, truncated, upturned noses, and black hair (but very little body hair). An adult male orc is a little over 6' tall and weighs about 210 pounds; females are slightly smaller. An orc prefers to wear vivid colors that many humans would consider unpleasant. Orcs utilize all manner of weapons and armor scavenged from battlefields. They speak their own rough and simple language, but many also speak some Common or Goblin.//Orcs have Darkvision out to 60 feet.
+
+[Dwarf]
+class=Fighter Cleric Druid Thief Barbarian Paladin Scout
+conmin=9
+chamax=17
+banned=Greatsword Polearm Longbow
+poi=4
+wand=4
+para=4
+spell=4
+breath=3
+skills=Darkvision Stonecunning
+openlock=5
+removetrap=5
+listen=5
+climb=-10
+desc=Dwarves are a short, stocky race; both male and female Dwarves stand around four feet tall and typically weigh around 120 pounds. Their long hair and thick bears are dark brown, gray or black. They take great pride in their beards, sometimes braiding or forking them. They have a fair to ruddy complexion. Dwarves have stout frames and a strong, muscular build. They are rugged and resilient, with the capacity to endure great hardships. Dwarves are typically practical, stubborn and courageous. They can also be introspective, suspicious and possessive. They have a lifespan of three to four centuries.//All Dwarves have Darkvision with a 60' range, and are able to detect slanting passages, stonework traps, shifting walls and new construction on a roll of 1-2 on 1d6; a search must be performed before this roll may be made.
+
+[Gnome]
+class=Fighter Cleric Druid Magic-User Thief Barbarian Paladin Scout Illusionist Necromancer Spellcrafter Magethief
+conmin=9
+banned=GreatAxe Longbow HeavyXbow Greatsword Maul Quarterstaff Polearm
+strmax=17
+skills=Frail Small SeeInvisible
+poi=4
+breath=3
+desc=Gnomes are small and stocky, moreso than halflings but not as much as dwarves; both male and female gnomes stand around three and a half feet tall and typically weigh around 90 pounds. Their hair and beards may be blond, brown, black, or sometimes red. They have a fair to ruddy complexion. The most noticeable features about a gnome from the standpoint of other races is their pointed ears and noses. They are renowned for their rapidly-changing moods, sometimes gruff and contrary, sometimes whimsical and humorous. They have a lifespan between two and three centuries long.//Gnomes are frail like elves, unable to roll higher than d6 for hit dice regardless of class. They are also small like halflings, unable to wield large weapons and needing to wield medium weapons in two hands. With respect to encumbrance, gnomes are equivalent to halflings.//Gnomes have the ability to see invisible creatures and objects within 30 feet. Such creatures and objects appear as strange magical glows in the shape of the creature or object. A Thief hiding in shadows, an invisible sprite, or a character wearing an elven cloak may all be detected in this way.

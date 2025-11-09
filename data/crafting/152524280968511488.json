@@ -1,0 +1,38 @@
+{
+  "1760720663": {
+    "item": "Scroll: Fireball",
+    "type": "spell_scroll",
+    "doses": 1,
+    "safe": false,
+    "days": 3,
+    "cost_gp": 150.0,
+    "final_chance": 70,
+    "started_ts": 1760720663,
+    "owner_char": "wizard",
+    "char_file": "wizard.coe",
+    "class": "Magic-User",
+    "level": 14,
+    "notes": [
+      "Spell scroll L3: −30% chance, 3d, 150 gp."
+    ],
+    "finish": ""
+  },
+  "1760721109": {
+    "item": "Scroll: Fireball",
+    "type": "spell_scroll",
+    "doses": 1,
+    "safe": false,
+    "days": 3,
+    "cost_gp": 150.0,
+    "final_chance": 70,
+    "started_ts": 1760721109,
+    "owner_char": "wizard",
+    "char_file": "wizard.coe",
+    "class": "Magic-User",
+    "level": 14,
+    "notes": [
+      "Spell scroll L3: −30% chance, 3d, 150 gp."
+    ],
+    "finish": ""
+  }
+}
