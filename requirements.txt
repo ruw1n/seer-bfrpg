@@ -1,0 +1,12 @@
+# Minimal runtime deps for seer-bfrpg
+# Pin conservatively to keep installs stable. Adjust as needed for your environment.
+
+nextcord>=2.6,<3.0
+python-dotenv>=1.0,<2.0
+
+# Optional (uncomment if/when used in the codebase):
+# portalocker>=2.8,<3.0      # file locks to avoid concurrent writes to .coe files
+# rich>=13.0,<14.0           # prettier console logs
+# pillow>=10.0,<12.0         # image ops, portraits, etc.
+# pyyaml>=6.0,<7.0           # YAML config, if adopted
+
