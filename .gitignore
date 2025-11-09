@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual env
+.venv/
+venv/
+
+# Editors/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Secrets / local data
+.env
+*.env
+characters/
+logs/
+*.log
+
+# Build artifacts
+dist/
+build/
+*.zip
