@@ -82,7 +82,8 @@ and a **GM Guide**. It ends with a compact **Cheat Sheet** you can drop into a s
   `!prepare <Spell>` — prepare one instance (checks slots by level);  
   `!sb` — show prepared spells and “bubble” slots;  
   `!unprepare <Spell>` — remove prepared instance;  
-  `!lr` — long rest resets slots and certain per-day trackers.
+  `!lr` — long rest resets slots and certain per-day trackers;
+  `!spells` — show spells by class (e.g. `!spells magic-user`).
 - Casting:  
   `!cast <Spell> [targets...] [-i]` — cast; `-i` = simulate (don’t spend slot).  
   `!item <Name> [targets...]` — use a magic item that replicates a spell or AoE.  
