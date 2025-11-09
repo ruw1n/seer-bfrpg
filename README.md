@@ -89,7 +89,7 @@ seer/
   howto.txt
   seer-guide.md
   requirements.txt
-  main.py             # your launcher (example name)
+  bot.py             # your launcher (example name)
 ```
 
 > Character files (`.coe`) can live in the project root or a `characters/` folder—match whatever your launcher expects.
