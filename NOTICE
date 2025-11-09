@@ -1,0 +1,18 @@
+seer-bfrpg — Licensing & Attribution
+
+SCOPE
+• Source code in /cogs, /utils and other .py files is licensed under the MIT License.
+• Game data and documentation (including but not limited to /data, /monsters, /spells, /items,
+  and player guides) are licensed under Creative Commons Attribution–ShareAlike 4.0 International (CC BY-SA 4.0).
+
+ATTRIBUTION
+This project contains or derives from Basic Fantasy Role-Playing Game materials by Chris Gonnerman,
+used under CC BY-SA 4.0. © the respective authors.
+
+DISCLAIMER
+This project is not affiliated with, endorsed, or sponsored by Chris Gonnerman or the Basic Fantasy RPG community.
+All trademarks are the property of their respective owners.
+
+CONTRIBUTIONS
+By submitting a contribution, you agree your code is MIT-licensed and your data/docs are CC BY-SA 4.0-licensed,
+consistent with the scopes above.
