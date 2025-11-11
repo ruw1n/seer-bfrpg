@@ -35,7 +35,7 @@ conmin=13
 wismax=15
 intmax=15
 skills=Large QuickLearner Darkvision
-desc=Half-ogres are the result of crossbreeding between humand and ogres. Such creatures tend to be outcasts within both human and ogrish communities, but they may often be found as leaders in communities of orcs or goblins. Half-ogres are big, averaging around 7 feet in height, broad-shouldered, and rangy. Their features tend to favor the ogrish parent, with dark coarse hair, tan skin, and dark eyes.//Half-ogres roll hit dice one size larger than normal; so a half-ogre Fighter rolls d10's for hit points, while a half-ogre Cleric rolls d8's. Half-ogres gain a 5 percent bonus on all earned experience. Finally, they have Darkvision with a 30' range.
+desc=Half-ogres are the result of crossbreeding between humans and ogres. Such creatures tend to be outcasts within both human and ogrish communities, but they may often be found as leaders in communities of orcs or goblins. Half-ogres are big, averaging around 7 feet in height, broad-shouldered, and rangy. Their features tend to favor the ogrish parent, with dark coarse hair, tan skin, and dark eyes.//Half-ogres roll hit dice one size larger than normal; so a half-ogre Fighter rolls d10's for hit points, while a half-ogre Cleric rolls d8's. Half-ogres gain a 5 percent bonus on all earned experience. Finally, they have Darkvision with a 30' range.
 
 [Half-Orc]
 class=Fighter Cleric Druid Magic-User Thief Ranger Barbarian Paladin Scout Illusionist Necromancer Spellcrafter
@@ -182,3 +182,4 @@ skills=Frail Small SeeInvisible
 poi=4
 breath=3
 desc=Gnomes are small and stocky, moreso than halflings but not as much as dwarves; both male and female gnomes stand around three and a half feet tall and typically weigh around 90 pounds. Their hair and beards may be blond, brown, black, or sometimes red. They have a fair to ruddy complexion. The most noticeable features about a gnome from the standpoint of other races is their pointed ears and noses. They are renowned for their rapidly-changing moods, sometimes gruff and contrary, sometimes whimsical and humorous. They have a lifespan between two and three centuries long.//Gnomes are frail like elves, unable to roll higher than d6 for hit dice regardless of class. They are also small like halflings, unable to wield large weapons and needing to wield medium weapons in two hands. With respect to encumbrance, gnomes are equivalent to halflings.//Gnomes have the ability to see invisible creatures and objects within 30 feet. Such creatures and objects appear as strange magical glows in the shape of the creature or object. A Thief hiding in shadows, an invisible sprite, or a character wearing an elven cloak may all be detected in this way.
+
