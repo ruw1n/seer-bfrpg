@@ -46,7 +46,7 @@
     },
     "batchable": true,
     "gives": "GaseousForm"
-  },  
+  },
   "Potion: Clairaudience": {
     "type": "potion",
     "effects": [
@@ -94,7 +94,7 @@
     },
     "batchable": true,
     "gives": "ColdResistance"
-  },  
+  },
   "Potion: FireResistance": {
     "type": "potion",
     "effects": [
@@ -110,7 +110,7 @@
     },
     "batchable": true,
     "gives": "FireResistance"
-  },    
+  },
   "Potion: Invisibility": {
     "type": "potion",
     "effects": [
@@ -126,7 +126,7 @@
     },
     "batchable": true,
     "gives": "Invisibility"
-  },    
+  },
   "Potion: Levitation": {
     "type": "potion",
     "effects": [
@@ -142,7 +142,7 @@
     },
     "batchable": true,
     "gives": "Levitation"
-  },    
+  },
   "Potion: PolymorphSelf": {
     "type": "potion",
     "effects": [
@@ -158,7 +158,7 @@
     },
     "batchable": true,
     "gives": "PolymorphSelf"
-  },    
+  },
   "Potion: Speed": {
     "type": "potion",
     "effects": [
@@ -174,7 +174,7 @@
     },
     "batchable": true,
     "gives": "Speed"
-  },    
+  },
   "Potion: ControlAnimal": {
     "type": "potion",
     "effects": [
@@ -206,7 +206,7 @@
     },
     "batchable": true,
     "gives": "ControlDragon"
-  },  
+  },
   "Potion: ControlGiant": {
     "type": "potion",
     "effects": [
@@ -222,7 +222,7 @@
     },
     "batchable": true,
     "gives": "ControlGiant"
-  },  
+  },
   "Potion: ControlHuman": {
     "type": "potion",
     "effects": [
@@ -238,7 +238,7 @@
     },
     "batchable": true,
     "gives": "ControlHuman"
-  },  
+  },
   "Potion: ControlPlant": {
     "type": "potion",
     "effects": [
@@ -270,49 +270,49 @@
     },
     "batchable": true,
     "gives": "ControlUndead"
-  },  
+  },
   "Potion: Diminution": {
     "type": "potion",
     "override": {
       "days": 20,
       "cost_gp": 1000,
       "chance_minus": 20
-     },
+    },
     "min_level": {
       "default": 7,
       "spellcrafter": 3
     },
     "batchable": true,
     "gives": "Diminution"
-  },  
+  },
   "Potion: Growth": {
     "type": "potion",
     "override": {
       "days": 20,
       "cost_gp": 1000,
       "chance_minus": 20
-     },
+    },
     "min_level": {
       "default": 7,
       "spellcrafter": 3
     },
     "batchable": true,
     "gives": "Growth"
-  },    
+  },
   "Potion: GiantStrength": {
     "type": "potion",
     "override": {
       "days": 20,
       "cost_gp": 5000,
       "chance_minus": 20
-     },
+    },
     "min_level": {
       "default": 7,
       "spellcrafter": 3
     },
     "batchable": true,
     "gives": "GiantStrength"
-  },     
+  },
   "Scroll: CalltoWorship": {
     "type": "spell_scroll",
     "effects": [
@@ -333,14 +333,14 @@
       "days": 20,
       "cost_gp": 3000,
       "chance_minus": 20
-     },
+    },
     "min_level": {
       "default": 7,
       "spellcrafter": 3
     },
     "batchable": true,
     "gives": "Heroism"
-  },     
+  },
   "Scroll: CureMinorWounds": {
     "type": "spell_scroll",
     "effects": [
@@ -2356,7 +2356,7 @@
       "default": 1,
       "spellcrafter": 1
     }
-  },  
+  },
   "Scroll: LightningBolt": {
     "type": "spell_scroll",
     "effects": [
@@ -5333,7 +5333,6 @@
     },
     "gives": "ChainMail+3"
   },
-
   "LeatherArmor+1": {
     "type": "armor",
     "min_level": {
@@ -7820,47 +7819,109 @@
       "spellcrafter": 7
     },
     "class_restriction": "cleric_or_druid"
-  },  
-"StaffofPower": {
-  "type": "staff",
-  "effects": [
-    { "spell": "LightningBolt",    "level": 3, "class": "arcane" },
-    { "spell": "Fireball",         "level": 3, "class": "arcane" },
-    { "spell": "ConeOfCold",       "level": 5, "class": "arcane" },
-    { "spell": "ContinualLight",   "level": 2, "class": "arcane" },
-    { "spell": "Telekinesis",      "level": 5, "class": "arcane" }
-  ],
-  "charges": {
-    "max": 30,
-    "rechargeable": false,
-    "self_recharge": null,
-    "generic_pool": false
   },
-  "min_level": { "default": 9, "spellcrafter": 7 },
-  "gives": "StaffofPower"
-},
-"StaffofWizardry": {
-  "type": "staff",
-  "effects": [
-    { "spell": "LightningBolt",     "level": 3, "class": "arcane" },
-    { "spell": "Fireball",          "level": 3, "class": "arcane" },
-    { "spell": "ConeOfCold",        "level": 5, "class": "arcane" },
-    { "spell": "ContinualLight",    "level": 2, "class": "arcane" },
-    { "spell": "Telekinesis",       "level": 5, "class": "arcane" },
-    { "spell": "Invisibility",      "level": 2, "class": "arcane" },
-    { "spell": "Passwall",          "level": 5, "class": "arcane" },
-    { "spell": "Web",               "level": 2, "class": "arcane" },
-    { "spell": "ConjureElemental",  "level": 6, "class": "arcane" }
-  ],
-  "charges": {
-    "max": 30,
-    "rechargeable": false,
-    "self_recharge": null,
-    "generic_pool": false
+  "StaffofPower": {
+    "type": "staff",
+    "effects": [
+      {
+        "spell": "LightningBolt",
+        "level": 3,
+        "class": "arcane"
+      },
+      {
+        "spell": "Fireball",
+        "level": 3,
+        "class": "arcane"
+      },
+      {
+        "spell": "ConeOfCold",
+        "level": 5,
+        "class": "arcane"
+      },
+      {
+        "spell": "ContinualLight",
+        "level": 2,
+        "class": "arcane"
+      },
+      {
+        "spell": "Telekinesis",
+        "level": 5,
+        "class": "arcane"
+      }
+    ],
+    "charges": {
+      "max": 30,
+      "rechargeable": false,
+      "self_recharge": null,
+      "generic_pool": false
+    },
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "gives": "StaffofPower"
   },
-  "min_level": { "default": 9, "spellcrafter": 7 },
-  "gives": "StaffofWizardry"
-},
+  "StaffofWizardry": {
+    "type": "staff",
+    "effects": [
+      {
+        "spell": "LightningBolt",
+        "level": 3,
+        "class": "arcane"
+      },
+      {
+        "spell": "Fireball",
+        "level": 3,
+        "class": "arcane"
+      },
+      {
+        "spell": "ConeOfCold",
+        "level": 5,
+        "class": "arcane"
+      },
+      {
+        "spell": "ContinualLight",
+        "level": 2,
+        "class": "arcane"
+      },
+      {
+        "spell": "Telekinesis",
+        "level": 5,
+        "class": "arcane"
+      },
+      {
+        "spell": "Invisibility",
+        "level": 2,
+        "class": "arcane"
+      },
+      {
+        "spell": "Passwall",
+        "level": 5,
+        "class": "arcane"
+      },
+      {
+        "spell": "Web",
+        "level": 2,
+        "class": "arcane"
+      },
+      {
+        "spell": "ConjureElemental",
+        "level": 6,
+        "class": "arcane"
+      }
+    ],
+    "charges": {
+      "max": 30,
+      "rechargeable": false,
+      "self_recharge": null,
+      "generic_pool": false
+    },
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "gives": "StaffofWizardry"
+  },
   "Warhammer+2": {
     "type": "weapon",
     "min_level": {
@@ -11205,7 +11266,7 @@
     "gives": "Sling+1"
   },
   "SnakeStaff": {
-    "type": "staff",
+    "type": "rare",
     "min_level": {
       "default": 9,
       "spellcrafter": 7
@@ -11214,26 +11275,28 @@
       "base_plus": 1,
       "vs_plus": 0
     },
-    "type": "rare",
     "override": {
       "days": 20,
       "cost_gp": 3000,
       "chance_minus": 20
-     },    
+    },
     "gives": "SnakeStaff"
   },
-"StaffofStriking": {
-  "type": "staff",
-  "equivalent_level": 4,
-  "charges": {
-    "max": 30,
-    "rechargeable": false,
-    "self_recharge": null,
-    "generic_pool": false
+  "StaffofStriking": {
+    "type": "staff",
+    "equivalent_level": 4,
+    "charges": {
+      "max": 30,
+      "rechargeable": false,
+      "self_recharge": null,
+      "generic_pool": false
+    },
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "gives": "StaffofStriking"
   },
-  "min_level": { "default": 9, "spellcrafter": 7 },
-  "gives": "StaffofStriking"
-},
   "Warhammer+1": {
     "type": "weapon",
     "min_level": {
@@ -24789,7 +24852,7 @@
       "spellcrafter": 7
     },
     "gives": "WandofFireballs"
-  },  
+  },
   "WandofCold": {
     "type": "wand",
     "effects": [
@@ -25074,7 +25137,7 @@
       "default": 9,
       "spellcrafter": 7
     }
-  },      
+  },
   "RopeofClimbing": {
     "type": "rare",
     "override": {
@@ -25085,6 +25148,1434 @@
     "min_level": {
       "default": 9,
       "spellcrafter": 7
+    }
+  },
+  "DrumsofBlasting": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 10000,
+      "chance_minus": 10
+    }
+  },
+  "HornofBlasting": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 10000,
+      "chance_minus": 10
+    }
+  },
+  "BeltofBlending": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 10000,
+      "chance_minus": 10
+    }
+  },
+  "CloakofBlending": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 10000,
+      "chance_minus": 10
+    }
+  },
+  "PendantofBlending": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 10000,
+      "chance_minus": 10
+    }
+  },
+  "RingofBlending": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 10000,
+      "chance_minus": 10
+    }
+  },
+  "BeltofColdResistance": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 16,
+      "cost_gp": 8000,
+      "chance_minus": 8
+    }
+  },
+  "CloakofColdResistance": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 16,
+      "cost_gp": 8000,
+      "chance_minus": 8
+    }
+  },
+  "PendantofColdResistance": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 16,
+      "cost_gp": 8000,
+      "chance_minus": 8
+    }
+  },
+  "RingofColdResistance": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 16,
+      "cost_gp": 8000,
+      "chance_minus": 8
+    }
+  },
+  "HelmofComprehension": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 12,
+      "cost_gp": 6000,
+      "chance_minus": 6
+    }
+  },
+  "PendantofComprehension": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 12,
+      "cost_gp": 6000,
+      "chance_minus": 6
+    }
+  },
+  "RingofComprehension": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 12,
+      "cost_gp": 6000,
+      "chance_minus": 6
+    }
+  },
+  "PendantofControlAnimal": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 24,
+      "cost_gp": 12000,
+      "chance_minus": 12
+    }
+  },
+  "RingofControlAnimal": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 24,
+      "cost_gp": 12000,
+      "chance_minus": 12
+    }
+  },
+  "PendantofControlHuman": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 28,
+      "cost_gp": 14000,
+      "chance_minus": 14
+    }
+  },
+  "RingofControlHuman": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 28,
+      "cost_gp": 14000,
+      "chance_minus": 14
+    }
+  },
+  "PendantofControlPlant": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 10000,
+      "chance_minus": 10
+    }
+  },
+  "RingofControlPlant": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 10000,
+      "chance_minus": 10
+    }
+  },
+  "BellofCourage": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 10,
+      "cost_gp": 5000,
+      "chance_minus": 5
+    }
+  },
+  "DrumsofCourage": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 10,
+      "cost_gp": 5000,
+      "chance_minus": 5
+    }
+  },
+  "HornofCourage": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 10,
+      "cost_gp": 5000,
+      "chance_minus": 5
+    }
+  },
+  "BeltofDeception": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 28,
+      "cost_gp": 14000,
+      "chance_minus": 14
+    }
+  },
+  "CloakofDeception": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 28,
+      "cost_gp": 14000,
+      "chance_minus": 14
+    }
+  },
+  "PendantofDeception": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 28,
+      "cost_gp": 14000,
+      "chance_minus": 14
+    }
+  },
+  "RingofDeception": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 28,
+      "cost_gp": 14000,
+      "chance_minus": 14
+    }
+  },
+  "BellofDelusion": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 4,
+      "cost_gp": 1000,
+      "chance_minus": 0
+    }
+  },
+  "BeltofDelusion": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 4,
+      "cost_gp": 1000,
+      "chance_minus": 0
+    }
+  },
+  "BootsofDelusion": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 4,
+      "cost_gp": 1000,
+      "chance_minus": 0
+    }
+  },
+  "BowlofDelusion": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 4,
+      "cost_gp": 1000,
+      "chance_minus": 0
+    }
+  },
+  "CloakofDelusion": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 4,
+      "cost_gp": 1000,
+      "chance_minus": 0
+    }
+  },
+  "OrbofDelusion": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 4,
+      "cost_gp": 1000,
+      "chance_minus": 0
+    }
+  },
+  "DrumsofDelusion": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 4,
+      "cost_gp": 1000,
+      "chance_minus": 0
+    }
+  },
+  "HelmofDelusion": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 4,
+      "cost_gp": 1000,
+      "chance_minus": 0
+    }
+  },
+  "HornofDelusion": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 4,
+      "cost_gp": 1000,
+      "chance_minus": 0
+    }
+  },
+  "LensofDelusion": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 4,
+      "cost_gp": 1000,
+      "chance_minus": 0
+    }
+  },
+  "MirrorofDelusion": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 4,
+      "cost_gp": 1000,
+      "chance_minus": 0
+    }
+  },
+  "PendantofDelusion": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 4,
+      "cost_gp": 1000,
+      "chance_minus": 0
+    }
+  },
+  "RingofDelusion": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 4,
+      "cost_gp": 1000,
+      "chance_minus": 0
+    }
+  },
+  "PendantofDjinniSummoning": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 40,
+      "cost_gp": 25000,
+      "chance_minus": 20
+    }
+  },
+  "RingofDjinniSummoning": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 40,
+      "cost_gp": 25000,
+      "chance_minus": 20
+    }
+  },
+  "BellofDoom": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 32,
+      "cost_gp": 16000,
+      "chance_minus": 15
+    }
+  },
+  "DrumsofDoom": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 32,
+      "cost_gp": 16000,
+      "chance_minus": 15
+    }
+  },
+  "HornofDoom": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 32,
+      "cost_gp": 16000,
+      "chance_minus": 15
+    }
+  },
+  "BeltofFireResistance": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 18,
+      "cost_gp": 9000,
+      "chance_minus": 9
+    }
+  },
+  "CloakofFireResistance": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 18,
+      "cost_gp": 9000,
+      "chance_minus": 9
+    }
+  },
+  "PendantofFireResistance": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 18,
+      "cost_gp": 9000,
+      "chance_minus": 9
+    }
+  },
+  "RingofFireResistance": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 18,
+      "cost_gp": 9000,
+      "chance_minus": 9
+    }
+  },
+  "BeltofInvisibility": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 24,
+      "cost_gp": 12000,
+      "chance_minus": 12
+    }
+  },
+  "CloakofInvisibility": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 24,
+      "cost_gp": 12000,
+      "chance_minus": 12
+    }
+  },
+  "PendantofInvisibility": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 24,
+      "cost_gp": 12000,
+      "chance_minus": 12
+    }
+  },
+  "RingofInvisibility": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 24,
+      "cost_gp": 12000,
+      "chance_minus": 12
+    }
+  },
+  "BootsofLevitation": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 18,
+      "cost_gp": 9000,
+      "chance_minus": 9
+    }
+  },
+  "PendantofLevitation": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 18,
+      "cost_gp": 9000,
+      "chance_minus": 9
+    }
+  },
+  "RingofLevitation": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 18,
+      "cost_gp": 9000,
+      "chance_minus": 9
+    }
+  },
+  "PendantofMindReading": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 10000,
+      "chance_minus": 10
+    }
+  },
+  "RingofMindReading": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 10000,
+      "chance_minus": 10
+    }
+  },
+  "BellofPanic": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 18,
+      "cost_gp": 9000,
+      "chance_minus": 9
+    }
+  },
+  "DrumsofPanic": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 18,
+      "cost_gp": 9000,
+      "chance_minus": 9
+    }
+  },
+  "HornofPanic": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 18,
+      "cost_gp": 9000,
+      "chance_minus": 9
+    }
+  },
+  "LensofPenetratingVision": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 24,
+      "cost_gp": 12000,
+      "chance_minus": 12
+    }
+  },
+  "MirrorofPenetratingVision": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 24,
+      "cost_gp": 12000,
+      "chance_minus": 12
+    }
+  },
+  "PendantofPenetratingVision": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 24,
+      "cost_gp": 12000,
+      "chance_minus": 12
+    }
+  },
+  "RingofPenetratingVision": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 24,
+      "cost_gp": 12000,
+      "chance_minus": 12
+    }
+  },
+  "BeltofProtection+1": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 8000,
+      "chance_minus": 12
+    }
+  },
+  "CloakofProtection+1": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 8000,
+      "chance_minus": 12
+    }
+  },
+  "PendantofProtection+1": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 8000,
+      "chance_minus": 12
+    }
+  },
+  "RingofProtection+1": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 8000,
+      "chance_minus": 12
+    }
+  },
+  "BeltofProtection+2": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 28,
+      "cost_gp": 16000,
+      "chance_minus": 18
+    }
+  },
+  "CloakofProtection+2": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 28,
+      "cost_gp": 16000,
+      "chance_minus": 18
+    }
+  },
+  "PendantofProtection+2": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 28,
+      "cost_gp": 16000,
+      "chance_minus": 18
+    }
+  },
+  "RingofProtection+2": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 28,
+      "cost_gp": 16000,
+      "chance_minus": 18
+    }
+  },
+  "BeltofProtection+3": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 36,
+      "cost_gp": 24000,
+      "chance_minus": 24
+    }
+  },
+  "CloakofProtection+3": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 36,
+      "cost_gp": 24000,
+      "chance_minus": 24
+    }
+  },
+  "PendantofProtection+3": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 36,
+      "cost_gp": 24000,
+      "chance_minus": 24
+    }
+  },
+  "RingofProtection+3": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 36,
+      "cost_gp": 24000,
+      "chance_minus": 24
+    }
+  },
+  "BeltofProtectionfromEnergyDrain": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 40,
+      "cost_gp": 20000,
+      "chance_minus": 20
+    }
+  },
+  "CloakofProtectionfromEnergyDrain": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 40,
+      "cost_gp": 20000,
+      "chance_minus": 20
+    }
+  },
+  "PendantofProtectionfromEnergyDrain": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 40,
+      "cost_gp": 20000,
+      "chance_minus": 20
+    }
+  },
+  "RingofProtectionfromEnergyDrain": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 40,
+      "cost_gp": 20000,
+      "chance_minus": 20
+    }
+  },
+  "BeltofProtectionfromScrying": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 24,
+      "cost_gp": 12000,
+      "chance_minus": 12
+    }
+  },
+  "CloakofProtectionfromScrying": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 24,
+      "cost_gp": 12000,
+      "chance_minus": 12
+    }
+  },
+  "PendantofProtectionfromScrying": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 24,
+      "cost_gp": 12000,
+      "chance_minus": 12
+    }
+  },
+  "RingofProtectionfromScrying": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 24,
+      "cost_gp": 12000,
+      "chance_minus": 12
+    }
+  },
+  "PendantofRegeneration": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 50,
+      "cost_gp": 30000,
+      "chance_minus": 25
+    }
+  },
+  "RingofRegeneration": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 50,
+      "cost_gp": 30000,
+      "chance_minus": 25
+    }
+  },
+  "BowlofScrying": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 30,
+      "cost_gp": 15000,
+      "chance_minus": 15
+    }
+  },
+  "OrbofScrying": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 30,
+      "cost_gp": 15000,
+      "chance_minus": 15
+    }
+  },
+  "BowlofScryingSuperior": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 36,
+      "cost_gp": 18000,
+      "chance_minus": 18
+    }
+  },
+  "OrbofScryingSuperior": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 36,
+      "cost_gp": 18000,
+      "chance_minus": 18
+    }
+  },
+  "BootsofSpeed": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 32,
+      "cost_gp": 16000,
+      "chance_minus": 15
+    }
+  },
+  "PendantofSpeed": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 32,
+      "cost_gp": 16000,
+      "chance_minus": 15
+    }
+  },
+  "RingofSpeed": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 32,
+      "cost_gp": 16000,
+      "chance_minus": 15
+    }
+  },
+  "PendantofSpellStoring": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 40,
+      "cost_gp": 20000,
+      "chance_minus": 20
+    }
+  },
+  "RingofSpellStoring": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 40,
+      "cost_gp": 20000,
+      "chance_minus": 20
+    }
+  },
+  "BeltofSpellTurning": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 40,
+      "cost_gp": 20000,
+      "chance_minus": 20
+    }
+  },
+  "CloakofSpellTurning": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 40,
+      "cost_gp": 20000,
+      "chance_minus": 20
+    }
+  },
+  "PendantofSpellTurning": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 40,
+      "cost_gp": 20000,
+      "chance_minus": 20
+    }
+  },
+  "RingofSpellTurning": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 40,
+      "cost_gp": 20000,
+      "chance_minus": 20
+    }
+  },
+  "BootsofStealth": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 10000,
+      "chance_minus": 10
+    }
+  },
+  "PendantofStealth": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 10000,
+      "chance_minus": 10
+    }
+  },
+  "RingofStealth": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 20,
+      "cost_gp": 10000,
+      "chance_minus": 10
+    }
+  },
+  "PendantofTelekinesis": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 36,
+      "cost_gp": 18000,
+      "chance_minus": 18
+    }
+  },
+  "RingofTelekinesis": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 36,
+      "cost_gp": 18000,
+      "chance_minus": 18
+    }
+  },
+  "PendantofTelepathy": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 24,
+      "cost_gp": 12000,
+      "chance_minus": 12
+    }
+  },
+  "RingofTelepathy": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 24,
+      "cost_gp": 12000,
+      "chance_minus": 12
+    }
+  },
+  "PendantofTeleportation": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 60,
+      "cost_gp": 30000,
+      "chance_minus": 30
+    }
+  },
+  "RingofTeleportation": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 60,
+      "cost_gp": 30000,
+      "chance_minus": 30
+    }
+  },
+  "LensofTrueSeeing": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 36,
+      "cost_gp": 18000,
+      "chance_minus": 18
+    }
+  },
+  "MirrorofTrueSeeing": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 36,
+      "cost_gp": 18000,
+      "chance_minus": 18
+    }
+  },
+  "PendantofTrueSeeing": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 36,
+      "cost_gp": 18000,
+      "chance_minus": 18
+    }
+  },
+  "RingofTrueSeeing": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 36,
+      "cost_gp": 18000,
+      "chance_minus": 18
+    }
+  },
+  "BootsofWaterWalking": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 14,
+      "cost_gp": 7000,
+      "chance_minus": 7
+    }
+  },
+  "PendantofWaterWalking": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 14,
+      "cost_gp": 7000,
+      "chance_minus": 7
+    }
+  },
+  "RingofWaterWalking": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 14,
+      "cost_gp": 7000,
+      "chance_minus": 7
+    }
+  },
+  "PendantofWeakness": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 4,
+      "cost_gp": 1000,
+      "chance_minus": 0
+    }
+  },
+  "RingofWeakness": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 4,
+      "cost_gp": 1000,
+      "chance_minus": 0
+    }
+  },
+  "PendantofWishes": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 100,
+      "cost_gp": 50000,
+      "chance_minus": 40
+    }
+  },
+  "RingofWishes": {
+    "type": "rare",
+    "min_level": {
+      "default": 9,
+      "spellcrafter": 7
+    },
+    "override": {
+      "days": 100,
+      "cost_gp": 50000,
+      "chance_minus": 40
     }
   }
 }
