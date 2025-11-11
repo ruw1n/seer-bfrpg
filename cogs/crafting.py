@@ -674,7 +674,7 @@ class Crafting(commands.Cog):
             embed.add_field(name="Results", value="\n".join(block), inline=False)
         return embed
 
-    def _quote_for(self, who_cfg: dict, recipe_key: str, *, doses: int = 1, safe_boost: bool = False, scroll_class_forced: Optional[str] = None) -> Quote:
+    def _quote_for(self, who_cfg: dict, recipe_key: str, *, doses: int = 1, safe_boost: bool = False, scroll_class_forced: Optional[str] = None, channel=None) -> Quote:
 
         """Compute cost, time, and success chance per BF RPG."""
         rec = self.recipes.get(recipe_key)
@@ -693,7 +693,7 @@ class Crafting(commands.Cog):
 
 
         spells_cog = self._spells()
-        prof = spells_cog._caster_profile(cls_lc, ctx.channel) if spells_cog else None
+        prof = spells_cog._caster_profile(cls_lc, None) if spells_cog else None
         if not prof:
             raise PermissionError("Only spellcasters may craft magic items.")
 
