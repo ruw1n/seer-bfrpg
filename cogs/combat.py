@@ -17905,6 +17905,7 @@ class Combat(commands.Cog):
                 pass
 
 
+
     @commands.command(name="dance")
     async def cmd_dance_secondary(self, ctx, *who_list: str):
         """
@@ -17963,7 +17964,7 @@ class Combat(commands.Cog):
             if ok:
                 emb.add_field(name=disp, value=f"Save vs Spells: {roll} vs {dc} → ✅ **RESISTED**.", inline=False)
             else:
-                                                        
+                emb.add_field(name=disp, value=f"Save vs Spells: {roll} vs {dc} → ❌ **FAIL**", inline=False)                                                        
                 await self._apply_dance_poison_on_hit(ctx, bcfg, chan_id, "Tarantula", disp, tcfg, emb, primary=False)
                 any_applied = True
 
@@ -17980,6 +17981,8 @@ class Combat(commands.Cog):
                 pass
 
         await ctx.send(embed=emb)
+
+
 
 
     @commands.command(name="lightning")
@@ -27469,7 +27472,7 @@ class Combat(commands.Cog):
 
                                 
         bcfg.set(chan_id, f"{slot}.x_dance",        str(max(0, dur)))
-        bcfg.set(chan_id, f"{slot}.x_dance_label",  "DANCE")
+        bcfg.set(chan_id, f"{slot}.x_dance_label",  
         bcfg.set(chan_id, f"{slot}.x_dance_code",   code)                                                                         
         bcfg.set(chan_id, f"{slot}.x_dance_kind",   kind)                            
         _save_battles(bcfg)
