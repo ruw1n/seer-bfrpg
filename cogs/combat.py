@@ -1675,6 +1675,36 @@ def _monster_has_harpysong(att_cfg, att_path):
         pass
     return False
 
+def _monster_has_enslave(att_cfg, att_path):
+    """
+    Return True if the monster lists enslave in its specials.
+    Used only to warn (not to block).
+    """
+    
+    try:
+        s1 = " ".join([
+            (get_compat(att_cfg, "base", "special", fallback="") or ""),
+            (get_compat(att_cfg, "info", "special", fallback="") or "")
+        ]).lower()
+        if any(k in s1 for k in ("enslave")):
+            return True
+
+        mtype = (get_compat(att_cfg, "info", "monster_type", fallback="")
+                 or get_compat(att_cfg, "info", "type", fallback="")).strip().lower()
+        p = _safe_monster_ini_path(mtype)
+        if p:
+            mcfg = read_cfg(p)
+            s2 = " ".join([
+                (get_compat(mcfg, "base", "special", fallback="") or ""),
+                (get_compat(mcfg, "info", "special", fallback="") or "")
+            ]).lower()
+            if any(k in s2 for k in ("enslave")):
+                return True
+
+    except Exception:
+        pass
+    return False
+    
 def _monster_has_spore(att_cfg, att_path):
     """
     Return True if the monster lists a spore ability.
@@ -4215,7 +4245,20 @@ class Combat(commands.Cog):
             flank_suppressed = True
 
         rage_hit_bonus = 2 if (want_rage and is_barbarian) else 0
-                                        
+                                                
+        deathstrike_blocked_reason = None
+        if want_assassinate:
+            melee_ok = (not is_rangedish) and (not is_oil) and (not is_holy) and (not want_wrestle)
+
+            try:
+                eff_hands = self._effective_hands(item, race_lc)
+            except Exception:
+                eff_hands = 1 
+
+            if not melee_ok or eff_hands >= 2:
+                want_assassinate = False
+                deathstrike_blocked_reason = "Death Strike requires a one-handed melee weapon."
+
         deathstrike_hit_bonus = 4 if (want_assassinate and is_assassin) else 0
 
         d20 = random.randint(1, 20)
@@ -5069,6 +5112,9 @@ class Combat(commands.Cog):
             notes.append("Death Strike ignored (Assassin only)")
         elif want_assassinate:
             notes.append("Death Strike: +4 to hit; on hit target saves vs Death Ray or **dies**.")
+        elif deathstrike_blocked_reason:
+            notes.append(f"Death Strike: {deathstrike_blocked_reason} (treated as normal attack).")
+
       
         if want_fav and is_ranger:
             notes.append("Favored Enemy: +3 damage")
@@ -16896,6 +16942,175 @@ class Combat(commands.Cog):
             pass
 
 
+    @commands.command(name="enslave")
+    async def aboleth_enslave(self, ctx, enslaver: str, *targets):
+        """
+        Aboleth Enslave (special): Up to three times per day, an aboleth can attempt to enslave
+        one living creature within 30 feet (not undead or non-living). The target must Save vs
+        Spells or be utterly dominated, obeying the aboleth's telepathic commands.
+
+        Usage:
+          !enslave AB1 testman
+          !enslave AB1 testman wizard   # each valid living target consumes one of the 3/day attempts
+
+        Notes:
+          • Max 3 successful/attempted en-slave tries per aboleth per day.
+          • Affected creatures may attempt a new save vs Spells every 24 hours to break free.
+          • Remove Curse, the aboleth’s death, or separation by more than 1 mile also ends control.
+        """
+        bcfg = _load_battles()
+        chan_id = str(ctx.channel.id)
+        if not bcfg or not bcfg.has_section(chan_id):
+            await ctx.send("❌ No battle here. Use `!battle` first.")
+            return
+
+        dm_id = bcfg.get(chan_id, "DM", fallback="")
+        if str(ctx.author.id) != str(dm_id):
+            await ctx.send("❌ Only the GM can use `!enslave`.")
+            return
+
+        try:
+            att_name, att_path = _resolve_char_ci(str(enslaver))
+        except Exception:
+            att_name, att_path = (None, None)
+
+        if not att_path:
+            await ctx.send(f"❌ Enslaver '{enslaver}' not found.")
+            return
+        if not _is_monster_file(att_path):
+            await ctx.send(f"❌ **{att_name}** is not a monster.")
+            return
+
+        acfg = read_cfg(att_path)
+        try:
+            if not _monster_has_enslave(acfg, att_path):
+                await ctx.send(f"⚠️ **{att_name}** doesn’t list an 'enslave' special — proceeding anyway.")
+        except Exception:
+            pass
+
+        try:
+            names, _ = _parse_combatants(bcfg, chan_id)
+            key = _find_ci_name(names, att_name or enslaver) or (att_name or enslaver)
+            try:
+                slot = _slot(key)
+            except Exception:
+                slot = key.replace(" ", "_")
+        except Exception:
+            slot = (att_name or enslaver).replace(" ", "_")
+
+        uses_key = f"{slot}.enslave_uses"
+        used = bcfg.getint(chan_id, uses_key, fallback=0)
+
+        if not targets:
+            await ctx.send("Usage: `!enslave <aboleth> <target1> [target2 ...]`  _(Range 30 ft; max 3/day)_")
+            return
+
+        def _resolve_ci(name: str):
+            try:
+                return _resolve_char_ci(name)
+            except Exception:
+                base = name.replace(" ", "_").lower() + ".coe"
+                for fn in os.listdir("."):
+                    if fn.lower() == base:
+                        path = fn
+                        try:
+                            cfg = read_cfg(path)
+                            real = get_compat(cfg, "info", "name", fallback=None)
+                            return (real or fn[:-4].replace("_", " ")), path
+                        except Exception:
+                            return fn[:-4].replace("_", " "), path
+                return None, None
+
+        candidates = [] 
+        lines = []
+
+        for raw in targets:
+            disp, path = _resolve_ci(str(raw))
+            pretty = disp or str(raw)
+            if not path:
+                lines.append(f"• **{pretty}**: *(not found)*")
+                continue
+
+            t_cfg = read_cfg(path)
+
+            if not _is_living_creature(t_cfg):
+                lines.append(f"• **{pretty}**: unaffected (not a living creature).")
+                continue
+
+            candidates.append((pretty, path, t_cfg))
+
+        attempts = len(candidates)
+        remaining = max(0, 3 - used)
+
+        if attempts > remaining and attempts > 0:
+            await ctx.send(
+                f"⛔ **{att_name}** can only attempt Enslave **3/day**.\n"
+                f"Already used: **{used}**  •  Remaining: **{remaining}**.\n"
+                f"You targeted **{attempts}** valid creature(s). Reduce your target list or wait for a new day."
+            )
+            return
+
+        embed = nextcord.Embed(
+            title=f"{att_name} reaches into mortal minds…",
+            color=random.randint(0, 0xFFFFFF),
+        )
+        embed.add_field(
+            name="Effect",
+            value=(
+                "🧠 **Enslave** — One living creature within **30 ft** must Save vs **Spells** or be **enslaved**.\n"
+                "• On a **success**: resists this attempt (the aboleth may try again later, up to 3/day).\n"
+                "• On a **failure**: becomes a dominated thrall, obeying telepathic commands.\n"
+                "• A *remove curse* spell, the aboleth's death, or moving more than **1 mile** away also ends the effect."
+            ),
+            inline=False,
+        )
+        embed.add_field(name="Range", value="30 ft", inline=True)
+        embed.add_field(name="Limit", value="3 enslave attempts per day per aboleth.", inline=True)
+
+        # Second pass: actually roll saves for valid candidates
+        attempt_count = 0
+        for pretty, path, t_cfg in candidates:
+            ok, sv_roll, sv_dc, sv_pen = self._roll_save(t_cfg, vs="spell", penalty=0)
+            if sv_dc is None:
+                ok = False  # fall back to 'treat as fail' if we can't find a DC
+
+            pen_txt = f" - {sv_pen}" if sv_pen else ""
+            save_vs = sv_dc if sv_dc is not None else "SPELL"
+            save_txt = f"(d20 **{sv_roll}** vs **{save_vs}**{pen_txt})"
+
+            if ok:
+                lines.append(
+                    f"• **{pretty}**: Save vs Spells {save_txt} → ✅ **RESISTS**"
+                )
+            else:
+                lines.append(
+                    f"• **{pretty}**: Save vs Spells {save_txt} → 💀 **ENSLAVED** — now a dominated thrall of **{att_name}**"
+                )
+
+            attempt_count += 1
+
+        embed.add_field(
+            name="Targets",
+            value=("\n".join(lines) if lines else "*(no valid targets)*"),
+            inline=False,
+        )
+
+        new_used = used + attempt_count
+        try:
+            bcfg.set(chan_id, uses_key, str(new_used))
+            _save_battles(bcfg)
+        except Exception:
+            pass
+
+        embed.add_field(
+            name="Daily Uses",
+            value=f"Attempts today: **{new_used} / 3**",
+            inline=False,
+        )
+        embed.set_footer(text="Enslaved creatures get a new save every 24 hours; GM tracks ongoing control and distance.")
+        await ctx.send(embed=embed)
+
+
     @commands.command(name="breath")
     async def monster_breath(self, ctx, breather: str, *targets):
         """
@@ -17397,7 +17612,6 @@ class Combat(commands.Cog):
           • Each patch can emit spores once per day (we enforce 'once per battle' via a used flag).
           • GM adjudicates exact areas/ranges.
         """
-        import os, random, nextcord
 
         bcfg = _load_battles()
         chan_id = str(ctx.channel.id)
@@ -17714,6 +17928,7 @@ class Combat(commands.Cog):
         embed.set_footer(text="A charmed victim remains affected for 1 round after all harpies stop singing.")
 
         await ctx.send(embed=embed)
+
 
 
     @commands.command(name="slow")
