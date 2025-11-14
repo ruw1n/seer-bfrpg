@@ -11339,10 +11339,22 @@ class Combat(commands.Cog):
         except Exception:
             old_ac = 10
 
+
+
         canon, item = self._item_lookup(item_name)
         if not item:
             await ctx.send(f"❌ Unknown item **{item_name}**.")
             return
+
+        item_type = (self._item_type(item) or "").strip().lower()
+        if item_type in {"gear", "food", "tool"}:
+            pretty = re.sub(r"(?<!^)([A-Z])", r" \1", canon).strip()
+            await ctx.send(
+                f"⚠️ **{pretty}** is ordinary gear, not something you wear or wield.\n"
+                f"Use `!carry {pretty}` if you want it in your carried items."
+            )
+            return
+
 
         
         has_it = False
@@ -17905,7 +17917,6 @@ class Combat(commands.Cog):
                 pass
 
 
-
     @commands.command(name="dance")
     async def cmd_dance_secondary(self, ctx, *who_list: str):
         """
@@ -17981,8 +17992,6 @@ class Combat(commands.Cog):
                 pass
 
         await ctx.send(embed=emb)
-
-
 
 
     @commands.command(name="lightning")
@@ -27472,7 +27481,7 @@ class Combat(commands.Cog):
 
                                 
         bcfg.set(chan_id, f"{slot}.x_dance",        str(max(0, dur)))
-        bcfg.set(chan_id, f"{slot}.x_dance_label",  
+        bcfg.set(chan_id, f"{slot}.x_dance_label",  "DANCE")
         bcfg.set(chan_id, f"{slot}.x_dance_code",   code)                                                                         
         bcfg.set(chan_id, f"{slot}.x_dance_kind",   kind)                            
         _save_battles(bcfg)
