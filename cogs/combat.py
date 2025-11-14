@@ -4248,18 +4248,33 @@ class Combat(commands.Cog):
                                                 
         deathstrike_blocked_reason = None
         if want_assassinate:
-            melee_ok = (not is_rangedish) and (not is_oil) and (not is_holy) and (not want_wrestle)
+            melee_ok = _is_melee_attack(is_rangedish, is_oil, is_holy, want_wrestle)
+
+            # Weapons like daggers, spears, and hand-axes have range bands but are
+            # still perfectly good one-handed melee weapons. For Death Strike, treat
+            # “rangedish but not bow/sling/xbow” as melee.
+            canon_lc = (canon_name or weapon_name or "").strip().lower()
+            missileish_names = ("bow", "crossbow", "xbow", "sling")
+            pure_missile = any(tok in canon_lc for tok in missileish_names)
+
+            if not pure_missile and is_rangedish and not (is_oil or is_holy or want_wrestle):
+                melee_ok = True
 
             try:
                 eff_hands = self._effective_hands(item, race_lc)
             except Exception:
-                eff_hands = 1 
+                # Fall back to simple item-based hands if the helper isn’t available.
+                try:
+                    eff_hands = self._item_hands(item)
+                except Exception:
+                    eff_hands = 1
 
             if not melee_ok or eff_hands >= 2:
                 want_assassinate = False
                 deathstrike_blocked_reason = "Death Strike requires a one-handed melee weapon."
 
         deathstrike_hit_bonus = 4 if (want_assassinate and is_assassin) else 0
+
 
         d20 = random.randint(1, 20)
         is_crit = (d20 == 20)
