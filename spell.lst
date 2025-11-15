@@ -2094,7 +2094,7 @@ desc = The caster points a finger at their intended target and rolls a ranged at
 nec = 4
 range = touch
 duration = special
-desc = Virutally identical to the Cleric or Magic-User spell AnimateDead, this spell turns the bones or bodies of dead creatures into undead skeletons or zombies that follow the caster's spoken commands. They remain animated until they are destroyed. The Necromancer may animate a number of hit dice of undead equal to three times their caster level, and no more. Animated skeletons have hit dice equal to the number the creature had in life; for skeletons of humans or demi-humans, this means one hit die, regardless of the character level of the deceased. Zombies have one more hit die than the creature had in life. An animated skeleton can be created only from a mostly-intact skeleton; a zombie can be created only from a mostly-intact corpse. The caster must touch the remains to be animated. The caster may control no more hit dice of undead than 6 times their level.//Usage: `!cast animatedead sk5 zo3` would summon 5 skeletons and 3 zombies.
+desc = Virutally identical to the Cleric or Magic-User spell AnimateDead, this spell turns the bones or bodies of dead creatures into undead skeletons or zombies that follow the caster's spoken commands. They remain animated until they are destroyed. The Necromancer may animate a number of hit dice of undead equal to three times their caster level, and no more. Animated skeletons have hit dice equal to the number the creature had in life; for skeletons of humans or demi-humans, this means one hit die, regardless of the character level of the deceased. Zombies have one more hit die than the creature had in life. An animated skeleton can be created only from a mostly-intact skeleton; a zombie can be created only from a mostly-intact corpse. The caster must touch the remains to be animated. The caster may control no more hit dice of undead than 6 times their level.//Usage: `!cast reanimation sk5 zo3` would summon 5 skeletons and 3 zombies.
 
 [RotFlesh]
 nec = 4
@@ -2776,5 +2776,4 @@ desc = This spell summons a riding horse or pony (caster's choice) to serve as a
 ;rangeperlvl = +10/level
 ;duration = 1 round/level (Concentration)
 ;desc = You conjure a ray of numbing cold. Once per round (including immediately), you may strike one creature within range for 1d4+1 cold damage. The target must save vs. Paralysis (heat grants +2) or become **Chilled** (–1 to melee attack and melee damage rolls) for 1d6 rounds. The effect ends if concentration is broken.
-
 
