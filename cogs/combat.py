@@ -7761,16 +7761,29 @@ class Combat(commands.Cog):
             return (effective_ac < 15, "AC<15; no worn armor recorded")
 
                             
-        hd = getint_compat(atk_cfg, "cur", "level", fallback=1)
+        # Monster attack bonus: use explicit stats.ab if present; otherwise HD-based table.
+        hd = getint_compat(
+            atk_cfg,
+            "cur",
+            "level",
+            fallback=getint_compat(atk_cfg, "base", "hd", fallback=1),
+        )
+        hd = max(1, hd)
+
         try:
-            classes_tbl = getattr(self, "classes", {})
-            ab = _get_ab_from_cfg_or_table(atk_cfg, classes_tbl, fallback_class="Fighter", fallback_level=max(1, hd))
+            raw_ab = get_compat(atk_cfg, "stats", "ab", fallback="")
+            if str(raw_ab).strip():
+                # Allow a hard-coded override on the monster entry.
+                ab = int(raw_ab)
+            else:
+                # Default for monsters: use the HD → AB map from [monster] in class.lst.
+                ab = self.monster_ab_for_hd(hd)
         except Exception:
-            ab = self.monster_ab_for_hd(max(1, hd))
+            ab = self.monster_ab_for_hd(hd)
 
 
-                                      
         blind_att_pen = 0
+
         try:
             if bcfg.getint(chan_id, f"{slot_self}.blind", fallback=0) > 0:
                 blind_att_pen = -4
@@ -9706,8 +9719,25 @@ class Combat(commands.Cog):
                 return (False, name)
             return (effective_ac < 15, "AC<15; no worn armor recorded")
 
-        hd = getint_compat(atk_cfg, "cur", "level", fallback=1)
-        ab = self.monster_ab_for_hd(max(1, hd))
+        # Monster attack bonus: use explicit stats.ab if present; otherwise HD-based table.
+        hd = getint_compat(
+            atk_cfg,
+            "cur",
+            "level",
+            fallback=getint_compat(atk_cfg, "base", "hd", fallback=1),
+        )
+        hd = max(1, hd)
+
+        try:
+            raw_ab = get_compat(atk_cfg, "stats", "ab", fallback="")
+            if str(raw_ab).strip():
+                # Allow a hard-coded override on the monster entry.
+                ab = int(raw_ab)
+            else:
+                # Default for monsters: use the HD → AB map from [monster] in class.lst.
+                ab = self.monster_ab_for_hd(hd)
+        except Exception:
+            ab = self.monster_ab_for_hd(hd)
 
         attacker_has_ts = False
         try:
