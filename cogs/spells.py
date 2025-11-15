@@ -2670,6 +2670,30 @@ class SpellsCog(commands.Cog, name="Spells"):
         except Exception:
             pass
 
+    def _monster_ab_from_hd(self, cfg) -> int:
+        # pull an integer HD from base.hd
+        raw_hd = (get_compat(cfg, "base", "hd", fallback="") or "").strip()
+        m = re.match(r"(\d+)", raw_hd)
+        if not m:
+            return 0
+        hd = max(1, min(32, int(m.group(1))))
+
+        try:
+            sec = None
+            for s in self._class_cp.sections():
+                if s.lower() == "monster":
+                    sec = s
+                    break
+            if not sec:
+                return 0
+
+            key = f"hd{hd}"
+            if self._class_cp.has_option(sec, key):
+                return self._class_cp.getint(sec, key)
+        except Exception:
+            pass
+        return 0
+
     def _get_attack_bonus(self, cfg) -> int:
         """
         Attack Bonus for the caster:
@@ -2682,6 +2706,11 @@ class SpellsCog(commands.Cog, name="Spells"):
         lvl = max(1, getint_compat(cfg, "cur", "level", fallback=1))
         lc = char_class.lower()
 
+        # Monsters: use HD-based table if we have it
+        if lc == "monster":
+            hd_ab = self._monster_ab_from_hd(cfg)
+            if hd_ab:
+                return hd_ab
 
         try:
             for cog in self.bot.cogs.values():
