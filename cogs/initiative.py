@@ -7849,7 +7849,7 @@ class Initiative(commands.Cog):
           !loh <name> poison      -> neutralize poison (L11+)
 
         Heals 2 + CHA mod (min 0). Uses/day = (level + 1)//2.
-        Tracks uses in cur.loh_used (reset this on your rest command).
+        Tracks uses in cur.loh_used (reset this on !lr command).
         """
 
         def ability_mod(score: int) -> int:
