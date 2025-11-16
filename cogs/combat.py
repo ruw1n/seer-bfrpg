@@ -1075,7 +1075,7 @@ def _match_slayer_type(mon_type: str, want: str) -> bool:
     if want == "lycanthrope":
         return ("lycan" in s) or ("were" in s)
     if want == "enchanted":
-        return any(tok in s for tok in ("enchanted", "fey", "fae", "magical beast", "magicalbeast"))
+        return any(tok in s for tok in ("enchanted", "fey", "magical", "magicalbeast"))
     if want == "ooze":
         return any(tok in s for tok in ("ooze", "slime", "pudding", "gelatinous"))
     return want in s
@@ -1733,6 +1733,35 @@ def _monster_has_spore(att_cfg, att_path):
     except Exception:
         pass
     return False
+
+def _monster_has_gibbering(att_cfg, att_path):
+    """
+    Return True if the monster lists a gibbering/confusion aura in its specials.
+    Looks for 'gibber' tokens on the instance or its template. Used only to warn (not to block).
+    """
+    try:
+        s1 = " ".join([
+            (get_compat(att_cfg, "base", "special", fallback="") or ""),
+            (get_compat(att_cfg, "info", "special", fallback="") or "")
+        ]).lower()
+        if any(k in s1 for k in ("gibber", "gibbering", "gibbering mouther")):
+            return True
+
+        mtype = (get_compat(att_cfg, "info", "monster_type", fallback="")
+                 or get_compat(att_cfg, "info", "type", fallback="")).strip().lower()
+        p = _safe_monster_ini_path(mtype)
+        if p:
+            mcfg = read_cfg(p)
+            s2 = " ".join([
+                (get_compat(mcfg, "base", "special", fallback="") or ""),
+                (get_compat(mcfg, "info", "special", fallback="") or "")
+            ]).lower()
+            if any(k in s2 for k in ("gibber", "gibbering", "gibbering mouther")):
+                return True
+    except Exception:
+        pass
+    return False
+
 
 
 def _is_living_creature(t_cfg) -> bool:
@@ -17642,6 +17671,171 @@ class Combat(commands.Cog):
                         content = "**EVERYONE ROLL FOR INITIATIVE!**\n```text\n" + block + "\n```"
                         msg = await ctx.channel.fetch_message(msg_id)
                         await msg.edit(content=content)
+            except Exception:
+                pass
+
+
+    @commands.command(name="gibber")
+    async def gibbering_mouther_gibber(self, ctx, mouther: str, *targets):
+        """
+        Gibbering Mouther: maddening gibbering aura.
+        Usage: !gibber MOUTHER target1 target2 ...
+
+        Rules:
+          • All living creatures (other than mouthers) within ~60 ft
+            must Save vs Paralysis or become Confused for 1d2 rounds.
+        """
+        bcfg = _load_battles()
+        chan_id = str(ctx.channel.id)
+        if not bcfg or not bcfg.has_section(chan_id):
+            await ctx.send("❌ No battle here. Use `!battle` first.")
+            return
+        dm_id = bcfg.get(chan_id, "DM", fallback="")
+        if str(ctx.author.id) != str(dm_id):
+            await ctx.send("❌ Only the GM can use `!gibber`.")
+            return
+
+        try:
+            att_name, att_path = _resolve_char_ci(str(mouther))
+        except Exception:
+            att_name, att_path = (None, None)
+        if not att_path:
+            await ctx.send(f"❌ Mouther '{mouther}' not found.")
+            return
+        if not _is_monster_file(att_path):
+            await ctx.send(f"❌ **{att_name}** is not a monster.")
+            return
+
+        try:
+            acfg = read_cfg(att_path)
+            if not _monster_has_gibbering(acfg, att_path):
+                await ctx.send(f"⚠️ **{att_name}** doesn’t list a 'gibbering' special — proceeding anyway.")
+        except Exception:
+            pass
+
+        if not targets:
+            await ctx.send("Usage: `!gibber <mouther> <target1> [target2 ...]`  _(Affects ~60 ft)_")
+            return
+
+        embed = nextcord.Embed(
+            title=f"{att_name} unleashes a maddening chorus of gibbering!",
+            color=random.randint(0, 0xFFFFFF)
+        )
+        embed.add_field(
+            name="Effect",
+            value=(
+                "😵‍💫 **Gibbering** — Each **living** creature within ~60 ft must Save vs **Paralysis** "
+                "or become **Confused** for **1d2 rounds**.\n"
+                "Creatures of the same kind (other mouthers) are unaffected."
+            ),
+            inline=False
+        )
+
+        lines = []
+        any_changes = False
+
+        def _resolve_ci(name: str):
+            try:
+                return _resolve_char_ci(name)
+            except Exception:
+                base = name.replace(" ", "_").lower() + ".coe"
+                for fn in os.listdir("."):
+                    if fn.lower() == base:
+                        path = fn
+                        try:
+                            cfg = read_cfg(path)
+                            real = get_compat(cfg, "info", "name", fallback=None)
+                            return (real or fn[:-4].replace("_", " ")), path
+                        except Exception:
+                            return fn[:-4].replace("_", " "), path
+                return None, None
+
+        k_sum, k_rolls, k_flat = roll_dice("1d2")
+        dur_rounds = max(1, k_sum + k_flat)
+
+        for raw in targets:
+            disp, path = _resolve_ci(raw)
+            pretty = disp or raw
+            if not path:
+                lines.append(f"• **{pretty}**: *(not found)*")
+                continue
+
+            t_cfg = read_cfg(path)
+
+            try:
+                ty_txt = " ".join(filter(None, [
+                    str(get_compat(t_cfg, "info", "monster_type", fallback="")),
+                    str(get_compat(t_cfg, "base", "type",         fallback="")),
+                    str(get_compat(t_cfg, "stats", "type",        fallback="")),
+                    str(pretty)
+                ])).lower()
+            except Exception:
+                ty_txt = str(pretty or "").lower()
+
+            if "mouther" in ty_txt and "gibber" in ty_txt:
+                lines.append(f"• **{pretty}**: unaffected (another gibbering mouther).")
+                continue
+
+            try:
+                if _is_undead_cfg(t_cfg, pretty):
+                    lines.append(f"• **{pretty}**: ☠️ Undead — **no effect**.")
+                    continue
+            except Exception:
+                pass
+            ty = (str(get_compat(t_cfg, "stats", "type", fallback="")) or
+                  str(get_compat(t_cfg, "info", "type",  fallback=""))).lower()
+            if any(k in ty for k in ("construct", "golem", "ooze", "slime", "jelly", "mindless")):
+                lines.append(f"• **{pretty}**: construct/mindless — **no effect**.")
+                continue
+
+            ok, sv_roll, sv_dc, sv_pen = self._roll_save(t_cfg, vs="para", penalty=0)
+            if sv_dc is None:
+                ok = False
+
+            d20_face = "**20** 🎉" if sv_roll == 20 else ("**1** 💀" if sv_roll == 1 else str(sv_roll))
+            pen_txt  = f" - {sv_pen}" if sv_pen else ""
+
+            if ok:
+                lines.append(
+                    f"• **{pretty}** — Save vs Paralysis {d20_face}{pen_txt} vs {sv_dc} → ✅ **RESISTED**"
+                )
+                continue
+
+            if bcfg and bcfg.has_section(chan_id):
+                try:
+                    names, _ = _parse_combatants(bcfg, chan_id)
+                    key = _find_ci_name(names, pretty) or pretty
+                    s   = self._effect_slot_for(bcfg, chan_id, key)
+                except Exception:
+                    try:
+                        s = _slot(pretty)
+                    except Exception:
+                        s = str(pretty).replace(" ", "_")
+
+                try:
+                    prev = bcfg.getint(chan_id, f"{s}.cn", fallback=0)
+                except Exception:
+                    prev = 0
+                bcfg.set(chan_id, f"{s}.cn", str(max(prev, dur_rounds)))
+                bcfg.set(chan_id, f"{s}.cn_by", att_name)
+                _save_battles(bcfg)
+                any_changes = True
+
+            lines.append(
+                f"• **{pretty}** — Save vs Paralysis {d20_face}{pen_txt} vs {sv_dc} → 😵‍💫 **CONFUSED** "
+                f"for **{dur_rounds}** round{'s' if dur_rounds != 1 else ''}."
+            )
+
+        if not lines:
+            lines.append("*(no valid targets)*")
+
+        embed.add_field(name="Targets", value="\n".join(lines), inline=False)
+        embed.set_footer(text="Applies the same Confusion status [CN N] as the *confusion* spell for 1d2 rounds.")
+        await ctx.send(embed=embed)
+
+        if any_changes:
+            try:
+                await self._update_tracker_message(ctx, bcfg, chan_id)
             except Exception:
                 pass
 
