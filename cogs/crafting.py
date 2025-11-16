@@ -268,15 +268,18 @@ def _weapon_effective_plus(rec: dict) -> float:
     large, small = (b, a) if b >= a else (a, b)
     return float(small + large / 2.0)
 
-def _fmt_scroll_row(name: str, rec: dict) -> str:
-    eff = (rec.get("effects") or [{}])[0]
-    try:
-        L = int(eff.get("level", 0))
-    except:
-        L = eff.get("level", "?")
-    cls = (eff.get("class") or "").strip() or "?"
-    disp = _clean_recipe_key_for_display(name)
-    return f"• {disp}  *(L{L}, {cls})*"
+def _fmt_scroll_row(name: str, info: dict) -> str:
+    lvl = info.get("level", "?")
+    raw_cls = str(info.get("class", "?")).lower()
+    if raw_cls in {"cleric", "druid", "paladin"}:
+        cls = "divine"
+    elif raw_cls in {"magic-user", "illusionist", "necromancer", "spellcrafter", "arcane"}:
+        cls = "arcane"
+    else:
+        cls = raw_cls or "?"
+
+    return f"• Scroll: {name} (L{lvl}, {cls})"
+
 
 def _fmt_weapon_row(name: str, rec: dict) -> str:
     eff = _weapon_effective_plus(rec)
@@ -998,18 +1001,36 @@ class Crafting(commands.Cog):
                 want_type = TYPE_ALIAS[tokens[0].lower()]
                 tokens = tokens[1:]
 
+            # Scroll-specific filters
+            want_scroll_level = None          # L1 / L2 / ...
+            want_scroll_side  = ""            # "arcane" / "divine"
+            want_scroll_owner = ""            # "cleric" / "druid" / "paladin" (per-class filter)
 
-            want_scroll_level = None
-            want_scroll_class = ""
             for t in list(tokens):
+                tl = t.lower()
+
+                # L1 / L2 / L3...
                 m = re.fullmatch(r"[lL](\d+)", t)
                 if m:
                     want_scroll_level = int(m.group(1))
                     tokens.remove(t)
-                    break
+                    continue
 
+                # broad side: arcane / divine
+                if tl in {"arcane", "divine"} and not want_scroll_side:
+                    want_scroll_side = tl
+                    tokens.remove(t)
+                    continue
+
+                # specific caster class: cleric / druid / paladin
+                if tl in {"cleric", "druid", "paladin"} and not want_scroll_owner:
+                    want_scroll_owner = tl
+                    tokens.remove(t)
+                    continue
 
             flt = " ".join(tokens).strip().lower()
+
+
 
 
             catalog = self._recipes_catalog()
@@ -1018,7 +1039,8 @@ class Crafting(commands.Cog):
                 return await ctx.send("⚠️ No recipes found. I looked for **recipes.json** at:\n" + tried)
 
 
-            if (not want_type) and (not flt) and (want_scroll_level is None) and (not want_scroll_class):
+            if (not want_type) and (not flt) and (want_scroll_level is None) and (not want_scroll_side) and (not want_scroll_owner):
+
 
                 total = len(catalog)
                 emb = nextcord.Embed(
@@ -1076,13 +1098,57 @@ class Crafting(commands.Cog):
 
 
             if want_type == "spell_scroll":
+                # L# filter
                 if want_scroll_level is not None:
                     rows = [r for r in rows if int(r.get("spell_level", -1)) == want_scroll_level]
-                if want_scroll_class:
-                    if want_scroll_class == "divine":
-                        rows = [r for r in rows if (r.get("spell_class","") or "").lower() != "arcane"]
+
+                # broad side: arcane / divine
+                if want_scroll_side:
+                    side = want_scroll_side
+                    if side == "divine":
+                        # keep anything that is not explicitly arcane (covers divine + older cleric/druid tags)
+                        rows = [
+                            r for r in rows
+                            if (r.get("spell_class", "") or "").lower() != "arcane"
+                        ]
                     else:
-                        rows = [r for r in rows if (r.get("spell_class","") or "").lower() == want_scroll_class]
+                        # arcane only
+                        rows = [
+                            r for r in rows
+                            if (r.get("spell_class", "") or "").lower() == "arcane"
+                        ]
+
+                # specific caster class: cleric / druid / paladin
+                if want_scroll_owner:
+                    want_n = self._canon_class_name(want_scroll_owner).lower()
+
+                    def _has_class(row: dict) -> bool:
+                        cls_lvls = row.get("class_levels") or []
+                        want_lower = want_n
+
+                        # If we have explicit class/level pairs, trust them and DO NOT
+                        # fall back to the generic "divine = any priest" rule.
+                        if cls_lvls:
+                            for c, L in cls_lvls:
+                                if self._canon_class_name(c).lower() == want_lower:
+                                    return True
+                            return False
+
+                        # Fallback for older data with no per-class breakdown
+                        disp = (row.get("display_class", "") or "").strip().lower()
+                        if disp == want_lower:
+                            return True
+
+                        val = (row.get("spell_class", "") or "").lower()
+                        if want_lower in {"cleric", "druid", "paladin"} and val and val != "arcane":
+                            # "divine but unknown class" → shared priest scroll
+                            return True
+
+                        return False
+
+                    rows = [r for r in rows if _has_class(r)]
+
+
 
 
             if flt:
@@ -1092,13 +1158,34 @@ class Crafting(commands.Cog):
             def _fmt_scroll(r):
                 meta = []
                 lvl = r.get("spell_level", None)
-                disp_cls = r.get("display_class", "") or r.get("spell_class", "")
+
+                # Always show level if we have it
                 if isinstance(lvl, int):
                     meta.append(f"L{lvl}")
-                if disp_cls:
-                    meta.append(disp_cls if disp_cls not in {"arcane","divine"} else disp_cls)
+
+                # Normalize to "arcane"/"divine" for display
+                raw = (r.get("spell_class", "") or "").lower() 
+                side = ""
+                if raw in {"arcane", "divine"}:
+                    side = raw
+                elif raw in {"cleric", "druid", "paladin"}:
+                    # treat all priestly classes as divine for display
+                    side = "divine"
+
+                if side:
+                    meta.append(side)
+                else:
+                    # Fallback: very old data / weird cases
+                    disp_cls = (r.get("display_class", "") or "").strip()
+                    if disp_cls:
+                        meta.append(disp_cls)
+
                 tail = f"  *({', '.join(meta)})*" if meta else ""
                 return f"• {_clean_recipe_key_for_display(r['name'])}{tail}"
+
+
+
+
 
 
             def _fmt_weapon_or_armor(r):
@@ -1149,7 +1236,19 @@ class Crafting(commands.Cog):
                 "🛡️ Craftable Armor"   if want_type == "armor" else
                 "🧪 Craftable Items"
             )
-            pretty = (tokens[0] if tokens else "All") if want_type else (flt or "All")
+            if want_type == "spell_scroll":
+                # scrolls: reflect side/class/substring in the label
+                if want_scroll_owner:
+                    pretty = self._canon_class_name(want_scroll_owner)
+                elif want_scroll_side:
+                    pretty = want_scroll_side
+                elif flt:
+                    pretty = flt
+                else:
+                    pretty = "All"
+            else:
+                pretty = (tokens[0] if tokens else "All") if want_type else (flt or "All")
+
             desc = f"Filter: **{pretty if pretty else 'All'}**\nPage {page} / {pages} • Results: {total}\nUse `-p N` to navigate."
             embed = nextcord.Embed(title=title, description=desc, color=random.randint(0, 0xFFFFFF))
             _add_block(embed, "Results", chunk or ["*No matching items.*"])
