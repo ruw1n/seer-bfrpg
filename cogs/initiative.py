@@ -7885,7 +7885,7 @@ class Initiative(commands.Cog):
             tcfg = cfg
             same_file = True
         else:
-            tgt_disp, tgt_path = _resolve_char_ci(target_name)
+            tgt_disp, tgt_path = _resolve_char_ci_local(target_name)
             if not tgt_path:
                 await ctx.send(f"❌ Target **{target_name}** not found.")
                 return
