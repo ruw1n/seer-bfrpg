@@ -263,6 +263,8 @@ def load_classes(file_path):
 
 class_data = load_classes('class.lst')
 race_data  = load_races('race.lst')
+# Canonical class names pulled from class.lst
+VALID_CLASS_NAMES = {name.strip().lower() for name in class_data.keys()}
 
 
 def get_race(races_cfg, race_name):
@@ -653,6 +655,15 @@ class SheetCog(commands.Cog):
         char_class = standardize_class_name(char_class)
         char_name = name.strip()
 
+        # Validate class against class.lst so typos like "Figher" are rejected
+        if char_class.strip().lower() not in VALID_CLASS_NAMES:
+            valid_list = ", ".join(sorted(class_data.keys()))
+            await ctx.send(
+                f"❌ Unknown class '{char_class}'. "
+                f"Please choose one of: {valid_list}"
+            )
+            return
+
         existing_disp, existing_path = _resolve_char_ci(char_name)
         if existing_path:
             await ctx.send(f"A character with the name {existing_disp} already exists.")
@@ -951,8 +962,8 @@ class SheetCog(commands.Cog):
             gear_lines.append(f"**Weapons**: {', '.join(weapons)}")
 
         embed = nextcord.Embed(
-            title=f"Character '{char_name}' Created!",
-            description=f"_Saved as **{safe_base}.coe**_",
+            title=f"Character Created!",
+            description=f"_Saved as **{char_name}**_",
             color=random.randint(0, 0xFFFFFF),
         )
 
