@@ -2166,39 +2166,55 @@ def _apply_mitigation(raw, weapon_name="", weapon_type="", t_cfg=None, is_magica
         except Exception:
             return (name or "").replace(" ", "_")
 
-    if bcfg:
-        secs = [chan_id] if bcfg.has_section(chan_id or "") else []
+    if bcfg and chan_id and target_name and bcfg.has_section(chan_id or ""):
+        secs = [chan_id]
     else:
         secs = []
 
     for sec in secs:
         s = _slot_for_target(bcfg, sec, target_name or "")
+
+        # --- Protection from Fire (PFF) ---
         if "fire" in wtokens:
-            if not is_magical:
-                return 0, "immune (normal fire)"
-            pool = bcfg.getint(sec, f"{s}.pff_pool", fallback=0)
-            if pool > 0:
-                left = max(0, pool - int(raw))
-                bcfg.set(sec, f"{s}.pff_pool", str(left))
-                if left <= 0:
-                    for k in (f"{s}.pff_pool", f"{s}.pff_self"):
-                        if bcfg.has_option(sec, k):
-                            bcfg.remove_option(sec, k)
-                _save_battles(bcfg)
-                return 0, f"Protection from Fire absorbs ({left} left)"
+            pff_pool = bcfg.getint(sec, f"{s}.pff_pool", fallback=0)
+            pff_self = bcfg.getint(sec, f"{s}.pff_self", fallback=0)
+
+            # Only do anything if the target actually has PFF
+            if pff_pool > 0 or pff_self > 0:
+                # Non-magical fire is completely negated
+                if not is_magical:
+                    return 0, "immune (normal fire)"
+
+                # Magical fire consumes from the pool, if any
+                if pff_pool > 0:
+                    left = max(0, pff_pool - int(raw))
+                    bcfg.set(sec, f"{s}.pff_pool", str(left))
+                    if left <= 0:
+                        for k in (f"{s}.pff_pool", f"{s}.pff_self"):
+                            if bcfg.has_option(sec, k):
+                                bcfg.remove_option(sec, k)
+                    _save_battles(bcfg)
+                    return 0, f"Protection from Fire absorbs ({left} left)"
+
+        # --- Protection from Lightning (PFL) ---
         if ("electric" in wtokens) or ("lightning" in wtokens):
-            if not is_magical:
-                return 0, "immune (normal lightning)"
-            pool = bcfg.getint(sec, f"{s}.pfl_pool", fallback=0)
-            if pool > 0:
-                left = max(0, pool - int(raw))
-                bcfg.set(sec, f"{s}.pfl_pool", str(left))
-                if left <= 0:
-                    for k in (f"{s}.pfl_pool", f"{s}.pfl_self"):
-                        if bcfg.has_option(sec, k):
-                            bcfg.remove_option(sec, k)
-                _save_battles(bcfg)
-                return 0, f"Protection from Lightning absorbs ({left} left)"
+            pfl_pool = bcfg.getint(sec, f"{s}.pfl_pool", fallback=0)
+            pfl_self = bcfg.getint(sec, f"{s}.pfl_self", fallback=0)
+
+            if pfl_pool > 0 or pfl_self > 0:
+                if not is_magical:
+                    return 0, "immune (normal lightning)"
+
+                if pfl_pool > 0:
+                    left = max(0, pfl_pool - int(raw))
+                    bcfg.set(sec, f"{s}.pfl_pool", str(left))
+                    if left <= 0:
+                        for k in (f"{s}.pfl_pool", f"{s}.pfl_self"):
+                            if bcfg.has_option(sec, k):
+                                bcfg.remove_option(sec, k)
+                    _save_battles(bcfg)
+                    return 0, f"Protection from Lightning absorbs ({left} left)"
+
                                                                                          
                                     
     try:
