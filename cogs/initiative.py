@@ -8025,7 +8025,7 @@ class Initiative(commands.Cog):
             write_cfg(coe, cfg)
 
         embed = nextcord.Embed(
-            title=f"{char_name} uses Lay on Hands",
+            title=f"{char_name} uses Lay on Hands!",
             description=effect_text,
             color=random.randint(0, 0xFFFFFF)
         )
