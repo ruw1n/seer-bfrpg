@@ -247,132 +247,6 @@ def _get_first_spells_section(cfg) -> str | None:
         pass
     return None
 
-def _apply_mitigation(raw, weapon_name="", weapon_type="", t_cfg=None, is_magical=None,
-                      chan_id=None, target_name=None):
-    import re, math, os
-
-    def _tokset(s):
-        return {x.strip().lower() for x in re.split(r"[,\s]+", str(s or "")) if x.strip()}
-
-    def _merge_keys(cfg, section, *keys):
-        out = set()
-        for k in keys:
-            out |= _tokset(get_compat(cfg, section, k, fallback=""))
-        return out
-
-    imm   = _merge_keys(t_cfg,"base","immune","immunity","immune_types")   | _merge_keys(t_cfg,"stats","immune","immunity","immune_types")
-    res   = _merge_keys(t_cfg,"base","resist","resistance","resist_types") | _merge_keys(t_cfg,"stats","resist","resistance","resist_types")
-    weak  = (_merge_keys(t_cfg,"base","weak","weakness","weak_types","vulnerable","vulnerability","vuln")
-           | _merge_keys(t_cfg,"stats","weak","weakness","weak_types","vulnerable","vulnerability","vuln")
-           | _merge_keys(t_cfg,"info","weak","weakness","weak_types","vulnerable","vulnerability","vuln"))
-    absorb = (_merge_keys(t_cfg,"base","absorb","absorb_types")
-           |  _merge_keys(t_cfg,"stats","absorb","absorb_types")
-           |  _merge_keys(t_cfg,"info","absorb","absorb_types"))
-
-    try:
-        mtype = (get_compat(t_cfg, "info", "monster_type", fallback="")
-                 or get_compat(t_cfg, "info", "type", fallback="")).strip().lower()
-        if mtype:
-            for cand in (f"{mtype}.ini", os.path.join("mon", f"{mtype}.ini"), os.path.join("monsters", f"{mtype}.ini")):
-                if os.path.exists(cand):
-                    base_cfg = read_cfg(cand)
-                    imm   |= _merge_keys(base_cfg,"base","immune","immunity","immune_types")   | _merge_keys(base_cfg,"stats","immune","immunity","immune_types")
-                    res   |= _merge_keys(base_cfg,"base","resist","resistance","resist_types") | _merge_keys(base_cfg,"stats","resist","resistance","resist_types")
-                    weak  |= (_merge_keys(base_cfg,"base","weak","weakness","weak_types","vulnerable","vulnerability","vuln")
-                           |  _merge_keys(base_cfg,"stats","weak","weakness","weak_types","vulnerable","vulnerability","vuln")
-                           |  _merge_keys(base_cfg,"info","weak","weakness","weak_types","vulnerable","vulnerability","vuln"))
-                    absorb |= (_merge_keys(base_cfg,"base","absorb","absorb_types")
-                            |   _merge_keys(base_cfg,"stats","absorb","absorb_types")
-                            |   _merge_keys(base_cfg,"info","absorb","absorb_types"))
-                    break
-    except Exception:
-        pass
-
-    def _norm_tok(t):
-        t = (t or "").lower()
-        if t in {"elec","electricity","lightning"}: return "electric"
-        if t in {"acidic"}: return "acid"
-        return t
-
-    wt = (weapon_type or "").lower()
-    wtokens = {_norm_tok(x) for x in _tokset(wt)}
-    absorb  = {_norm_tok(x) for x in absorb}
-    imm     = {_norm_tok(x) for x in imm}
-    res     = {_norm_tok(x) for x in res}
-    weak    = {_norm_tok(x) for x in weak}
-
-    if is_magical is None:
-        is_magical = wt.startswith("mag") or ("magical" in wt)
-    if not is_magical:
-        if wt in {"force", "holy", "fire", "cold", "electric", "magical"}:
-            is_magical = True
-
-    try:
-
-        cand_name = (target_name
-                     or get_compat(t_cfg, "info", "name", fallback="")
-                     or "")
-        bcfg = _load_battles()
-        if bcfg:
-            sections = [chan_id] if chan_id and bcfg.has_section(chan_id) else bcfg.sections()
-            for sec in sections:
-                try:
-                    names, _ = _parse_combatants(bcfg, sec)
-                    key = _find_ci_name(names, cand_name) or cand_name
-                    if key in names:
-                        s = _slot(key) if '_slot' in globals() else key.replace(" ", "_")
-                        inw_left = bcfg.getint(sec, f"{s}.inw", fallback=0)
-                        if inw_left > 0:
-                            if (not is_magical) and (weapon_name not in {"Oil", "Holy Water"}):
-                                return 0, "immune (nonmagical)"
-                        break
-                except Exception:
-                    continue
-    except Exception:
-        pass
-
-    fos = getint_compat(t_cfg, "base", "fossilized", fallback=0) or getint_compat(t_cfg, "stats", "fossilized", fallback=0)
-    if fos:
-        wn = (weapon_name or "").lower()
-
-        if (("arrow" in wn) or ("bolt" in wn) or ("bullet" in wn) or wn in {"shortbow","longbow","sling","lightxbow","heavyxbow"}) and not is_magical:
-            return 0, "immune (normal missiles)"
-
-        if "slashing" in wtokens:
-            return (1 if raw > 0 else 0), "fossilized bones (slashing → 1)"
-
-        PHYS = {"slashing","piercing","bludgeoning"}
-        if wtokens.intersection(PHYS):
-            return math.floor(raw / 2), "resists weapons"
-
-    match_abs = absorb.intersection(wtokens)
-    if match_abs and is_magical:
-        key = next(iter(match_abs))
-        heal = max(0, raw // 3)
-        if heal > 0:
-            return -heal, f"absorbs {key} (magical) → heals {heal}"
-        else:
-            return 0, f"absorbs {key} (magical)"
-
-    if "nonmagical" in imm and not is_magical and weapon_name not in {"Oil", "Holy Water"}:
-        return 0, "immune (nonmagical)"
-
-    match_imm = imm.intersection(wtokens)
-    if match_imm:
-        key = next(iter(match_imm))
-        return 0, f"immune ({key})"
-
-    match_res = res.intersection(wtokens)
-    if match_res:
-        key = next(iter(match_res))
-        return math.floor(raw/2), f"resists {key}"
-
-    match_weak = weak.intersection(wtokens)
-    if match_weak:
-        key = next(iter(match_weak))
-        return raw * 2, f"weak to {key}"
-
-    return raw, ""
 
 def _parse_init_bonus_from_tpl(tpl) -> int:
     """
@@ -982,11 +856,13 @@ def _apply_mitigation(raw, weapon_name="", weapon_type="", t_cfg=None, is_magica
 
     for sec in secs:
         s = _slot_for_target(bcfg, sec, target_name or "")
+
+        # Protection from Fire (only if the buff is actually active)
         if "fire" in wtokens:
-            if not is_magical:
-                return 0, "immune (normal fire)"
             pool = bcfg.getint(sec, f"{s}.pff_pool", fallback=0)
             if pool > 0:
+                if not is_magical:
+                    return 0, "immune (normal fire)"
                 left = max(0, pool - int(raw))
                 bcfg.set(sec, f"{s}.pff_pool", str(left))
                 if left <= 0:
@@ -995,11 +871,13 @@ def _apply_mitigation(raw, weapon_name="", weapon_type="", t_cfg=None, is_magica
                             bcfg.remove_option(sec, k)
                 _save_battles(bcfg)
                 return 0, f"Protection from Fire absorbs ({left} left)"
-        if ("electric" in wtokens) or ("lightning" in wtokens):
-            if not is_magical:
-                return 0, "immune (normal lightning)"
+
+        # Protection from Lightning (only if active)
+        if "electric" in wtokens or "lightning" in wtokens:
             pool = bcfg.getint(sec, f"{s}.pfl_pool", fallback=0)
             if pool > 0:
+                if not is_magical:
+                    return 0, "immune (normal lightning)"
                 left = max(0, pool - int(raw))
                 bcfg.set(sec, f"{s}.pfl_pool", str(left))
                 if left <= 0:
@@ -1008,6 +886,7 @@ def _apply_mitigation(raw, weapon_name="", weapon_type="", t_cfg=None, is_magica
                             bcfg.remove_option(sec, k)
                 _save_battles(bcfg)
                 return 0, f"Protection from Lightning absorbs ({left} left)"
+
                                                                                          
                                     
     try:
@@ -4363,7 +4242,7 @@ class Initiative(commands.Cog):
 
                 die = (cfg.get(chan_id, f"{slot}.x_entangle_dice", fallback="1d8") or "1d8").strip()
                 if not path or not os.path.exists(path):
-                    await ctx.send(f"🌿 {disp}: entangle tick but no character file was found.")
+                    await ctx.send(f"🪢 {disp}: entangle tick but no character file was found.")
                 else:
                     t_cfg = read_cfg(path)
                     s, rolls, flat = roll_dice(die)
@@ -4391,7 +4270,7 @@ class Initiative(commands.Cog):
                     dmg_line += (f" → **{final}** ({note})" if note else f" → **{final}**")
 
                     await ctx.send(embed=nextcord.Embed(
-                        title=f"🌿 Entangled: {disp} takes damage",
+                        title=f"🪢 Entangled: {disp} takes damage",
                         description=f"{dmg_line}\nHP {hp_line}",
                         color=random.randint(0, 0xFFFFFF)
                     ))
