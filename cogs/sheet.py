@@ -521,12 +521,19 @@ class SheetCog(commands.Cog):
         if race_lc in {"half-ogre", "halfogre"}:
             die = self._bump_die(die)
         try:
-            rinfo = getattr(self, "races", {}).get(race_lc, {})
+            rinfo = {}
+            races_cfg = getattr(self, "races_cfg", None)
+            if races_cfg and race:
+                # get_race already does a case-insensitive match
+                rinfo = get_race(races_cfg, race)
+
             if "frail" in str(rinfo.get("skills", "")).lower():
+                # Racial Frail cap: never better than d6, regardless of class HD
                 die = min(die, 6)
         except Exception:
             pass
         return int(die)
+
 
     def calculate_hp(self, char_class: str, con_modifier, race: str | None = None) -> tuple[int, int]:
         cm = self._coerce_int(con_modifier, 0)
