@@ -150,7 +150,7 @@ _BLUDGEON_KWS = {
     "slam","fist","punch","kick","hoof","tentacle","butt","bump","trample","rock","tail"
 }
 _SLASH_KWS = {
-    "claw","claws","cane","bonehook","talon","fin","pincer","whip","blade"
+    "claw","claws","cane","bonehook","talon","fin","pincer","whip","blade","rake"
 }
 _PIERCE_KWS = {
     "bite","wolfbite","snakebite","pantherbite","horn","fork","beak","tusk","sting","stinger","gore","swarm"
@@ -1009,6 +1009,7 @@ def _class_save_target(self, klass: str, level: int, vs: str):
         return int(arr[idx])
     except Exception:
         return None
+
 
 def _has_mummy_rot(cfg) -> bool:
     try:
@@ -2934,8 +2935,136 @@ class Combat(commands.Cog):
         return None, []
 
 
+    async def _send_attack_actions_help(self, ctx):
+        """
+        Shows a per-character list of common combat actions and equipped weapons.
+        Triggered by using !a with no arguments (or ?/help).
+        """
+
+        char_name = get_active(ctx.author.id)
+        cfg = None
+        class_lc = ""
+        race_lc = ""
+        level = 1
+        weapons = []
+        if char_name:
+            path = f"{char_name.replace(' ', '_')}.coe"
+            if os.path.exists(path):
+                cfg = read_cfg(path)
+                class_lc = (get_compat(cfg, "info", "class", fallback="") or "").strip().lower()
+                race_lc  = (get_compat(cfg, "info", "race",  fallback="") or "").strip().lower()
+                level    = getint_compat(cfg, "cur", "level", fallback=1)
+                try:
+                    weapons = self._eq_get_weapons(cfg)
+                except Exception:
+                    weapons = []
+
+        # infer if the class can cast right now (using class.lst tables already loaded)
+        is_caster = False
+        try:
+            cdict = self.classes.get(class_lc, {}) if hasattr(self, "classes") else {}
+            if not cdict and hasattr(self, "classes"):
+                cdict = self.classes.get(class_lc.title(), {})
+            spell_keys = [k for k in cdict.keys() if re.fullmatch(r"spell\d+", str(k).lower())]
+            if spell_keys:
+                for k in spell_keys:
+                    try:
+                        vals = [int(x) for x in str(cdict.get(k, "")).split()]
+                    except Exception:
+                        vals = []
+                    if vals and vals[min(max(level-1, 0), len(vals)-1)] > 0:
+                        is_caster = True
+                        break
+        except Exception:
+            is_caster = False
+
+        # fallback list for any weird/house-rule classes not represented with spell tables
+        if not is_caster and class_lc in {
+            "cleric","magicuser","magic-user","illusionist","spellcrafter","druid",
+            "necromancer","magethief","sorcerer","paladin","ranger"
+        }:
+            is_caster = True
+
+        title = f"{char_name} — Combat Actions" if char_name else "Combat Actions"
+        embed = nextcord.Embed(title=title, color=random.randint(0, 0xFFFFFF))
+
+        if char_name:
+            embed.add_field(
+                name="Character",
+                value=f"{char_name} ({race_lc.title() or '—'} / {class_lc.title() or '—'}, L{level})",
+                inline=False
+            )
+        else:
+            embed.description = "Set an active character with `!char <name>` to see a tailored actions list."
+
+        # Weapons / Attack lines
+        atk_lines = []
+        if weapons:
+            for w in weapons:
+                item = None
+                try:
+                    item = _item_lookup(self, w)   # global helper in combat.py
+                except Exception:
+                    item = None
+
+                # detect ranges if present
+                try:
+                    sh = int(item.get("short", 0)) if item else 0
+                    md = int(item.get("med",   0)) if item else 0
+                    lg = int(item.get("long",  0)) if item else 0
+                except Exception:
+                    sh = md = lg = 0
+
+                rangedish = any(x > 0 for x in (sh, md, lg))
+                if rangedish:
+                    rng_bits = []
+                    if sh: rng_bits.append(f"short {sh}ft")
+                    if md: rng_bits.append(f"med {md}ft")
+                    if lg: rng_bits.append(f"long {lg}ft")
+                    rng_txt = f" ({', '.join(rng_bits)})" if rng_bits else ""
+                    atk_lines.append(
+                        f"• **{w}**{rng_txt}\n"
+                        f"  `!a {w} <target>` (medium/normal)\n"
+                        f"  `!a {w} <target> short`  (+1 to hit)\n"
+                        f"  `!a {w} <target> long`   (−2 to hit)"
+                    )
+                else:
+                    atk_lines.append(f"• **{w}**\n  `!a {w} <target>`")
+        else:
+            atk_lines.append("• **Unarmed / Improvised**\n  `!a fist <target>` or `!a <weapon> <target>` if you pick one up.")
+
+        atk_lines.append("• **Called shot** (trip/disarm/blind/push, no damage)\n  `!a <weapon> <target> called`")
+        atk_lines.append("• **Wrestle / Grapple**\n  `!a wrestle <target>`")
+
+        embed.add_field(name="Attack actions", value="\n".join(atk_lines)[:1024], inline=False)
+
+        # Other actions
+        other = [
+            "• **Defend** (+4 AC until your next turn)\n  `!defend`",
+            "• **Drink a potion**\n  `!potion <name>` (e.g., `!potion healing`)",
+            "• **Throw burning oil / holy water** (if you have flasks)\n  `!a oil <target(s)>` · `!a holywater <target(s)>`",
+        ]
+
+        if is_caster:
+            other.append(
+                "• **Cast a spell**\n  `!cast <spell> <target or targets>` (see `!info <spell>` for details)"
+            )
+            other.append(
+                "• **Use magic items**\n  `!wand <wand> <target(s)>` · `!staff <staff> <target(s)>` · `!item <item> [target(s)]`"
+            )
+        else:
+            other.append(
+                "• **Use magic items**\n  `!item <item> [target(s)]`"
+            )
+
+        embed.add_field(name="Other actions", value="\n".join(other), inline=False)
+
+        embed.set_footer(text="Tip: `!a` shows this list. Use `!bag` to see inventory and `!eq` for equipment.")
+        await ctx.send(embed=embed)
+
     @commands.command(name="a")
-    async def attack(self, ctx, weapon: str, *opts):
+    async def attack(self, ctx, weapon: str = None, *, opts: str = ""):
+
         """
         Attack with your active character.
         Usage:
@@ -2963,6 +3092,12 @@ class Combat(commands.Cog):
                 attacker_name = bcfg.get(ch, "turn", fallback="")
         prim_disp: str | None = None
         prim_path: str | None = None
+
+        # normalize early for help triggers
+        weapon_norm = re.sub(r"[^a-z0-9]+", "", (weapon or "").lower())
+        if weapon is None or weapon_norm in {"", "?", "help", "actions", "action"}:
+            await self._send_attack_actions_help(ctx)
+            return
 
         try:
             bcfgT = _load_battles()
@@ -8996,7 +9131,7 @@ class Combat(commands.Cog):
                                     
                 embed.add_field(
                     name="Entangle",
-                    value=(f"🌿 **HOLD ESTABLISHED** — {tgt_name} is **ENTANGLED** by **{atk_name}** "
+                    value=(f"🪢 **HOLD ESTABLISHED** — {tgt_name} is **ENTANGLED** by **{atk_name}** "
                            f"and will take **{vine_die}** each round thereafter (use `!escape` to break)."),
                     inline=False
                 )
@@ -9139,6 +9274,61 @@ class Combat(commands.Cog):
                     except Exception:
                         pass
 
+
+        if hit and extra_eff.get("deathray") and tgt_path:
+            try:
+                sv_ok, sv_roll, sv_dc, _ = self._roll_save(tgt_cfg, vs="death", penalty=0)
+                bonus = int(extra_eff.get("save_bonus", 0))
+                total = (sv_roll or 0) + bonus
+
+                if sv_dc is None:
+                    sv_ok = False
+                else:
+                    sv_ok = (total >= sv_dc)
+
+                btxt = f" {'+' if bonus >= 0 else ''}{bonus}" if bonus else ""
+                sv_num = sv_roll if sv_roll is not None else "—"
+                sv_dc_txt = sv_dc if sv_dc is not None else "—"
+
+                if sv_ok:
+                    embed.add_field(
+                        name="Death Ray",
+                        value=f"Save vs Death Ray: {sv_num}{btxt} vs {sv_dc_txt} → ✅ **RESISTED**.",
+                        inline=False
+                    )
+                else:
+                    # Instant death: set HP to 0 and show bar
+                    old_hp = getint_compat(tgt_cfg, "cur", "hp", fallback=0)
+                    mhp = getint_compat(tgt_cfg, "max", "hp", fallback=old_hp)
+
+                    if not tgt_cfg.has_section("cur"):
+                        tgt_cfg.add_section("cur")
+                    tgt_cfg["cur"]["hp"] = "0"
+                    write_cfg(tgt_path, tgt_cfg)
+                    new_hp = 0
+
+                    if _is_monster_file(tgt_path):
+                        try:
+                            before = _life_bar(old_hp, mhp, width=10)
+                            after  = _life_bar(0,     mhp, width=10)
+                            hp_line = f"{before} → **{after}**"
+                        except Exception:
+                            hp_line = f"{old_hp} → **0**"
+                    else:
+                        hp_line = f"{old_hp} → **0**"
+
+                    embed.add_field(
+                        name="Death Ray",
+                        value=f"Save vs Death Ray: {sv_num}{btxt} vs {sv_dc_txt} → **FAIL**\n{hp_line}  ☠️ **DEAD!**",
+                        inline=False
+                    )
+            except Exception:
+                # Fail-soft; GM can rule if something went wrong
+                embed.add_field(
+                    name="Death Ray",
+                    value="⚠️ Error resolving Death Ray save; GM adjudicates outcome.",
+                    inline=False
+                )
 
                                                                                  
         if hit and extra_eff.get("poison"):
@@ -10901,7 +11091,7 @@ class Combat(commands.Cog):
                                     
                 embed.add_field(
                     name="Entangle",
-                    value=(f"🌿 **HOLD ESTABLISHED** — {tgt_name} is **ENTANGLED** by **{atk_name}** "
+                    value=(f"🪢 **HOLD ESTABLISHED** — {tgt_name} is **ENTANGLED** by **{atk_name}** "
                            f"and will take **{vine_die}** each round thereafter (use `!escape` to break)."),
                     inline=False
                 )
@@ -11043,6 +11233,61 @@ class Combat(commands.Cog):
                         pass
 
 
+
+        if hit and extra_eff.get("deathray") and tgt_path:
+            try:
+                sv_ok, sv_roll, sv_dc, _ = self._roll_save(tgt_cfg, vs="death", penalty=0)
+                bonus = int(extra_eff.get("save_bonus", 0))
+                total = (sv_roll or 0) + bonus
+
+                if sv_dc is None:
+                    sv_ok = False
+                else:
+                    sv_ok = (total >= sv_dc)
+
+                btxt = f" {'+' if bonus >= 0 else ''}{bonus}" if bonus else ""
+                sv_num = sv_roll if sv_roll is not None else "—"
+                sv_dc_txt = sv_dc if sv_dc is not None else "—"
+
+                if sv_ok:
+                    embed.add_field(
+                        name="Death Ray",
+                        value=f"Save vs Death Ray: {sv_num}{btxt} vs {sv_dc_txt} → ✅ **RESISTED**.",
+                        inline=False
+                    )
+                else:
+                    # Instant death: set HP to 0 and show bar
+                    old_hp = getint_compat(tgt_cfg, "cur", "hp", fallback=0)
+                    mhp = getint_compat(tgt_cfg, "max", "hp", fallback=old_hp)
+
+                    if not tgt_cfg.has_section("cur"):
+                        tgt_cfg.add_section("cur")
+                    tgt_cfg["cur"]["hp"] = "0"
+                    write_cfg(tgt_path, tgt_cfg)
+                    new_hp = 0
+
+                    if _is_monster_file(tgt_path):
+                        try:
+                            before = _life_bar(old_hp, mhp, width=10)
+                            after  = _life_bar(0,     mhp, width=10)
+                            hp_line = f"{before} → **{after}**"
+                        except Exception:
+                            hp_line = f"{old_hp} → **0**"
+                    else:
+                        hp_line = f"{old_hp} → **0**"
+
+                    embed.add_field(
+                        name="Death Ray",
+                        value=f"Save vs Death Ray: {sv_num}{btxt} vs {sv_dc_txt} → **FAIL**\n{hp_line}  ☠️ **DEAD!**",
+                        inline=False
+                    )
+            except Exception:
+                # Fail-soft; GM can rule if something went wrong
+                embed.add_field(
+                    name="Death Ray",
+                    value="⚠️ Error resolving Death Ray save; GM adjudicates outcome.",
+                    inline=False
+                )
                                        
         
                                                                                  
@@ -13197,12 +13442,11 @@ class Combat(commands.Cog):
 
         await ctx.send(embed=embed)
 
-
     @commands.command(name="shop")
     async def shop(self, ctx, *filters):
         """
         Show a shop catalog (optionally filtered).
-          !shop                         # all categories
+          !shop                         # all categories (gear suppressed; use !shop gear)
           !shop slashing                # just one category
           !shop weapon                  # melee + ranged (+ammo)
           !shop armor                   # armor + shields
@@ -13214,6 +13458,7 @@ class Combat(commands.Cog):
                     gear, tool, food, other
         """
         from collections import defaultdict
+        import random, re, os, nextcord, configparser
 
         char_name = get_active(ctx.author.id)
         if not char_name:
@@ -13225,7 +13470,6 @@ class Combat(commands.Cog):
             return
         cfg = read_cfg(path)
 
-                         
         pp = getint_compat(cfg, "cur", "pp", fallback=0)
         gp = getint_compat(cfg, "cur", "gp", fallback=0)
         ep = getint_compat(cfg, "cur", "ep", fallback=0)
@@ -13266,15 +13510,15 @@ class Combat(commands.Cog):
             return out
 
         def _catalog_from_items_file(path="item.lst"):
-            cp = configparser.ConfigParser()
-            cp.optionxform = str
+            cp_ = configparser.ConfigParser()
+            cp_.optionxform = str
             try:
-                cp.read(path, encoding="utf-8")
+                cp_.read(path, encoding="utf-8")
             except Exception:
-                cp.read(path)
+                cp_.read(path)
             out = []
-            for sec in cp.sections():
-                price_raw = cp.get(sec, "price", fallback="").strip()
+            for sec in cp_.sections():
+                price_raw = cp_.get(sec, "price", fallback="").strip()
                 if price_raw in ("", "-", "0"):
                     continue
                 try:
@@ -13283,15 +13527,15 @@ class Combat(commands.Cog):
                     continue
 
                 name_l = sec.lower()
-                typ = cp.get(sec, "type", fallback="other").strip().lower() or "other"
+                typ = cp_.get(sec, "type", fallback="other").strip().lower() or "other"
 
                 shop_cat = typ
                 if any(w in name_l for w in ("bow", "crossbow", "xbow", "sling")):
                     shop_cat = "ranged"
 
-                size = cp.get(sec, "size",   fallback="").strip()
-                dmg  = cp.get(sec, "dmg",    fallback="").strip()
-                wt   = cp.get(sec, "weight", fallback="").strip()
+                size = cp_.get(sec, "size",   fallback="").strip()
+                dmg  = cp_.get(sec, "dmg",    fallback="").strip()
+                wt   = cp_.get(sec, "weight", fallback="").strip()
 
                 out.append({
                     "name": sec,
@@ -13323,22 +13567,17 @@ class Combat(commands.Cog):
             "other": "📦",
         }
         ORDER = {
-                           
             "slashing": 10, "piercing": 11, "bludgeoning": 12, "missile": 13, "ranged": 14, "ammo": 15,
-                      
             "armor": 20, "shield": 21,
-                                 
             "potion": 30, "scroll": 31, "holy": 32, "fire": 33, "oil": 34, "holywater": 35,
-                     
             "gear": 40, "tool": 41, "food": 42,
-                      
             "other": 99,
         }
 
         tokens = [str(f).strip().lower() for f in filters if str(f).strip()]
         WEAPON_CATS = {"slashing", "piercing", "bludgeoning", "missile", "ranged", "ammo"}
         ARMOR_CATS  = {"armor", "shield"}
-        ITEM_CATS   = {k for k, n in ORDER.items() if n > ORDER["shield"]}                     
+        ITEM_CATS   = {k for k, n in ORDER.items() if n > ORDER["shield"]}
 
         wanted: set[str] = set()
         unknown: list[str] = []
@@ -13361,12 +13600,18 @@ class Combat(commands.Cog):
                            "\nTry one of: " + ", ".join(f"`{v}`" for v in valid))
             return
 
+        # NEW: suppress gear only when no filters are provided
+        suppress_gear = (len(tokens) == 0)
+
         groups = defaultdict(list)
         for it in catalog:
             typ = it.get("shop_cat", it.get("type", "other"))
             if typ not in ORDER:
                 typ = "other"
-                                     
+
+            if suppress_gear and typ == "gear":
+                continue
+
             if wanted and typ not in wanted:
                 continue
             groups[typ].append(it)
@@ -13375,7 +13620,6 @@ class Combat(commands.Cog):
             await ctx.send("ℹ️ No items match that filter.")
             return
 
-                                      
         for typ in list(groups.keys()):
             groups[typ].sort(key=lambda d: (d["price"], d["name"].lower()))
 
@@ -13410,14 +13654,17 @@ class Combat(commands.Cog):
                 embed.add_field(name=gtitle, value="\n".join(block), inline=False)
 
         pretty_filter = " • ".join(tokens) if tokens else "All"
+        desc = f"Filter: **{pretty_filter}**\n(Use `!bag` to see what you’re carrying.)"
+        if suppress_gear:
+            desc += "\n\nTip: gear list is long — use `!shop gear` to view it."
+
         embed = nextcord.Embed(
             title="🏪 Shop",
-            description=f"Filter: **{pretty_filter}**\n(Use `!bag` to see what you’re carrying.)",
+            description=desc,
             color=random.randint(0, 0xFFFFFF)
         )
         embed.add_field(name="Your Coins", value=f"pp:{pp} gp:{gp} ep:{ep} sp:{sp} cp:{cp}", inline=True)
 
-                                
         for typ in sorted(groups.keys(), key=lambda t: (ORDER.get(t, 99), t)):
             icon = ICON.get(typ, ICON["other"])
             title = f"{icon} {typ.title()}"
@@ -13425,7 +13672,6 @@ class Combat(commands.Cog):
             _add_group_fields(embed, title, lines)
 
         await ctx.send(embed=embed)
-
 
     @commands.command(name="buy")
     async def buy(self, ctx, *, item_and_qty: str):
@@ -14942,11 +15188,35 @@ class Combat(commands.Cog):
             return []
 
         def _race_mod(key: str) -> int:
+            # 1) Prefer in-memory races if present
             try:
-                raw = self.races.get(race_lc, {}).get(key, 0) if hasattr(self, "races") else 0
-                return int(str(raw))
+                if hasattr(self, "races_cfg") and self.races_cfg and "get_race" in globals():
+                    rinfo = get_race(self.races_cfg, race_lc)
+                    if isinstance(rinfo, dict) and key in rinfo:
+                        return int(str(rinfo.get(key, 0) or 0))
+                if hasattr(self, "races") and isinstance(self.races, dict):
+                    raw = self.races.get(race_lc, {}).get(key, 0)
+                    if str(raw).strip():
+                        return int(raw)
             except Exception:
-                return 0
+                pass
+
+            # 2) Fallback: read race.lst from disk (same as !s)
+            try:
+                import configparser
+                rp = configparser.ConfigParser()
+                rp.optionxform = str
+                rp.read("race.lst")
+
+                for sec in rp.sections():
+                    if sec.lower() == race_lc:
+                        if key in rp[sec]:
+                            return int(rp[sec][key])
+                        break
+            except Exception:
+                pass
+
+            return 0
 
         thief_pct = None
         thief_detail = ""
@@ -22721,6 +22991,7 @@ class Combat(commands.Cog):
             • swallow/swallowany[:NdM]
             • hold|worry[:NdM]
             • attach[:NdM]  
+            • death|deathray          (save vs Death Ray or die; no damage)            
 
         """
         
@@ -22783,6 +23054,16 @@ class Combat(commands.Cog):
             if m.group(1):
                 eff["save_bonus"] = eff.get("save_bonus", 0) + int(m.group(1))
 
+
+        m = re.search(r"(?:^|\s)death(?:[-_ ]?ray)?(?:\s*([+-]\d+))?(?=\s|$)", s)
+        if m:
+            eff["deathray"] = True      
+            eff["nodmg"] = True       
+            if m.group(1):
+                try:
+                    eff["save_bonus"] = eff.get("save_bonus", 0) + int(m.group(1))
+                except Exception:
+                    pass
 
                     
         m = re.search(r"(?:^|\s)slow[-_ ]?venom(?:\s*([+-]\d+))?(?::|=)?(\d+d\d+(?:[+-]\d+)?)?(?=\s|$)", s)
