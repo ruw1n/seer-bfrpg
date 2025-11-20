@@ -6477,21 +6477,18 @@ class SpellsCog(commands.Cog, name="Spells"):
         Return (success, d20, target, penalty_applied).
         'penalty' lowers the roll (i.e., makes the save harder).
         """
-        # normalize penalty, then add temporary Spellcrafter item penalty (if any)
         try:
             penalty = int(penalty or 0) + int(getattr(self, "_item_save_penalty", 0) or 0)
         except Exception:
             penalty = int(penalty or 0)
 
-        base_target = ref["target"] if ref else 20
-        target = max(1, base_target - penalty)
-        
         target = self._get_save_target(t_cfg, vs)
         d20 = random.randint(1, 20)
         prot = int(self._protection_bonus_from_equipped(t_cfg) or 0)
-        effective = d20 + prot - (penalty or 0)
+        effective = d20 + prot - penalty
         success = (effective >= target)
-        return success, d20, target, (penalty or 0)
+        return success, d20, target, penalty
+
 
     def _get_save_target(self, t_cfg, vs: str = "para") -> int:
         """
