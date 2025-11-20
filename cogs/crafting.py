@@ -807,8 +807,18 @@ class Crafting(commands.Cog):
 
             minus += 10 * L
             days = max(1, L)
-            cost = 50 * L
-            notes.append(f"Spell scroll **{spell}** ({scroll_class} L{L}): −{10*L}% chance, {days}d, {cost} gp.")
+
+            if L == 0:
+                cost = 25.0
+                notes.append(
+                    f"Cantrip scroll **{spell}** ({scroll_class} L0): −0% chance, {days}d, {int(cost)} gp."
+                )
+            else:
+                cost = 50.0 * L
+                notes.append(
+                    f"Spell scroll **{spell}** ({scroll_class} L{L}): −{10*L}% chance, {days}d, {int(cost)} gp."
+                )
+
 
 
         elif t in {"potion","single_use"}:
