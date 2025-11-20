@@ -752,7 +752,11 @@ class SheetCog(commands.Cog):
             base_ac = self._barbarian_unarmored_ac(level)
         else:
             base_ac = armor1_ac if armor1_ac is not None else 10
-        ac = base_ac + shield_bonus
+
+        # NEW: include Dex mod in starting AC
+        dex_mod = modifiers.get("dex_modifier", 0)
+        ac = base_ac + shield_bonus + dex_mod
+
 
         total_w = 0.0
         for n in filter(None, [armor1, armor2] + weapons):
