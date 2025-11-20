@@ -751,7 +751,7 @@ class SheetCog(commands.Cog):
         if is_barbarian and not armor1:
             base_ac = self._barbarian_unarmored_ac(level)
         else:
-            base_ac = armor1_ac if armor1_ac is not None else 10
+            base_ac = armor1_ac if armor1_ac is not None else 11
 
         # NEW: include Dex mod in starting AC
         dex_mod = modifiers.get("dex_modifier", 0)
