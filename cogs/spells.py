@@ -6477,6 +6477,15 @@ class SpellsCog(commands.Cog, name="Spells"):
         Return (success, d20, target, penalty_applied).
         'penalty' lowers the roll (i.e., makes the save harder).
         """
+        # normalize penalty, then add temporary Spellcrafter item penalty (if any)
+        try:
+            penalty = int(penalty or 0) + int(getattr(self, "_item_save_penalty", 0) or 0)
+        except Exception:
+            penalty = int(penalty or 0)
+
+        base_target = ref["target"] if ref else 20
+        target = max(1, base_target - penalty)
+        
         target = self._get_save_target(t_cfg, vs)
         d20 = random.randint(1, 20)
         prot = int(self._protection_bonus_from_equipped(t_cfg) or 0)
@@ -27663,7 +27672,18 @@ class SpellsCog(commands.Cog, name="Spells"):
             if "duration_roll" in powdef: extra["duration_roll"] = powdef["duration_roll"]
             return await _maybe_await(fn(ctx, cfg, caster_name, cl_used, targets, **extra))
 
-        out = await _do_call()
+
+        # If a Spellcrafter is operating a wand/staff right now,
+        # apply the rule: targets save at -1 (i.e., +1 penalty in our system).
+        sc_item_pen = 1 if _is_spellcrafter(cfg) else 0
+        if sc_item_pen:
+            self._item_save_penalty = sc_item_pen
+        try:
+            out = await _do_call()
+        finally:
+            if hasattr(self, "_item_save_penalty"):
+                delattr(self, "_item_save_penalty")
+
 
 
         if not used:
@@ -28097,6 +28117,7 @@ class SpellsCog(commands.Cog, name="Spells"):
         if not any(tok in cls for tok in ("mage","wizard","magic-user","illusionist","warlock","sorcerer","spellcrafter","spellsinger")) and not self._break_ok(ctx, caster_name):
             await ctx.send("❌ Wands can only be used by **arcane** classes. *(Break Restrictions active bypasses this.)*"); return
 
+      
         words = [w for w in (args or "").split() if w]
         if not words:
             await ctx.send("Usage: `!wand <type> [targets...]`  (e.g., `!wand fireballs gob1 gob2`)"); return
@@ -37708,7 +37729,20 @@ class SpellsCog(commands.Cog, name="Spells"):
         if not handler:
             await ctx.send(f"⚠️ Handler '{handler_name}' not implemented."); return
 
-        out = await handler(ctx, cfg, caster_name, self._hd_or_level_from_cfg(cfg), list(args), owned_item=owned_name)
+        sc_item_pen = 1 if _is_spellcrafter(cfg) else 0
+        if sc_item_pen:
+            self._item_save_penalty = sc_item_pen
+        try:
+            out = await handler(
+                ctx, cfg, caster_name,
+                self._hd_or_level_from_cfg(cfg),
+                list(args),
+                owned_item=owned_name
+            )
+        finally:
+            if hasattr(self, "_item_save_penalty"):
+                delattr(self, "_item_save_penalty")
+
 
         if isinstance(out, nextcord.Embed):
             await ctx.send(embed=out)
