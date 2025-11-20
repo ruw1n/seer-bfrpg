@@ -3,6 +3,7 @@ import re
 import random
 import nextcord
 import configparser
+from decimal import Decimal, ROUND_HALF_UP
 from urllib.parse import urlparse
 from nextcord.ext import commands
 from utils.players import get_active
@@ -1006,28 +1007,46 @@ class StatsCog(commands.Cog):
         def _parse_amounts(s: str) -> dict | str:
             """
             Returns dict {'pp':int,...} or the string 'ALL'.
-            Accepts tokens like: 3pp, 10 gp, 250gp, 14sp 8cp
+            Accepts tokens like:
+              3pp, 10 gp, 250gp, 14sp 8cp, "all", or bare number "600"/"+600"
+            Bare numbers are interpreted as GP.
             """
             if not s or not s.strip():
                 return {}
-            if s.strip().lower() in {"all","*"}:
+
+            s = s.strip()
+            low = s.lower()
+
+            # "all" / "*" = move entire wallet
+            if low in {"all", "*"}:
                 return "ALL"
-            pp=gp=ep=sp=cp=0
-            for tok in re.findall(r"([+-]?\d+)\s*(pp|gp|ep|sp|cp)\b", s.lower()):
-                n, d = tok
+
+            # Bare integer (with optional sign) → treat as GP
+            m_bare = re.fullmatch(r"[+-]?\d+", s)
+            if m_bare:
+                n = int(m_bare.group(0))
+                return {"pp": 0, "gp": n, "ep": 0, "sp": 0, "cp": 0}
+
+            # Normal token-based parsing: 3pp, 10 gp, 250gp, etc.
+            pp = gp = ep = sp = cp = 0
+            for n_str, d in re.findall(r"([+-]?\d+)\s*(pp|gp|ep|sp|cp)\b", low):
                 try:
-                    n = int(n)
+                    n = int(n_str)
                 except Exception:
                     continue
-                if d == "pp": pp += n
-                elif d == "gp": gp += n
-                elif d == "ep": ep += n
-                elif d == "sp": sp += n
-                elif d == "cp": cp += n
+                if d == "pp":
+                    pp += n
+                elif d == "gp":
+                    gp += n
+                elif d == "ep":
+                    ep += n
+                elif d == "sp":
+                    sp += n
+                elif d == "cp":
+                    cp += n
 
-            for tok in re.findall(r"\b([+-]?\d+)(pp|gp|ep|sp|cp)\b", s.lower()):
-                pass
-            return {"pp":pp,"gp":gp,"ep":ep,"sp":sp,"cp":cp}
+            return {"pp": pp, "gp": gp, "ep": ep, "sp": sp, "cp": cp}
+
 
 
         src_name = get_active(ctx.author.id)
@@ -1130,13 +1149,12 @@ class StatsCog(commands.Cog):
         Usage:
           !coins                      -> show purse + totals
           !coins +30                  -> add 30 gp
-          !coins -5                   -> remove 5 gp (clamped at 0)
+          !coins -5                   -> remove 5 gp (clamped at 0 across all coins)
           !coins +30pp / +30 pp       -> add 30 platinum
           !coins -12 sp / -12 silver  -> remove 12 silver
         Units: pp/platinum, gp/gold, ep/electrum, sp/silver, cp/copper
         """
         import re, random, nextcord
-
 
         char_name = get_active(ctx.author.id)
         if not char_name:
@@ -1155,10 +1173,8 @@ class StatsCog(commands.Cog):
             await ctx.send(f"❌ You do not own **{char_name}**.")
             return
 
-
         if not cfg.has_section("cur"):
             cfg.add_section("cur")
-
 
         pp = getint_compat(cfg, "cur", "pp", fallback=0)
         gp = getint_compat(cfg, "cur", "gp", fallback=0)
@@ -1166,17 +1182,16 @@ class StatsCog(commands.Cog):
         sp = getint_compat(cfg, "cur", "sp", fallback=0)
         cp = getint_compat(cfg, "cur", "cp", fallback=0)
 
-
         change_note = None
         if adjust:
             raw = " ".join(adjust).strip().lower()
-            m = re.fullmatch(r"\s*([+-])\s*(\d+)\s*([a-z]+)?\s*", raw)
+            m = re.fullmatch(r"\s*([+-])\s*(\d+(?:\.\d+)?)\s*([a-z]+)?\s*", raw)
+
             if not m:
                 await ctx.send("❌ Bad format. Try `!coins`, `!coins +30`, `!coins -5 sp`, or `!coins +10pp`.")
                 return
 
             sign, amt_s, unit = m.groups()
-            amt = int(amt_s)
             unit = (unit or "gp").strip().lower()
 
             unit_map = {
@@ -1191,15 +1206,33 @@ class StatsCog(commands.Cog):
                 await ctx.send("❌ Unknown coin type. Use pp/gp/ep/sp/cp (or platinum/gold/electrum/silver/copper).")
                 return
 
-            delta = amt if sign == "+" else -amt
-            before = {"pp": pp, "gp": gp, "ep": ep, "sp": sp, "cp": cp}[key]
-            after = max(0, before + delta)
+            # Treat entire purse as copper pieces, like buy/sell
+            wallet_cp = pp * 1000 + gp * 100 + ep * 50 + sp * 10 + cp
+            coin_to_cp = {"pp": 1000, "gp": 100, "ep": 50, "sp": 10, "cp": 1}
 
-            if key == "pp": pp = after
-            elif key == "gp": gp = after
-            elif key == "ep": ep = after
-            elif key == "sp": sp = after
-            else:            cp = after
+            # Support decimal amounts: e.g. +235.22gp → 23522 cp → 235 gp, 2 sp, 2 cp
+            try:
+                amt_dec = Decimal(amt_s)
+            except Exception:
+                await ctx.send("❌ Bad number format. Try `!coins +30`, `!coins +235.22`, etc.")
+                return
+
+            cp_per_unit = coin_to_cp[key]
+            raw_delta_cp = (amt_dec * cp_per_unit).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+            delta_cp = int(raw_delta_cp) * (1 if sign == "+" else -1)
+
+            old_total_cp = wallet_cp
+            new_total_cp = max(0, wallet_cp + delta_cp)  # clamp at 0 total
+            cp_change = new_total_cp - old_total_cp
+
+
+            # Re-break back into pp/gp/ep/sp/cp (same scheme as buy/sell)
+            new_pp = new_total_cp // 1000; rem = new_total_cp % 1000
+            new_gp = rem // 100;          rem = rem % 100
+            new_ep = rem // 50;           rem = rem % 50
+            new_sp = rem // 10;           new_cp = rem % 10
+
+            pp, gp, ep, sp, cp = new_pp, new_gp, new_ep, new_sp, new_cp
 
             cfg.set("cur", "pp", str(pp))
             cfg.set("cur", "gp", str(gp))
@@ -1207,27 +1240,29 @@ class StatsCog(commands.Cog):
             cfg.set("cur", "sp", str(sp))
             cfg.set("cur", "cp", str(cp))
 
-            sym = "+" if delta >= 0 else "-"
-            change_note = f"{sym}{abs(delta)} {key.upper()} (applied {after - before:+})"
-
+            sym = "+" if sign == "+" else "-"
+            change_note = f"{sym}{amt_s} {key.upper()}"
+            if delta_cp < 0 and new_total_cp == 0 and old_total_cp > 0:
+                change_note += " (all coins spent)"
 
         total_gp = (pp * 10) + gp + (ep * 0.5) + (sp * 0.1) + (cp * 0.01)
         total_coins = pp + gp + ep + sp + cp
         coin_weight = total_coins * 0.02
 
-
         if not cfg.has_section("eq"):
             cfg.add_section("eq")
         cfg.set("eq", "coin_weight", f"{coin_weight:.2f}")
 
-
-        try: self._recompute_eq_weight(cfg)
-        except Exception: pass
-        try: self._recompute_move(cfg)
-        except Exception: pass
+        try:
+            self._recompute_eq_weight(cfg)
+        except Exception:
+            pass
+        try:
+            self._recompute_move(cfg)
+        except Exception:
+            pass
 
         write_cfg(path, cfg)
-
 
         embed = nextcord.Embed(
             title=f"{char_name}'s Coinpurse",
@@ -1246,12 +1281,11 @@ class StatsCog(commands.Cog):
         if change_note:
             embed.set_footer(text=f"Adjusted: {change_note}")
 
-
         try:
             if _poly_active(cfg):
                 form = get_compat(cfg, "poly", "form", fallback="?")
                 naturals = []
-                for k in ("bite","claw","hug","gore","slam","sting"):
+                for k in ("bite", "claw", "hug", "gore", "slam", "sting"):
                     v = (get_compat(cfg, "poly", k, fallback="") or "").strip()
                     if v:
                         naturals.append(f"{k.capitalize()} {v}")
@@ -1261,6 +1295,7 @@ class StatsCog(commands.Cog):
             pass
 
         await ctx.send(embed=embed)
+
 
 
     def _safe_float(self, v, default=0.0):
