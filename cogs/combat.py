@@ -3099,6 +3099,16 @@ class Combat(commands.Cog):
             await self._send_attack_actions_help(ctx)
             return
 
+        # opts arrives as a raw string due to `*, opts: str`
+        # Convert to token list so the parsers below don't iterate characters.
+        if isinstance(opts, str):
+            opts = [t for t in re.split(r"\s+", opts.strip()) if t]
+        elif opts is None:
+            opts = []
+        else:
+            opts = list(opts)
+
+
         try:
             bcfgT = _load_battles()
             chanT = str(ctx.channel.id)
