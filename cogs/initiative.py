@@ -10,7 +10,7 @@ import time
 import copy
 from nextcord.ext import commands
 from typing import Dict, List, Tuple, Optional
-from utils.players import get_active
+from utils.players import get_active, set_active, add_char
 from utils.ini import read_cfg, get_compat, getint_compat, write_cfg
 from pathlib import Path
 
@@ -5925,6 +5925,67 @@ class Initiative(commands.Cog):
 
         return tail
 
+    async def _auto_activate_for_turn(self, ctx, who: str):
+        """
+        If `who` is a PC with an owner_id, auto-set that owner's active character
+        to `who` and announce the switch.
+        """
+        if not who:
+            return
+
+        # never auto-switch for monsters/NPCs
+        try:
+            if _is_monster(who):
+                return
+        except Exception:
+            pass
+
+        # Normalize to actual .coe casing if possible (Linux-safe)
+        try:
+            base_fn = f"{who.replace(' ', '_')}.coe"
+            ci_fn = _ci_find_file(base_fn)
+            if ci_fn:
+                who_norm = ci_fn[:-4].replace("_", " ")
+            else:
+                who_norm = who
+        except Exception:
+            who_norm = who
+
+        try:
+            _hp, _mhp, _ac, owner_id = _char_snapshot(who_norm)
+        except Exception:
+            owner_id = ""
+
+        owner_id = str(owner_id or "").strip()
+        if not owner_id.isdigit():
+            return
+
+        uid = int(owner_id)
+
+        try:
+            cur_active = get_active(uid)
+        except Exception:
+            cur_active = None
+
+        if cur_active and cur_active.strip().lower() == who_norm.strip().lower():
+            return  # already correct, no spam
+
+        # set_active can fail for legacy/unregistered PCs; try register then retry
+        try:
+            set_active(uid, who_norm)
+        except Exception:
+            try:
+                add_char(uid, who_norm)
+                set_active(uid, who_norm)
+            except Exception:
+                return
+
+        await ctx.send(
+            f"🔀 Auto-switched <@{owner_id}>'s active character to **{who_norm}** for this turn."
+        )
+
+
+
     @commands.command(name="n")
     async def next_turn(self, ctx):
         cfg = _load_battles()
@@ -5976,6 +6037,7 @@ class Initiative(commands.Cog):
             cfg.set(chan_id, "turn", top)
             cfg.set(chan_id, "round", "1")
             _save_battles(cfg)
+            await self._auto_activate_for_turn(ctx, top)
 
             changed = self._tick_start_of_turn(cfg, chan_id, top)
             if changed:
@@ -6015,6 +6077,8 @@ class Initiative(commands.Cog):
                 pass
 
         _save_battles(cfg)
+
+        await self._auto_activate_for_turn(ctx, next_name)
 
         changed = self._tick_start_of_turn(cfg, chan_id, next_name)
         if changed:
@@ -6092,6 +6156,8 @@ class Initiative(commands.Cog):
             next_name = ordered2[pick_idx]
             cfg.set(chan_id, "turn", next_name)
             _save_battles(cfg)
+
+            await self._auto_activate_for_turn(ctx, next_name)
 
             names, scores = names2, scores2
 
@@ -6175,6 +6241,7 @@ class Initiative(commands.Cog):
         cfg.set(chan_id, "round", str(round_num))
         cfg.set(chan_id, "turn", prev_name)
         _save_battles(cfg)
+        await self._auto_activate_for_turn(ctx, prev_name)
 
         try:
             await self._update_tracker_message(ctx, cfg, chan_id)
@@ -8522,7 +8589,15 @@ class Initiative(commands.Cog):
         et = cfg.getint(chan_id, "etime_rounds", fallback=0)
 
         _, _, _, owner = _char_snapshot(who)
-        mention = self._owner_mention(who_name)
+        mention = self._owner_mention(next_name, cfg, chan_id)
+        auto_note = self._auto_set_active_for_turn(ctx, next_name)
+
+        msg = f"🧭 Exploration Turn: **{next_name}** {mention}".rstrip()
+        if auto_note:
+            msg += f"\n{auto_note}"
+
+        await ctx.send(msg)
+
 
         desc_lines = [
             f"Movement this turn: **{turn_mv}′** (3× base {base_mv}′).",
@@ -8652,6 +8727,11 @@ class Initiative(commands.Cog):
             except Exception:
                 pass
 
+        try:
+            await self._auto_activate_for_turn(ctx, next_name)
+        except Exception:
+            pass
+            
         try:
             base_mv, turn_mv = _move_rates_for_char(next_name)
         except Exception:
