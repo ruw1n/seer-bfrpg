@@ -1343,7 +1343,21 @@ class SheetCog(commands.Cog):
                                 shield_bonus = int(str(data2.get("AC", "0")).strip() or "0")
                             except Exception:
                                 pass
-                    cfg["stats"]["ac"] = str(self._barbarian_unarmored_ac(new_level) + shield_bonus)
+
+                    # NEW: add Dex mod on top of barbarian table
+                    try:
+                        dex_mod = getint_compat(cfg, "stats", "dex_modifier", fallback=None)
+                    except Exception:
+                        dex_mod = None
+                    if dex_mod is None:
+                        try:
+                            dex_score = getint_compat(cfg, "stats", "dex", fallback=10)
+                            dex_mod = calculate_modifier(dex_score)
+                        except Exception:
+                            dex_mod = 0
+
+                    cfg["stats"]["ac"] = str(self._barbarian_unarmored_ac(new_level) + shield_bonus + int(dex_mod or 0))
+
         except Exception:
             pass
 
