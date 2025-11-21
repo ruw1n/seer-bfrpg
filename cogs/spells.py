@@ -5101,7 +5101,6 @@ class SpellsCog(commands.Cog, name="Spells"):
 
         return default
 
-
     @commands.command(name="cast")
     async def cast_spell(self, ctx, *, expr: str):
         """
@@ -5266,6 +5265,23 @@ class SpellsCog(commands.Cog, name="Spells"):
         raw_toks = _sanitize_target_tokens(raw_toks)
         if not policy.get("keep_numbers", False):
             raw_toks = [t for t in raw_toks if not re.fullmatch(r"[0-9]+", t)]
+
+        # --- Arcane Dagger: allow range tokens without treating them as targets ---
+        range_flags = []
+        if alias_key in {"arcanedagger"} and raw_toks:
+            kept = []
+            for tok in raw_toks:
+                k = str(tok).strip().lower()
+                if k in ("short", "s"):
+                    range_flags.append("short")
+                elif k in ("medium", "med", "m"):
+                    range_flags.append("medium")
+                elif k in ("long", "l"):
+                    range_flags.append("long")
+                else:
+                    kept.append(tok)
+            raw_toks = kept
+
         if policy.get("resolve_targets", True):
             try:
                 bcfgR = _load_battles()
@@ -5295,6 +5311,10 @@ class SpellsCog(commands.Cog, name="Spells"):
         else:
             targets = raw_toks
 
+        # Re-attach range tokens for Arcane Dagger so effect can read them
+        if range_flags:
+            targets = list(targets or [])
+            targets.extend(range_flags)
 
         if weapon_casting and weapon_meta.get("force_self") and alias_guess == "light":
             targets = []
