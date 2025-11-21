@@ -7,7 +7,6 @@ import re
 import configparser
 
 def load_class_list(filename):
-    import configparser
     config = configparser.ConfigParser()
     config.read(filename)
     result = {}
@@ -18,7 +17,6 @@ def load_class_list(filename):
     return result
 
 def load_race_list(filename):
-    import configparser
     config = configparser.ConfigParser()
     config.read(filename)
     result = {}
@@ -474,7 +472,7 @@ class Dice(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="r")
+    @commands.command(name="r", aliases=["roll"])
     async def roll(self, ctx, *pieces):
         """
         Roll dice with simple math.
@@ -1358,7 +1356,7 @@ class Dice(commands.Cog):
             )
 
         d20 = random.randint(1, 20)
-        raw_display = "**20** 🎉" if d20 == 20 else ("**1** 💀" if d20 == 1 else str(d20))
+        raw_display = "**20** 💀" if d20 == 20 else ("**1** 🎉" if d20 == 1 else str(d20))
 
         auto_success = (d20 == 1)
         auto_failure = (d20 == 20)
@@ -2013,6 +2011,175 @@ class Dice(commands.Cog):
                 )
             await self._enc_send(ctx, embed=em, public=public)
 
+    @commands.command(name="chin", aliases=["chinchirorin"])
+    async def chinchirorin(self, ctx, *flags):
+        """
+        Play a quick game of Chinchirorin (three-dice gambling).
+
+        Default:
+          !chin            → roll a hand and show your result (no House)
+        Versus House:
+          !chin -h
+          !chin -house
+          !chin house     → you vs the House
+
+        Rules (this variant):
+          • Each side rolls 3d6 until they get a scoring combo:
+              – 4-5-6      → automatic win
+              – 1-2-3      → automatic loss
+              – triples    → strong hand (Triple 6 is best, Triple 1 is weakest)
+              – pair+single→ “Point N” where N is the odd die (Point 6 is best)
+            Hands with all different dice that are not 4-5-6 or 1-2-3 are “no combo”
+            and get re-rolled automatically (up to a few tries).
+          • Highest rank wins; ties are possible when playing vs the House.
+        """
+
+        # Check if we are playing vs House
+        vs_house = any(str(f).lower() in ("-h", "--house", "house") for f in flags)
+
+        def _chin_rank(rolls):
+            """
+            Given a list of three ints [d1, d2, d3], return (rank, label)
+            or (None, 'No combo') if it’s not a scoring hand.
+
+            Rank ordering (higher is better):
+              4-5-6            → top
+              triples          → next (Triple 6 best)
+              point N          → next (Point 6 best)
+              1-2-3            → worst scoring hand
+            """
+            dice = sorted(int(r) for r in rolls)
+
+            # 4-5-6 auto win
+            if dice == [4, 5, 6]:
+                return 30, "4-5-6 (Automatic Win!)"
+
+            # 1-2-3 auto loss
+            if dice == [1, 2, 3]:
+                return 1, "1-2-3 (Automatic Loss)"
+
+            # Triples
+            if len(set(dice)) == 1:
+                val = dice[0]
+                rank = 20 + val          # Triple 6 = 26, Triple 1 = 21
+                return rank, f"Triple {val}"
+
+            # Pair + single → Point N (N is the odd die)
+            if len(set(dice)) == 2:
+                # [a, a, b] or [a, b, b]
+                if dice[0] == dice[1]:
+                    point = dice[2]
+                else:
+                    point = dice[0]
+                rank = 10 + point         # Point 6 = 16, Point 1 = 11
+                return rank, f"Point {point}"
+
+            # All different, but not 4-5-6 / 1-2-3 → no combo
+            return None, "No combo (re-roll)"
+
+        def _play_side(label: str):
+            """
+            Roll up to a few times until we get a scoring combo.
+            Returns (rank, label_text, history_lines).
+            """
+            history = []
+            final_rank = None
+            final_label = None
+
+            for attempt in range(1, 6):  # up to 5 attempts to avoid degenerate loops
+                total, rolls, flat = roll_dice("3d6")
+                combo_rank, combo_label = _chin_rank(rolls)
+
+                rolls_txt = ", ".join(str(r) for r in rolls)
+                history.append(f"Roll {attempt}: [{rolls_txt}] → {combo_label}")
+
+                if combo_rank is not None:
+                    final_rank = combo_rank
+                    final_label = combo_label
+                    break
+
+            if final_rank is None:
+                final_label = "No scoring combo after several tries."
+            return final_rank, final_label, history
+
+        # Always roll for the player
+        p_rank, p_label, p_hist = _play_side("You")
+
+        if vs_house:
+            # Player vs House mode
+            h_rank, h_label, h_hist = _play_side("House")
+
+            # Decide outcome
+            if p_rank is None and h_rank is None:
+                outcome = "Both sides failed to make a hand — it's a wash."
+            elif p_rank is None:
+                outcome = "❌ You failed to make a hand; the House wins by default."
+            elif h_rank is None:
+                outcome = "✅ The House failed to make a hand; you win by default."
+            else:
+                if p_rank > h_rank:
+                    outcome = "✅ **You win!**"
+                elif p_rank < h_rank:
+                    outcome = "❌ **The House wins.**"
+                else:
+                    outcome = "🤝 **Tie!** Same hand."
+
+            embed = nextcord.Embed(
+                title="🎲 Chinchirorin — You vs the House",
+                color=random.randint(0, 0xFFFFFF),
+            )
+
+            embed.add_field(
+                name="Your Hand",
+                value="\n".join(p_hist) + (f"\n\nFinal: **{p_label}**" if p_label else ""),
+                inline=False,
+            )
+            embed.add_field(
+                name="House Hand",
+                value="\n".join(h_hist) + (f"\n\nFinal: **{h_label}**" if h_label else ""),
+                inline=False,
+            )
+
+            embed.add_field(name="Outcome", value=outcome, inline=False)
+            embed.set_footer(text="House rules: 4-5-6>Triples>Points>1-2-3. No combo = re-roll.")
+            await ctx.send(embed=embed)
+        else:
+            # Solo mode (for comparing with other players)
+            embed = nextcord.Embed(
+                title="🎲 Chinchirorin — Your Hand",
+                color=random.randint(0, 0xFFFFFF),
+            )
+            embed.add_field(
+                name="Rolls",
+                value="\n".join(p_hist),
+                inline=False,
+            )
+            embed.add_field(
+                name="Final Hand",
+                value=f"**{p_label}**",
+                inline=False,
+            )
+            embed.set_footer(text="Rules: 4-5-6>Triples>Points>1-2-3. Use !chin -h to play vs the House.")
+            await ctx.send(embed=embed)
+
+    @commands.command(name="br")
+    async def scene_break(self, ctx, count: int = 1):
+        """
+        Drop a visual scene break bar for roleplay.
+        Usage:
+          !br
+          !br 3
+        """
+        # Try to delete the invoking message (!br / !br 3)
+        try:
+            await ctx.message.delete()
+        except (nextcord.Forbidden, nextcord.HTTPException):
+            # No perms or other issue — just ignore and move on
+            pass
+
+        count = max(1, min(int(count), 5))
+        separator = "```\u200b```"
+        await ctx.send("\n".join(separator for _ in range(count)))
 
 def setup(bot):
     bot.add_cog(Dice(bot))
