@@ -414,6 +414,69 @@ class SheetCog(commands.Cog):
         canon = self._canon(name)
         return canon, (self.items.get(canon, {}) or {})
 
+
+    def _recompute_ac(self, cfg, channel=None) -> int:
+        a1 = get_compat(cfg, "eq", "armor1", fallback="").strip()
+        a2 = get_compat(cfg, "eq", "armor2", fallback="").strip()
+
+        armor1_ac = None
+        if a1:
+            _c1, it1 = self._item_lookup(a1)
+            try:
+                armor1_ac = int((it1.get("AC") or it1.get("ac") or "").strip())
+            except Exception:
+                armor1_ac = None
+
+        shield_bonus = 0
+        if a2:
+            _c2, it2 = self._item_lookup(a2)
+            if it2 and self._item_is_shield(it2):
+                try:
+                    shield_bonus = int((it2.get("AC") or it2.get("ac") or "").strip() or "0")
+                except Exception:
+                    shield_bonus = 0
+
+        _race_lc, class_lc = self._get_char_race_class(cfg)
+        level = getint_compat(cfg, "cur", "level", fallback=1)
+
+        use_uar = True
+        try:
+            if channel is not None:
+                use_uar = self._hr_enabled(channel, "barbarian_unarmored_defense", default=True)
+        except Exception:
+            pass
+
+        if class_lc == "barbarian" and not a1 and use_uar:
+            base_ac = self._barbarian_unarmored_ac(level)
+        else:
+            base_ac = armor1_ac if armor1_ac is not None else 11
+
+        # ✅ Include Dex mod (consistent with charcreate)
+        try:
+            dex_mod = getint_compat(cfg, "stats", "dex_modifier", fallback=None)
+        except Exception:
+            dex_mod = None
+        if dex_mod is None:
+            try:
+                dex_mod = _osr_mod_from_cfg(cfg, "dex", fallback_score=10)
+            except Exception:
+                dex_mod = 0
+
+        new_ac = base_ac + shield_bonus + int(dex_mod or 0)
+
+        try:
+            new_ac += int(_equipped_protection_bonus(cfg))
+        except Exception:
+            pass
+
+        if not cfg.has_section("stats"):
+            cfg.add_section("stats")
+        cfg.set("stats", "ac", str(new_ac))
+        return new_ac
+
+
+
+
     def _weight_thresholds(self, race_name: str, STR: int):
         s = max(3, min(int(STR or 10), 18))
         small = str(race_name).strip().lower() == "halfling"
@@ -1131,7 +1194,21 @@ class SheetCog(commands.Cog):
         )
         config['cur']['hp'] = str(hp)
         config['max']['hp'] = str(hp)
+        old_ac = getint_compat(config, "stats", "ac", fallback=0)
+        old_move = getint_compat(config, "stats", "move", fallback=0)
+
+        # recompute derived stats
+        try:
+            self._recompute_ac_sheet(config)
+        except Exception:
+            pass
+        try:
+            self._recompute_move(config)  # STR might have changed
+        except Exception:
+            pass
+
         write_cfg(file_name, config)
+
 
         embed = nextcord.Embed(title=f"Character '{disp or char_name}' Rerolled!", color=random.randint(0, 0xFFFFFF))
         embed.add_field(
@@ -1232,7 +1309,65 @@ class SheetCog(commands.Cog):
             config['cur']['hp'] = str(hp)
             config['max']['hp'] = str(mhp)
 
+        # --- recompute derived stats after swap (DEX/STR affects AC & move) ---
+        old_ac_raw = get_compat(config, "stats", "ac", fallback="")
+        try:
+            old_ac = int(old_ac_raw) if str(old_ac_raw).strip() else 10
+        except Exception:
+            old_ac = 10
+        old_move = getint_compat(config, "stats", "move", fallback=None)
+
+        # weights first (some move calcs depend on eq weight)
+        try:
+            if hasattr(self, "_recompute_eq_weight"):
+                self._recompute_eq_weight(config)
+            else:
+                cc = self.bot.get_cog("Combat")
+                if cc and hasattr(cc, "_recompute_eq_weight"):
+                    cc._recompute_eq_weight(config)
+        except Exception:
+            pass
+
+        # AC: prefer Sheet's own function, since this cog owns char math
+        try:
+            if hasattr(self, "_recompute_ac_sheet"):
+                try:
+                    self._recompute_ac_sheet(config, channel=ctx.channel)
+                except TypeError:
+                    self._recompute_ac_sheet(config)
+            else:
+                cc = self.bot.get_cog("Combat")
+                if cc and hasattr(cc, "_recompute_ac"):
+                    try:
+                        cc._recompute_ac(config, channel=ctx.channel)
+                    except TypeError:
+                        cc._recompute_ac(config)
+        except Exception:
+            pass
+
+        # Move
+        try:
+            if hasattr(self, "_recompute_move"):
+                self._recompute_move(config)
+            else:
+                cc = self.bot.get_cog("Combat")
+                if cc and hasattr(cc, "_recompute_move"):
+                    cc._recompute_move(config)
+        except Exception:
+            pass
+
+        # pull new numbers for optional display
+        try:
+            new_ac = getint_compat(config, "stats", "ac", fallback=old_ac)
+        except Exception:
+            new_ac = old_ac
+        try:
+            new_move = getint_compat(config, "stats", "move", fallback=old_move)
+        except Exception:
+            new_move = old_move
+
         write_cfg(path, config)
+
 
         embed = nextcord.Embed(title=f"Character '{disp or char_name}' Stats Swapped!", color=random.randint(0, 0xFFFFFF))
         embed.add_field(name="**Swapped Stats**", value=f"**{stat1.upper()}** ↔ **{stat2.upper()}**", inline=False)
@@ -1247,6 +1382,16 @@ class SheetCog(commands.Cog):
             embed.add_field(name="**HP Adjusted**", value=f"{hp}/{mhp} (CON mod {sign})", inline=False)
         else:
             embed.add_field(name="**HP**", value=f"{hp}/{mhp}", inline=False)
+
+        if new_ac != old_ac or (old_move is not None and new_move != old_move):
+            mv_txt = ""
+            if old_move is not None and new_move != old_move:
+                mv_txt = f" • Move: {old_move} → **{new_move}**"
+            embed.add_field(
+                name="Derived Stats Updated",
+                value=f"AC: {old_ac} → **{new_ac}**{mv_txt}",
+                inline=False
+            )
         await ctx.send(embed=embed)
 
     @commands.command()
@@ -1373,15 +1518,36 @@ class SheetCog(commands.Cog):
 
     @commands.command(name="additem")
     async def additem(self, ctx, who: str, *, item_and_qty: str):
-        import re, secrets
-
         """DM/helper: Add items to a character's inventory (storage + counts)."""
-        m = re.fullmatch(r'\s*(?:"([^"]+)"|\'([^\']+)\'|(.+?))(?:\s+(\d+))?\s*', item_and_qty)
-        if not m:
+        import re, secrets, shlex
+
+        # --- robust split: qty ONLY if final token is digits or xN/×N ---
+        def _split_item_and_qty(expr: str):
+            expr = (expr or "").strip()
+            if not expr:
+                return "", 1
+            try:
+                toks = shlex.split(expr)
+            except Exception:
+                toks = expr.split()
+
+            qty = 1
+            if toks:
+                last = toks[-1].lower()
+                m = re.fullmatch(r"(?:x|×)?(\d+)", last)  # digits or xN
+                if m:
+                    qty = max(1, int(m.group(1)))
+                    toks = toks[:-1]
+
+            # glue bonus tokens back onto name: "battleaxe +1" -> "battleaxe+1"
+            name = " ".join(toks)
+            name = name.replace(" +", "+").replace("+ ", "+").replace(" -", "-").replace("- ", "-")
+            return name.strip(), qty
+
+        item_name, qty = _split_item_and_qty(item_and_qty)
+        if not item_name:
             await ctx.send("❌ Couldn’t parse item and quantity. Try: `!additem testman rations 7`")
             return
-        item_name = (m.group(1) or m.group(2) or m.group(3) or "").strip()
-        qty = int(m.group(4) or "1")
         if qty <= 0:
             await ctx.send("❌ Quantity must be a positive integer.")
             return
@@ -1397,45 +1563,71 @@ class SheetCog(commands.Cog):
             await ctx.send("❌ You must own this character or have Manage Server permission to add items.")
             return
 
-        if not cfg.has_section("item"): cfg.add_section("item")
-        canon = self._canon(item_name)
+        if not cfg.has_section("item"):
+            cfg.add_section("item")
+
+        # --- lookup WITHOUT pre-canonizing so +1 stays +1 ---
+        spells_cog = self.bot.get_cog("Spells")
+
+        def _resolve_item(raw: str):
+            canon, it = self._item_lookup(raw)
+            if canon is None:
+                canon, it = self.find_item(raw.strip())
+            return canon, it
+
+        canon_lookup, it = None, None
+        if spells_cog:
+            canon_lookup, it = spells_cog._item_lookup(item_name)
+            if canon_lookup is None:
+                canon_lookup, it = spells_cog.find_item(item_name.strip())
+        if not it:
+            canon_lookup, it = _resolve_item(item_name)
+
+        # handle occasional list-return
+        if isinstance(it, list):
+            it = it[0] if it else None
+
+        if not it or not canon_lookup:
+            await ctx.send(f"❌ Unknown item **{item_name}**.")
+            return
+
+        canon = canon_lookup
         canon_lc = canon.lower()
 
-        spells_cog = self.bot.get_cog("Spells")
         looks_charged_by_name = canon_lc.startswith("wandof") or canon_lc.startswith("staffof")
-
         cog_says_charged = False
-        it = None
-        if spells_cog:
-            canon_lookup, it = spells_cog._item_lookup(canon)
-            cog_says_charged = spells_cog._item_has_charges(canon_lookup, it)
-        else:
-            canon_lookup = canon
+        if spells_cog and it:
+            try:
+                cog_says_charged = spells_cog._item_has_charges(canon_lookup, it)
+            except Exception:
+                cog_says_charged = False
 
+        # --- charged items: add instances ---
         if cog_says_charged or looks_charged_by_name:
             made = []
             for _ in range(qty):
                 if spells_cog:
                     tok = spells_cog._add_charged_item_instance(cfg, path, canon_lookup, it)
                 else:
-
                     tok = f"{canon}@{secrets.token_hex(3)}"
                     storage = (get_compat(cfg, "item", "storage", fallback="") or "").split()
                     if tok not in storage:
                         storage.append(tok)
-                    if not cfg.has_section("item"): cfg.add_section("item")
+                    if not cfg.has_section("item"):
+                        cfg.add_section("item")
                     cfg.set("item", tok.lower(), "1")
                     cfg.set("item", canon_lc, "0")
-
 
                     mx = 20 if canon_lc.startswith("wandof") else 30
                     core = "".join(ch for ch in canon_lc if ch.isalnum())
                     suf  = tok.split("@", 1)[1].lower()
                     key  = f"{core}_{suf}"
-                    if not cfg.has_section("charges"): cfg.add_section("charges")
+                    if not cfg.has_section("charges"):
+                        cfg.add_section("charges")
                     cfg.set("charges", key, f"{mx}/{mx}")
                     cfg.set("item", "storage", " ".join(storage))
                     write_cfg(path, cfg)
+
                 made.append(tok)
 
             await ctx.send(
@@ -1444,19 +1636,21 @@ class SheetCog(commands.Cog):
             )
             return
 
-
+        # --- normal stackable items ---
         lower_key = canon_lc
         try:
             cur_cnt = int(str(cfg.get("item", lower_key, fallback="0")).strip() or "0")
         except Exception:
             cur_cnt = 0
         cfg.set("item", lower_key, str(cur_cnt + qty))
+
         storage_line = cfg.get("item", "storage", fallback="")
         tokens = [t for t in storage_line.split() if t]
         seen_ci = {t.lower(): t for t in tokens}
         if canon_lc not in seen_ci:
             tokens.append(canon)
         cfg.set("item", "storage", " ".join(tokens))
+
         write_cfg(path, cfg)
 
         try:
@@ -1465,6 +1659,7 @@ class SheetCog(commands.Cog):
             pass
 
         await ctx.send(f"✅ Added **{qty}× {canon}** to **{char_name}**’s inventory.")
+
 
 
     @commands.command(name="restore")
