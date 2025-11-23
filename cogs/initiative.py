@@ -3,6 +3,7 @@ import os
 import random
 import re
 import configparser
+import math
 import nextcord
 import json
 import sys
@@ -9006,6 +9007,81 @@ class Initiative(commands.Cog):
         key  = _find_ci_name(names, who) or who
         slot = _choose_slot_for_effects(cfg, chan_id, key)
         code = (tag or "").strip().lower()
+
+        # --- SPECIAL: break holds / grabs / swallows ---
+        if code in {"held","hold","grapple","grabbed","swallow","swallowed",
+                    "constrict","constricted","tentacles","entangle"}:
+
+            slot_t = slot  # target's effects slot (already computed above)
+
+            def _purge_x_for_slot(slot_key: str, base: str):
+                # remove base plus common suffix variants
+                for suf in ("", "_dice", "_dmg", "_stat", "_torch",
+                            "_state", "_canbrk", "_ignite",
+                            "_code", "_label", "_emoji", "_by"):
+                    opt = f"{slot_key}.{base}{suf}"
+                    if cfg.has_option(chan_id, opt):
+                        cfg.remove_option(chan_id, opt)
+
+            def _norm(n: str) -> str:
+                return re.sub(r"\s+", " ", (n or "").strip()).lower()
+
+            removed_any = False
+
+            # A) target is being held by someone
+            holder_name = (cfg.get(chan_id, f"{slot_t}.heldby", fallback="") or "").strip()
+            if holder_name:
+                if cfg.has_option(chan_id, f"{slot_t}.heldby"):
+                    cfg.remove_option(chan_id, f"{slot_t}.heldby")
+
+                # purge hold-ish effects from victim
+                for base in ("x_holdbite","x_constrict","x_swallow","x_tentacles","x_entangle","x_leech"):
+                    _purge_x_for_slot(slot_t, base)
+
+                removed_any = True
+
+                # if holder's .holds points at us, clear it too
+                try:
+                    slot_h = _choose_slot_for_effects(cfg, chan_id, holder_name)
+                    held_ptr = (cfg.get(chan_id, f"{slot_h}.holds", fallback="") or "").strip()
+                    if _norm(held_ptr) == _norm(key):
+                        if cfg.has_option(chan_id, f"{slot_h}.holds"):
+                            cfg.remove_option(chan_id, f"{slot_h}.holds")
+                        for base in ("x_holdbite","x_constrict","x_swallow","x_tentacles","x_entangle","x_leech"):
+                            _purge_x_for_slot(slot_h, base)
+                except Exception:
+                    pass
+
+            # B) target is holding someone else
+            victim_name = (cfg.get(chan_id, f"{slot_t}.holds", fallback="") or "").strip()
+            if victim_name:
+                if cfg.has_option(chan_id, f"{slot_t}.holds"):
+                    cfg.remove_option(chan_id, f"{slot_t}.holds")
+
+                removed_any = True
+
+                # clear victim's heldby if it points to us
+                try:
+                    slot_v = _choose_slot_for_effects(cfg, chan_id, victim_name)
+                    v_holder = (cfg.get(chan_id, f"{slot_v}.heldby", fallback="") or "").strip()
+                    if _norm(v_holder) == _norm(key):
+                        if cfg.has_option(chan_id, f"{slot_v}.heldby"):
+                            cfg.remove_option(chan_id, f"{slot_v}.heldby")
+                        for base in ("x_holdbite","x_constrict","x_swallow","x_tentacles","x_entangle","x_leech"):
+                            _purge_x_for_slot(slot_v, base)
+                except Exception:
+                    pass
+
+            if removed_any:
+                _save_battles(cfg)
+                await self._update_tracker_message(ctx, cfg, chan_id)
+                await ctx.send(f"🧽 Cleared **HELD** from **{key}**.")
+                return
+            else:
+                await ctx.send(f"ℹ️ No hold/held state found on **{key}**.")
+                return
+
+
 
         CLEAR_MAP = {
 
