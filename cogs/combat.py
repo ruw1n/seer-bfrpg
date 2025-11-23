@@ -3045,6 +3045,22 @@ class Combat(commands.Cog):
             "• **Throw burning oil / holy water** (if you have flasks)\n  `!a oil <target(s)>` · `!a holywater <target(s)>`",
         ]
 
+        # Cleric/Paladin extra action
+        if class_lc in {"cleric", "paladin"}:
+            other.append(
+                "• **Turn Undead**\n  `!turn <target1> [target2 ...]`"
+            )
+            
+        if class_lc in {"paladin"}:
+            other.append(
+                "• **Magic Weapon**\n  `!magicweapon <weapon>`"
+            )
+
+        if class_lc in {"druid"}:
+            other.append(
+                "• **Animal Affinity**\n  `!calm <target1> [target2 ...]`"
+            )
+                        
         if is_caster:
             other.append(
                 "• **Cast a spell**\n  `!cast <spell> <target or targets>` (see `!info <spell>` for details)"
@@ -3764,13 +3780,25 @@ class Combat(commands.Cog):
         if want_wrestle:
             canon_name, item = "Wrestle", {}
         elif not is_natural:
-                                                                           
             canon_name, item = self._item_lookup(weapon)
             if not item:
-                                                                                               
                 canon_name, item = await self._resolve_weapon_from_partial(ctx, cfg, weapon, ctx.author)
+
+            # NEW: natural/innate PC attacks defined on the sheet (atk_<name>)
             if not item:
-                                                                            
+                t_lc = (wkey or weapon_key or "").strip().lower()
+                spec = (get_compat(cfg, "stats", f"atk_{t_lc}", fallback="") or "").strip()
+                if spec:
+                    is_natural = True
+                    canon_name = t_lc.title()
+                    item = {
+                        "dmg": spec,
+                        "type": "natural",
+                        "stat": "str",
+                        "weapon": "$true",
+                    }
+
+            if not item:
                 canon_name, item = self.find_item(weapon)
                 if canon_name is None:
                     sugg = item
@@ -4072,9 +4100,29 @@ class Combat(commands.Cog):
             weapon_drains = 0
 
 
-        missile_tags = {"missile","ranged","bow","xbow","thrown"}
-        is_rangedish = ((weapon_type or "").lower() in missile_tags) or any(bool(x) for x in (short, med, longr)) or rng_long
-        barb_melee = (is_barbarian and used_stat == "str" and not (is_rangedish or is_oil or is_holy or want_wrestle))
+        missile_tags = {"missile", "ranged", "bow", "xbow"}  # NOTE: exclude "thrown" here
+
+        # Bows/xbows/slings etc. are always ranged.
+        canon_lc = normalize_name(canon_name or "")
+        pure_missile = (
+            (weapon_type or "").lower() in missile_tags
+            or any(tok in canon_lc for tok in ("bow", "crossbow", "xbow", "sling"))
+        )
+
+        # Thrown-capable melee weapons (spears, daggers, hand axes, hammers, etc.)
+        # only count as ranged if the player explicitly uses short/long range flags.
+        thrown_capable = (
+            (weapon_type or "").lower() == "thrown"
+            or any(bool(x) for x in (short, med, longr))
+        )
+
+        is_rangedish = pure_missile or (thrown_capable and (rng_short or rng_long))
+
+        barb_melee = (
+            is_barbarian
+            and used_stat == "str"
+            and not (is_rangedish or is_oil or is_holy or want_wrestle)
+        )
 
 
         if want_wrestle:
@@ -10408,6 +10456,8 @@ class Combat(commands.Cog):
 
         specials = _get_specials(atk_cfg)
 
+        is_swarm_attack = (str(chosen_attack or "").lower() == "swarm")
+
         if is_swarm_attack:
             hit = True
             is_crit = False
@@ -11732,10 +11782,43 @@ class Combat(commands.Cog):
 
 
 
-        canon, item = self._item_lookup(item_name)
-        if not item:
+        # ---------------- bonus-safe item resolve ----------------
+        raw_q = (item_name or "").strip()
+        raw_q = raw_q.replace(" +", "+").replace("+ ", "+").replace(" -", "-").replace("- ", "-")
+
+        canon, item = self._item_lookup(raw_q)
+        if canon is None or not item:
+            canon, item = self.find_item(raw_q.strip())
+
+        # normalize list-returning lookups
+        if isinstance(item, list):
+            item = item[0] if item else None
+
+        # If raw has a trailing +N/-N, rebuild canon from base+bonus
+        # so lookup/canon cannot silently flip the sign.
+        try:
+            m_raw = re.search(r'([+-]\d+)\s*$', raw_q.replace(" ", ""))
+            if m_raw:
+                bonus_raw = m_raw.group(1)
+                base_raw = raw_q.replace(" ", "")[:m_raw.start()]
+
+                base_canon, base_item = self._item_lookup(base_raw)
+                if base_canon is None or not base_item:
+                    base_canon, base_item = self.find_item(base_raw.strip())
+                if isinstance(base_item, list):
+                    base_item = base_item[0] if base_item else None
+
+                if base_item:
+                    canon = (base_canon or base_raw).strip() + bonus_raw
+                    item = base_item
+        except Exception:
+            pass
+
+        if not item or not canon:
             await ctx.send(f"❌ Unknown item **{item_name}**.")
             return
+        # ---------------------------------------------------------
+
 
         item_type = (self._item_type(item) or "").strip().lower()
         if item_type in {"gear", "food", "tool"}:
@@ -11748,24 +11831,53 @@ class Combat(commands.Cog):
 
 
         
-        has_it = False
-        try:
-            if cfg.has_section("item"):
-                cnt = cfg.get("item", canon.lower(), fallback=None)
-                if cnt is not None:
-                    try:
-                        has_it = int(str(cnt).strip()) > 0
-                    except Exception:
-                        has_it = True
-                if not has_it:
+        # ---------------- inventory check tolerant of +/− keys ----------------
+        def _inv_has(canon_name: str, raw_name: str) -> bool:
+            cand = set()
+            for s in (canon_name, raw_name):
+                if not s:
+                    continue
+                lc = s.strip().lower()
+                cand.add(lc)
+                cand.add(lc.replace(" ", ""))
+
+            # accept opposite-sign legacy key if it exists (old chars)
+            try:
+                c0 = canon_name.strip().lower().replace(" ", "")
+                m = re.search(r'([+-])(\d+)\s*$', c0)
+                if m:
+                    alt = c0[:-len(m.group(0))] + ('+' if m.group(1) == '-' else '-') + m.group(2)
+                    cand.add(alt)
+            except Exception:
+                pass
+
+            try:
+                if cfg.has_section("item"):
+                    # numeric counts
+                    for k in cand:
+                        cnt = cfg.get("item", k, fallback=None)
+                        if cnt is not None:
+                            try:
+                                if int(str(cnt).strip() or "0") > 0:
+                                    return True
+                            except Exception:
+                                return True
+
+                    # storage tokens
                     storage = cfg.get("item", "storage", fallback="")
                     inv = {s.strip().lower() for s in storage.split() if s.strip()}
-                    has_it = canon.lower() in inv
-        except Exception:
-            pass
-        if not has_it:
+                    if any(k in inv for k in cand):
+                        return True
+            except Exception:
+                pass
+
+            return False
+
+        if not _inv_has(canon, raw_q):
             await ctx.send(f"⚠️ **{canon}** isn’t in your inventory.")
             return
+        # ----------------------------------------------------------------------
+
 
         is_shield = self._item_is_shield(item)
         armor_ac  = self._item_ac(item)
@@ -12155,17 +12267,19 @@ class Combat(commands.Cog):
         else:
             await ctx.send("ℹ️ Nothing to unequip (no matching slot/item found).")
 
-
     @commands.command(name="carry")
     async def carry_item(self, ctx, *, item_name: str):
         """
-        Add a miscellaneous item to your carried gear list (with quantity-aware weight).
-          • Accepts optional qty: "!carry IronSpikes x12" or "!carry IronSpikes 12"
-          • If qty omitted, uses your inventory count if numeric; else 1
-        """
-        
+        Add one or more miscellaneous items to your carried gear list (qty-aware).
 
-                                  
+        Forms:
+          !carry oil bedroll winterblanket
+          !carry oil 3 tinderbox torch x6 waterskin
+          !carry "holy water" 2 lantern
+          !carry all
+        """
+        import shlex
+
         char_name = get_active(ctx.author.id)
         if not char_name:
             await ctx.send("❌ No active character. Use `!char <name>` first.")
@@ -12182,78 +12296,177 @@ class Combat(commands.Cog):
             await ctx.send(f"❌ You do not own **{char_name}**.")
             return
 
-                                           
-                                    
-                                                               
-        m = re.match(r"^\s*(.*?)\s*(?:[x×]\s*(\d+)|\s+(\d+))?\s*$", item_name, flags=re.I)
-        raw_name = (m.group(1) or "").strip()
-        qty_group = m.group(2) or m.group(3)
-        typed_qty = int(qty_group) if qty_group else None
-
-
-                     
-        canon, item = self._item_lookup(raw_name)
-        if canon is None:
-                                                                            
-            canon, item = self.find_item(item_name.strip())
-        if not item:
-            await ctx.send(f"❌ Unknown item **{raw_name or item_name}**.")
+        argline = (item_name or "").strip()
+        if not argline:
+            await ctx.send("Usage: `!carry <item> [qty] [item2 [qty2] ...]` or `!carry all`.")
             return
 
-                                                         
-        if self._item_is_shield(item) or (self._item_ac(item) is not None) or self._item_is_weapon(item):
-            await ctx.send(f"⚠️ **{canon}** looks equip-able. Use `!equip {canon}` instead.")
-            return
-
-                                                         
-        has_it = False
-        inv_qty = 1
-        try:
-            if cfg.has_section("item"):
-                key = canon.lower()
-                raw_cnt = cfg.get("item", key, fallback=None)
-                if raw_cnt is not None:
-                    try:
-                        inv_qty = max(1, int(str(raw_cnt).strip()))
-                        has_it = inv_qty > 0
-                    except Exception:
-                                                                                       
-                        has_it = True
-                        inv_qty = 1
-                if not has_it:
-                    storage = cfg.get("item", "storage", fallback="")
-                    inv = {s.strip().lower() for s in storage.split() if s.strip()}
-                    has_it = key in inv
-        except Exception:
-            pass
-
-        if not has_it:
-            await ctx.send(f"⚠️ **{canon}** isn’t in your inventory.")
-            return
-
-        qty = typed_qty if (typed_qty is not None) else inv_qty
-        qty = max(1, qty)
-
-                                      
         old_eq_w, old_coin_w, old_total_w = self._weights_snapshot(cfg)
 
-                                                                                      
         if not cfg.has_section("eq"):
             cfg.add_section("eq")
-        slot_used = self._eq_add_carry(cfg, canon)                                    
-        cfg.set("eq", f"{slot_used}_qty", str(qty))                                                     
 
-                          
-        new_weight = self._recompute_eq_weight(cfg)                                          
-        new_move   = self._recompute_move(cfg)
+        carried_now = set()
+        if cfg.has_section("eq"):
+            for opt, val in cfg.items("eq"):
+                if opt.startswith("carry") and not opt.endswith("_qty"):
+                    carried_now.add((val or "").strip().lower())
+
+        def _normalize_item(it):
+            """_item_lookup/find_item sometimes return a list of matches. Pick a usable dict."""
+            if isinstance(it, list):
+                for x in it:
+                    if isinstance(x, dict):
+                        return x
+                return None
+            return it if isinstance(it, dict) else None
+
+        def _resolve(raw: str):
+            canon, it = self._item_lookup(raw)
+            if canon is None or not it:
+                canon, it = self.find_item(raw.strip())
+            it = _normalize_item(it)
+            return canon, it
+
+        def _inv_has_qty(canon: str):
+            has_it = False
+            inv_qty = 1
+            try:
+                if cfg.has_section("item"):
+                    key = canon.lower()
+                    raw_cnt = cfg.get("item", key, fallback=None)
+                    if raw_cnt is not None:
+                        try:
+                            inv_qty = max(1, int(str(raw_cnt).strip()))
+                            has_it = inv_qty > 0
+                        except Exception:
+                            has_it = True
+                            inv_qty = 1
+                    if not has_it:
+                        storage = cfg.get("item", "storage", fallback="")
+                        inv = {s.strip().lower() for s in storage.split() if s.strip()}
+                        has_it = key in inv
+            except Exception:
+                pass
+            return has_it, inv_qty
+
+        def _is_qty(tok: str) -> bool:
+            return tok.isdigit() or re.fullmatch(r"[x×]\d+", tok, flags=re.I)
+
+        def _parse_qty(tok: str):
+            if tok.isdigit():
+                return int(tok)
+            m = re.fullmatch(r"[x×](\d+)", tok, flags=re.I)
+            return int(m.group(1)) if m else None
+
+        def _is_equipable(it) -> bool:
+            try:
+                return (
+                    self._item_is_shield(it)
+                    or (self._item_ac(it) is not None)
+                    or self._item_is_weapon(it)
+                )
+            except Exception:
+                return False
+
+        specs = []   # (canon, itemdict, typed_qty)
+        errors = []
+
+        # ---- carry all ----
+        if argline.lower() == "all":
+            inv_items = []
+            if cfg.has_section("item"):
+                for k, v in cfg.items("item"):
+                    if k.lower() == "storage":
+                        continue
+                    sv = str(v or "").strip()
+                    if sv.isdigit():
+                        q = int(sv)
+                        if q > 0:
+                            inv_items.append((k, q))
+                    else:
+                        inv_items.append((k, 1))
+
+                storage = cfg.get("item", "storage", fallback="")
+                for s in storage.split():
+                    s = s.strip()
+                    if s:
+                        inv_items.append((s, 1))
+
+            for raw, q in inv_items:
+                canon, it = _resolve(raw)
+                if not canon or not it:
+                    continue
+                if canon.lower() in carried_now:
+                    continue
+                if _is_equipable(it):
+                    continue
+                specs.append((canon, it, q))
+
+        # ---- multi-parse ----
+        else:
+            tokens = shlex.split(argline)
+            i = 0
+            while i < len(tokens):
+                found = None
+                found_len = 0
+
+                for L in range(len(tokens) - i, 0, -1):
+                    cand = " ".join(tokens[i:i+L])
+                    canon, it = _resolve(cand)
+                    if it:
+                        found = (canon, it)
+                        found_len = L
+                        break
+
+                if not found:
+                    errors.append(f"❌ Unknown item **{tokens[i]}**.")
+                    i += 1
+                    continue
+
+                canon, it = found
+                j = i + found_len
+
+                typed_qty = None
+                if j < len(tokens) and _is_qty(tokens[j]):
+                    typed_qty = _parse_qty(tokens[j])
+                    j += 1
+
+                specs.append((canon, it, typed_qty))
+                i = j
+
+        # ---- apply ----
+        added = []
+        for canon, it, typed_qty in specs:
+            if _is_equipable(it):
+                errors.append(f"⚠️ **{canon}** looks equip-able. Use `!equip {canon}` instead.")
+                continue
+
+            has_it, inv_qty = _inv_has_qty(canon)
+            if not has_it:
+                errors.append(f"⚠️ **{canon}** isn’t in your inventory.")
+                continue
+
+            qty = typed_qty if (typed_qty is not None) else inv_qty
+            try:
+                qty = max(1, int(qty))
+            except Exception:
+                qty = 1
+
+            slot_used = self._eq_add_carry(cfg, canon)
+            cfg.set("eq", f"{slot_used}_qty", str(qty))
+            added.append((canon, qty, slot_used))
+
+        if not added:
+            await ctx.send("\n".join(errors) if errors else "ℹ️ Nothing carried.")
+            return
+
+        # recompute + save once
+        self._recompute_eq_weight(cfg)
+        new_move = self._recompute_move(cfg)
         write_cfg(path, cfg)
 
-                                           
-        new_eq_w   = self._eq_weight_cached(cfg)
-        new_coin_w = self._coin_weight_from_cfg(cfg)
-        new_total  = new_eq_w + new_coin_w
-
-                                                      
+        # refresh initiative panel if present
         try:
             bcfg = _load_battles()
             chan_id = str(ctx.channel.id)
@@ -12269,7 +12482,10 @@ class Combat(commands.Cog):
         except Exception:
             pass
 
-                                             
+        new_eq_w   = self._eq_weight_cached(cfg)
+        new_coin_w = self._coin_weight_from_cfg(cfg)
+        new_total  = new_eq_w + new_coin_w
+
         STR  = getint_compat(cfg, "stats", "str", fallback=10)
         race = get_compat(cfg, "info", "race", fallback="Human")
         light_lim, heavy_lim = self._weight_thresholds(race, STR)
@@ -12278,21 +12494,38 @@ class Combat(commands.Cog):
         elif new_total <= heavy_lim: load_txt = "heavy load"
         else:                        load_txt = "encumbered"
 
+        parts = []
+        for canon, qty, slot_used in added:
+            qtxt = f" x{qty}" if qty and qty > 1 else ""
+            parts.append(f"{canon}{qtxt}→{slot_used}")
+
         await ctx.send(
-            f"🎒 **{char_name}** adds **{canon} x{qty}** → `{slot_used}`\n"
+            f"🎒 **{char_name}** carries: " + ", ".join(parts) + "\n"
             f"Weight: {self._fmt_w(old_total_w)} → **{self._fmt_w(new_total)}**  "
             f"(coins {self._fmt_coin_w(old_coin_w)} → {self._fmt_coin_w(new_coin_w)})  •  "
-            f"Move: **{new_move}**"
+            f"Move: **{new_move}**  •  `{load_txt}`"
         )
+
+        if errors:
+            await ctx.send("\n".join(errors))
+
 
 
     @commands.command(name="uncarry", aliases=["unc"])
     async def uncarry(self, ctx, *, what: str):
         """
-        Remove a carried item (by slot or name) and compact the list (qty-aware).
-        Usage: !uncarry carry3   |   !uncarry GrapplingHook
+        Remove carried item(s) and compact the list (qty-aware).
+
+        Usage:
+          !uncarry carry3
+          !uncarry GrapplingHook
+          !uncarry oil bedroll
+          !uncarry all
+        Notes:
+          • Multi-item parsing uses greedy matching against carried names.
+          • Quote multi-word names if needed.
         """
-        
+        import shlex
 
         char_name = get_active(ctx.author.id)
         if not char_name:
@@ -12309,10 +12542,14 @@ class Combat(commands.Cog):
             await ctx.send(f"❌ You do not own **{char_name}**.")
             return
 
+        raw_expr = (what or "").strip()
+        if not raw_expr:
+            await ctx.send("Usage: `!uncarry <slot|item> ...` or `!uncarry all`")
+            return
+
         old_eq_w, old_coin_w, old_total_w = self._weights_snapshot(cfg)
 
-                                                                      
-        carried = []                                                    
+        carried = []
         if cfg.has_section("eq"):
             for opt, val in cfg.items("eq"):
                 if opt.startswith("carry") and not opt.endswith("_qty"):
@@ -12330,67 +12567,100 @@ class Combat(commands.Cog):
                     carried.append((idx, opt, name, qty))
         carried.sort(key=lambda t: t[0])
 
-        removed_name = None
-        removed_qty  = None
+        if not carried:
+            await ctx.send("ℹ️ You aren’t carrying anything.")
+            return
 
-        arg = (what or "").strip()
+        try:
+            tokens = shlex.split(raw_expr)
+        except Exception:
+            tokens = raw_expr.split()
 
-                                         
-        target_index = None
-        if re.fullmatch(r"carry\d+", arg.lower()):
-                                     
+        removed = []
+        errors = []
+
+        if tokens and tokens[0].lower() == "all":
             try:
-                idx = int(arg.lower().replace("carry", ""))
-                for i, (cidx, skey, nm, q) in enumerate(carried):
-                    if cidx == idx:
-                        target_index = i
-                        break
-            except Exception:
-                target_index = None
-        else:
-                                              
-            canon, _ = self._item_lookup(arg)
-            if canon is None:
-                                                                                
-                canon, _ = self.find_item(arg.strip())
-            target = (canon or arg).strip().lower()
-            for i, (_cidx, _skey, nm, _q) in enumerate(carried):
-                if nm.strip().lower() == target:
-                    target_index = i
-                    break
-
-        if target_index is not None:
-                                                         
-            _, slot_key, removed_name, removed_qty = carried.pop(target_index)
-
-                                                                         
-            try:
-                                 
-                to_del = []
-                for opt, _ in cfg.items("eq"):
-                    if opt.startswith("carry"):
-                        to_del.append(opt)
-                for opt in to_del:
-                    cfg.remove_option("eq", opt)
-
-                                          
-                for i, (_cidx, _skey, nm, q) in enumerate(carried, start=1):
-                    cfg.set("eq", f"carry{i}", nm)
-                    cfg.set("eq", f"carry{i}_qty", str(max(1, int(q))))
+                if cfg.has_section("eq"):
+                    for opt, _ in list(cfg.items("eq")):
+                        if opt.startswith("carry"):
+                            cfg.remove_option("eq", opt)
             except Exception:
                 pass
+            removed = [(nm, q) for (_i, _k, nm, q) in carried]
+            carried = []
+        else:
+            carried_names = {nm.strip().lower(): (idx, skey, nm, q) for (idx, skey, nm, q) in carried}
 
-                          
-        new_weight = self._recompute_eq_weight(cfg)
-        new_move   = self._recompute_move(cfg)
+            def _greedy_carried(tokens_list):
+                best = None
+                best_len = 0
+                for L in range(1, len(tokens_list) + 1):
+                    cand = " ".join(tokens_list[:L]).strip().lower()
+                    if cand in carried_names:
+                        best = cand
+                        best_len = L
+                if best is None:
+                    best = tokens_list[0].strip().lower()
+                    best_len = 1
+                return best, best_len
+
+            targets = []
+            i = 0
+            while i < len(tokens):
+                tok = tokens[i].strip()
+                if re.fullmatch(r"carry\d+", tok.lower()):
+                    targets.append(tok.lower())
+                    i += 1
+                    continue
+                name_key, used = _greedy_carried(tokens[i:])
+                targets.append(name_key)
+                i += used
+
+            for t in targets:
+                target_index = None
+                if re.fullmatch(r"carry\d+", t):
+                    try:
+                        idx = int(t.replace("carry", ""))
+                        for j, (cidx, _skey, _nm, _q) in enumerate(carried):
+                            if cidx == idx:
+                                target_index = j
+                                break
+                    except Exception:
+                        target_index = None
+                else:
+                    for j, (_cidx, _skey, nm, _q) in enumerate(carried):
+                        if nm.strip().lower() == t:
+                            target_index = j
+                            break
+
+                if target_index is None:
+                    errors.append(f"ℹ️ No carried item matches **{t}**.")
+                    continue
+
+                _cidx, slot_key, removed_name, removed_qty = carried.pop(target_index)
+                removed.append((removed_name, removed_qty))
+
+        try:
+            if not cfg.has_section("eq"):
+                cfg.add_section("eq")
+            for opt, _ in list(cfg.items("eq")):
+                if opt.startswith("carry"):
+                    cfg.remove_option("eq", opt)
+            for i, (_cidx, _skey, nm, q) in enumerate(carried, start=1):
+                cfg.set("eq", f"carry{i}", nm)
+                cfg.set("eq", f"carry{i}_qty", str(max(1, int(q))))
+        except Exception:
+            pass
+
+        self._recompute_eq_weight(cfg)
+        new_move = self._recompute_move(cfg)
         write_cfg(path, cfg)
 
-                                           
-        new_eq_w   = self._eq_weight_cached(cfg)
+        new_eq_w = self._eq_weight_cached(cfg)
         new_coin_w = self._coin_weight_from_cfg(cfg)
-        new_total  = new_eq_w + new_coin_w
-        
-                                          
+        new_total = new_eq_w + new_coin_w
+
         try:
             bcfg = _load_battles()
             chan_id = str(ctx.channel.id)
@@ -12406,28 +12676,28 @@ class Combat(commands.Cog):
         except Exception:
             pass
 
-        new_eq_w   = self._eq_weight_cached(cfg)
-        new_coin_w = self._coin_weight_from_cfg(cfg)
-        new_total  = new_eq_w + new_coin_w
-
-                                             
-        STR  = getint_compat(cfg, "stats", "str", fallback=10)
+        STR = getint_compat(cfg, "stats", "str", fallback=10)
         race = get_compat(cfg, "info", "race", fallback="Human")
         light_lim, heavy_lim = self._weight_thresholds(race, STR)
 
-        if new_total <= light_lim:   load_txt = "light load"
-        elif new_total <= heavy_lim: load_txt = "heavy load"
-        else:                        load_txt = "encumbered"
-        
-        
-        if removed_name:
-            qty_note = f" x{removed_qty}" if (removed_qty and removed_qty > 1) else ""
-            await ctx.send(
-                f"🧳 **{char_name}** removes **{removed_name}{qty_note}** from carry.\n"
+        if new_total <= light_lim:
+            load_txt = "light load"
+        elif new_total <= heavy_lim:
+            load_txt = "heavy load"
+        else:
+            load_txt = "encumbered"
+
+        if removed:
+            rem_txt = ", ".join([f"**{nm}**{(' x'+str(q)) if q>1 else ''}" for nm, q in removed])
+            msg_bits = [
+                f"🧳 **{char_name}** uncarried: {rem_txt}",
                 f"Weight: {self._fmt_w(old_total_w)} → **{self._fmt_w(new_total)}**  "
                 f"(coins {self._fmt_coin_w(old_coin_w)} → {self._fmt_coin_w(new_coin_w)})  •  "
-                f"Move: **{new_move}**"
-            )
+                f"Move: **{new_move}**  •  `{load_txt}`"
+            ]
+            if errors:
+                msg_bits.append("\n".join(errors[:8]))
+            await ctx.send("\n".join(msg_bits))
         else:
             await ctx.send("ℹ️ Nothing removed (no matching carried item or slot).")
 
