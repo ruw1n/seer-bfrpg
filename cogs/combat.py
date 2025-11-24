@@ -2821,19 +2821,30 @@ class Combat(commands.Cog):
 
         race_lc, class_lc = self._get_char_race_class(cfg)
 
-                       
-        canon, item = self.find_item(weapon_name)
+                               
+        canon, item_or_sugg = self.find_item(weapon_name)
+
         if canon is None:
-            virt_name, virt_item = self._virtual_weapon_for(race_lc, weapon_name)
+            # 1) polymorph / monster-form naturals
+            virt_name, virt_item = (self._virtual_weapon_for(race_lc, weapon_name, cfg=cfg) or (None, None))
             if virt_name:
                 canon, item = virt_name, virt_item
-        if canon is None:
-            sugg = item                       
-            msg = f"❌ Unknown item **{weapon_name}**."
-            if sugg:
-                msg += " Did you mean: " + ", ".join(f"`{s}`" for s in sugg)
-            await ctx.send(msg)
-            return
+            else:
+                # 2) PC innate / skills-based naturals (e.g., Bite for lizardmen)
+                nat = self._pc_natural_attack_for(cfg, weapon_name)
+                if nat:
+                    canon, item = nat
+                else:
+                    sugg = item_or_sugg
+                    msg = f"❌ Unknown item **{weapon_name}**."
+                    if sugg:
+                        msg += " Did you mean: " + ", ".join(f"`{s}`" for s in sugg)
+                    await ctx.send(msg)
+                    return
+
+        else:
+            item = item_or_sugg
+
 
         if not self._item_is_weapon(item):
             await ctx.send(f"❌ **{canon}** isn’t a weapon.")
@@ -3593,9 +3604,8 @@ class Combat(commands.Cog):
                                                                                   
         is_natural = False
         if canon_name is None and not item:
-            virt = self._virtual_weapon_for(race_lc, weapon, cfg=cfg)
-            if virt:
-                virt_name, virt_item = virt
+            virt_name, virt_item = (self._virtual_weapon_for(race_lc, weapon, cfg=cfg) or (None, None))
+            if virt_name:
                 is_natural = True
                 canon_name, item = virt_name, virt_item
             else:
@@ -3603,6 +3613,7 @@ class Combat(commands.Cog):
                 if nat:
                     is_natural = True
                     canon_name, item = nat
+
 
 
         if is_brawl:
@@ -21488,65 +21499,136 @@ class Combat(commands.Cog):
          
     def _virtual_weapon_for(self, race_lc: str, weapon: str, cfg=None):
         if not weapon:
-            return None
+            return (None, None)
+
         w = (weapon or "").strip().lower()
-        alias = {"claws":"claw","talon":"claw","talons":"claw"}
+        alias = {"claws": "claw", "talon": "claw", "talons": "claw"}
         w = alias.get(w, w)
 
-                                                                
+        # Polymorph / shapechange natural attacks
         try:
             if cfg and _poly_active(cfg) and cfg.has_section("poly"):
                 for key in (w, f"nat_{w}", f"natural_{w}"):
                     dmg = (get_compat(cfg, "poly", key, fallback="") or "").strip()
                     if dmg:
-                        return (w.capitalize(), {"dmg": dmg.strip(), "type": "natural", "stat": "str", "plus": 0})
-                                                                            
+                        return (w.capitalize(), {
+                            "dmg": dmg.strip(),
+                            "type": "natural",
+                            "stat": "str",
+                            "plus": 0,
+                            "weapon": "$true",
+                        })
+
                 raw = (get_compat(cfg, "poly", "attacks", fallback="") or "").strip()
                 if raw:
                     for p in raw.split(","):
                         k, _, v = p.partition(":")
                         if k.strip().lower() == w and v.strip():
-                            return (w.capitalize(), {"dmg": v.strip(), "type": "natural", "stat": "str", "plus": 0})
+                            return (w.capitalize(), {
+                                "dmg": v.strip(),
+                                "type": "natural",
+                                "stat": "str",
+                                "plus": 0,
+                                "weapon": "$true",
+                            })
         except Exception:
             pass
 
-                                                                                
-        try:
-            if cfg and _poly_active(cfg):
-                form = (get_compat(cfg, "poly", "form", fallback="") or "").strip()
-                if form and "_load_monster_form" in globals():
-                    _disp, mcfg = _load_monster_form(form)
-                    if mcfg:
-                        nat = self._monster_naturals(mcfg)
-                        dmg = nat.get(w)
-                        if dmg:
-                            return (w.capitalize(), {"dmg": dmg, "type": "natural", "stat": "str", "plus": 0})
-        except Exception:
-            pass
+        # PC sheet natural attacks: [stats] atk_<name> = XdY(+Z)
+        if cfg:
+            try:
+                t_lc = re.sub(r"[^a-z0-9]+", "", w)
+                spec = (get_compat(cfg, "stats", f"atk_{t_lc}", fallback="") or "").strip()
+                if spec:
+                    return (t_lc.title(), {
+                        "dmg": spec,
+                        "type": "natural",
+                        "stat": "str",
+                        "plus": 0,
+                        "weapon": "$true",
+                    })
+            except Exception:
+                pass
 
-                                                                           
-        return None
+        return (None, None)
+
 
 
     def _pc_natural_attack_for(self, cfg, wkey: str):
-                                                                         
-        keys = [f"atk_{wkey}", f"dmg_{wkey}", wkey]
-        spec = ""
-        for sec in ("stats", "info"):
-            for k in keys:
-                v = get_compat(cfg, sec, k, fallback="").strip()
-                if v:
-                    spec = v; break
-            if spec: break
+        """If a PC has a natural/innate attack, return (canon_name, item_dict).
+        Supports:
+          • stats.atk_<name> or stats.<name> overrides
+          • skills list containing <name> (e.g., Bite for lizardmen)
+        """
+        if not wkey:
+            return None
+
+        wkey = re.sub(r"[^a-z0-9]+", "", str(wkey).lower())
+
+        def _tokset(s: str):
+            return {
+                re.sub(r"[^a-z0-9]+", "", t.lower())
+                for t in re.split(r"[,\s]+", s or "")
+                if t.strip()
+            }
+
+        # 1) explicit overrides on the sheet
+        spec = (get_compat(cfg, "stats", f"atk_{wkey}", fallback="") or "").strip()
+        if not spec:
+            spec = (get_compat(cfg, "stats", f"{wkey}_atk", fallback="") or "").strip()
+        if not spec:
+            spec = (get_compat(cfg, "stats", f"{wkey}_dmg", fallback="") or "").strip()
+
+        # fallback “atk” field (legacy)
+        if not spec:
+            spec = (get_compat(cfg, "stats", "atk", fallback="") or "").strip()
+
+        # unarmed defaults
+        if not spec and wkey in {"punch", "kick", "fist", "unarmed"}:
+            spec = "1d3 bludgeoning"
+
+        # bare stat key (rare legacy)
+        if not spec:
+            spec = (get_compat(cfg, "stats", wkey, fallback="") or "").strip()
+
+        # 2) NEW: skills list implies natural attack
+        if not spec:
+            skills_raw = (
+                get_compat(cfg, "skills", "list", fallback="")
+                or get_compat(cfg, "info", "skills", fallback="")
+                or get_compat(cfg, "traits", "skills", fallback="")
+                or ""
+            )
+            skills = _tokset(skills_raw)
+
+            if wkey in skills:
+                # per-skill override if you ever want it
+                spec = (
+                    (get_compat(cfg, "skills", f"{wkey}_atk", fallback="") or "").strip()
+                    or (get_compat(cfg, "skills", f"{wkey}_dmg", fallback="") or "").strip()
+                )
+
+                if not spec:
+                    race_lc = (get_compat(cfg, "info", "race", fallback="") or "").strip().lower()
+                    # race defaults
+                    if race_lc in {"lizardman", "lizardfolk"} and wkey == "bite":
+                        spec = "1d6 piercing"
+                    else:
+                        spec = "1d4"
+
         if not spec:
             return None
-                                         
-        return (wkey.title(), {
-            "type": "natural",                                                      
-            "dmg":  spec,                                                            
-            "stat": "str",
-            "plus": 0,
-        })
+
+        return (
+            wkey.title(),
+            {
+                "dmg": spec,
+                "type": "natural",
+                "stat": "str",
+                "weapon": "$true",
+            },
+        )
+
 
 
     def _is_snake_staff_name(self, w: str) -> bool:
