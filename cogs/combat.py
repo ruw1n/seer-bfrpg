@@ -3008,13 +3008,47 @@ class Combat(commands.Cog):
         else:
             embed.description = "Set an active character with `!char <name>` to see a tailored actions list."
 
+        # --- helpers for tips ---
+        def _norm_base(s: str) -> str:
+            s = (s or "").strip().lower()
+            s = re.sub(r"\+.*$", "", s)                 # drop +1/+2/etc
+            s = re.sub(r"[^a-z0-9]+", "", s)           # strip punctuation/spaces
+            return s
+
+        POLEARM_KEYS = {
+            "spear","polearm"
+        }
+
+        def _is_spear_or_polearm(wname: str, item: dict | None) -> bool:
+            keys = set()
+            keys.add(_norm_base(wname))
+            if isinstance(item, dict):
+                for k in ("base","family","base_name","type_base","name"):
+                    v = item.get(k)
+                    if v: keys.add(_norm_base(str(v)))
+            # keyword containment catches odd customs like "SpearOfGhouls+1"
+            for k in list(keys):
+                if any(p in k for p in POLEARM_KEYS):
+                    return True
+            return False
+
         # Weapons / Attack lines
         atk_lines = []
+        charge_weps = []  # list of equipped spears/polearms for tips
+
         if weapons:
             for w in weapons:
                 item = None
                 try:
-                    item = _item_lookup(self, w)   # global helper in combat.py
+                    # global helper in combat.py or method fallback
+                    if "_item_lookup" in globals():
+                        res = _item_lookup(self, w)
+                    else:
+                        res = self._item_lookup(w)
+                    if isinstance(res, tuple):
+                        _, item = res
+                    else:
+                        item = res
                 except Exception:
                     item = None
 
@@ -3027,6 +3061,10 @@ class Combat(commands.Cog):
                     sh = md = lg = 0
 
                 rangedish = any(x > 0 for x in (sh, md, lg))
+
+                if _is_spear_or_polearm(w, item):
+                    charge_weps.append(w)
+
                 if rangedish:
                     rng_bits = []
                     if sh: rng_bits.append(f"short {sh}ft")
@@ -3049,6 +3087,28 @@ class Combat(commands.Cog):
 
         embed.add_field(name="Attack actions", value="\n".join(atk_lines)[:1024], inline=False)
 
+        # Tactical tips (class + weapon)
+        tips = []
+        if class_lc in {"thief","magethief"}:
+            tips.append("• **Sneak Attack**: add `sneak` at the end of your attack.\n  Example: `!a <weapon> <target> sneak`")
+        if class_lc == "scout":
+            tips.append("• **Snipe**: add `snipe` to a ranged attack for big damage.\n  Example: `!a <bow> <target> snipe`")
+        if class_lc == "assassin":
+            tips.append("• **Death Strike**: add `kill` to attempt an assassination.\n  Example: `!a <one-handed melee> <target> kill`")
+        if class_lc == "barbarian":
+            tips.append("• **Rage**: add `rage` for +2 to hit/+2 dmg (but −2 AC).\n  Example: `!a <weapon> <target> rage`")
+        if charge_weps:
+            shown = ", ".join(f"`{w}`" for w in charge_weps[:4])
+            more = f" (+{len(charge_weps)-4} more)" if len(charge_weps) > 4 else ""
+            tips.append(
+                f"• **Charge** (spear/polearm): add `charge` for a charging attack.\n"
+                f"  Works well with: {shown}{more}\n"
+                f"  Example: `!a <spear/polearm> <target> charge`"
+            )
+
+        if tips:
+            embed.add_field(name="Tactical tips", value="\n".join(tips)[:1024], inline=False)
+
         # Other actions
         other = [
             "• **Defend** (+4 AC until your next turn)\n  `!defend`",
@@ -3061,7 +3121,7 @@ class Combat(commands.Cog):
             other.append(
                 "• **Turn Undead**\n  `!turn <target1> [target2 ...]`"
             )
-            
+
         if class_lc in {"paladin"}:
             other.append(
                 "• **Magic Weapon**\n  `!magicweapon <weapon>`"
@@ -3071,7 +3131,7 @@ class Combat(commands.Cog):
             other.append(
                 "• **Animal Affinity**\n  `!calm <target1> [target2 ...]`"
             )
-                        
+
         if is_caster:
             other.append(
                 "• **Cast a spell**\n  `!cast <spell> <target or targets>` (see `!info <spell>` for details)"
@@ -3088,6 +3148,7 @@ class Combat(commands.Cog):
 
         embed.set_footer(text="Tip: `!a` shows this list. Use `!bag` to see inventory and `!eq` for equipment.")
         await ctx.send(embed=embed)
+
 
     @commands.command(name="a")
     async def attack(self, ctx, weapon: str = None, *, opts: str = ""):
@@ -3303,6 +3364,7 @@ class Combat(commands.Cog):
         rng_short = False                                    
         rng_long  = False                                    
         repeat_times = 1                                   
+        ignore_ammo = False   # -i = don't consume ammo / thrown consumables
 
                                                                         
         if primary_target is None and target_name:
@@ -3322,8 +3384,11 @@ class Combat(commands.Cog):
             "snake", "-snake",
             "sub","-sub","-sub","nl","-nl","-nl","nonlethal","-nonlethal","-nonlethal",
             "punch","fist","unarmed","kick",
-
+            "-i","-ignore","ignoreammo"
         }
+
+
+        
         while i < len(opts):
             token = str(opts[i]).lower()     
                          
@@ -3343,6 +3408,12 @@ class Combat(commands.Cog):
                     else:
                         splash_targets.append(opts[i])
                     i += 1
+                continue
+
+            # -i anywhere
+            if token in ("-i", "-ignore", "ignoreammo"):
+                ignore_ammo = True
+                i += 1
                 continue
 
 
@@ -3846,24 +3917,32 @@ class Combat(commands.Cog):
                 
         remaining = None
         if is_oil or is_holy:
-                                                                   
             carried_ok, carried_total = self._has_carried_item(cfg, canon_name)
-            if not carried_ok:
+            if (not carried_ok) or (carried_total < 1):
                 pretty = "Oil" if is_oil else "Holy Water"
-                await ctx.send(f"❌ You must have **{pretty}** in your **carried gear** to throw it. Try `!carry {pretty}` first.")
+                await ctx.send(
+                    f"❌ You must have **{pretty}** in your **carried gear** to throw it. "
+                    f"Try `!carry {pretty}` first."
+                )
                 return
 
-                                           
-            if not self._consume_carried_item(cfg, canon_name, qty=1):
-                await ctx.send("⚠️ Carry stack desynced — it looks like you’re out of that item.")
-                return
+            if not ignore_ammo:
+                if not self._consume_carried_item(cfg, canon_name, qty=1):
+                    await ctx.send("⚠️ Carry stack desynced — it looks like you’re out of that item.")
+                    return
 
-                                                                                           
-            self._recompute_eq_weight(cfg)
-            self._recompute_move(cfg)
-            write_cfg(coe, cfg)
+                self._recompute_eq_weight(cfg)
+                self._recompute_move(cfg)
+                write_cfg(coe, cfg)
 
-                                                                                   
+                try:
+                    _ok, remaining = self._consume_inventory_item(cfg, coe, canon_name, qty=1)
+                except Exception:
+                    remaining = None
+            else:
+                remaining = carried_total
+
+            # tracker refresh is totally separate from consumption
             try:
                 bcfg_q = _load_battles()
                 ch_q = str(ctx.channel.id)
@@ -3878,11 +3957,7 @@ class Combat(commands.Cog):
             except Exception:
                 pass
 
-                                                                                       
-            try:
-                _ok, remaining = self._consume_inventory_item(cfg, coe, canon_name, qty=1)
-            except Exception:
-                remaining = None
+
 
 
                                                                                   
@@ -4189,30 +4264,30 @@ class Combat(commands.Cog):
 
                                                                                                           
         if needs_ammo and not (is_oil or is_holy or want_wrestle or is_natural) and not _is_monster_file(atk_path):
-                                     
             carried_ok, carried_total = self._has_carried_item(cfg, needs_ammo)
-            if not carried_ok or carried_total < 1:
+            if (not carried_ok) or (carried_total < 1):
                 await ctx.send(
                     f"❌ You must have **{needs_ammo}** in your **carried gear** to fire **{canon_name}**. "
                     f"Try `!carry {needs_ammo}` first."
                 )
                 return
 
-                                                                                
-            if not self._consume_carried_item(cfg, needs_ammo, qty=1):
-                await ctx.send("⚠️ Carry stack desynced — it looks like you’re out of ammunition.")
-                return
+            if not ignore_ammo:
+                if not self._consume_carried_item(cfg, needs_ammo, qty=1):
+                    await ctx.send("⚠️ Carry stack desynced — it looks like you’re out of ammunition.")
+                    return
 
-                                         
-            self._recompute_eq_weight(cfg)
-            self._recompute_move(cfg)
-            write_cfg(coe, cfg)
+                self._recompute_eq_weight(cfg)
+                self._recompute_move(cfg)
+                write_cfg(coe, cfg)
 
-                                                                    
-            try:
-                _ok, ammo_remaining_after_first = self._consume_inventory_item(cfg, coe, needs_ammo, qty=1)
-            except Exception:
-                ammo_remaining_after_first = None
+                try:
+                    _ok, ammo_remaining_after_first = self._consume_inventory_item(cfg, coe, needs_ammo, qty=1)
+                except Exception:
+                    ammo_remaining_after_first = None
+            else:
+                ammo_remaining_after_first = carried_total
+
 
 
         base_target_ac = None
@@ -4747,7 +4822,14 @@ class Combat(commands.Cog):
             else:
                 title = f"{char_name} throws Oil!"
             embed = nextcord.Embed(title=title, color=random.randint(0, 0xFFFFFF))
-            embed.add_field(name="Inventory", value=f"(Oil –1; remaining: {remaining if remaining is not None else '—'})", inline=True)            
+            delta = "–0" if ignore_ammo else "–1"
+            note  = " (ignored)" if ignore_ammo else ""
+            embed.add_field(
+                name="Inventory",
+                value=f"(Oil {delta}; remaining: {remaining if remaining is not None else '—'}){note}",
+                inline=True
+            )
+
             embed.add_field(name="Attack roll", value=attack_line, inline=True)
             if target_ac is not None:
                 embed.add_field(name="Result", value=("✅ **HIT!**" if hit else "❌ **MISS**"), inline=True)
@@ -4968,7 +5050,14 @@ class Combat(commands.Cog):
             else:
                 title = f"{char_name} throws Holy Water!"
             embed = nextcord.Embed(title=title, color=random.randint(0, 0xFFFFFF))
-            embed.add_field(name="Inventory", value=f"(Holy Water –1; remaining: {remaining if remaining is not None else '—'})", inline=True)
+            delta = "–0" if ignore_ammo else "–1"
+            note  = " (ignored)" if ignore_ammo else ""
+            embed.add_field(
+                name="Inventory",
+                value=f"(Holy Water {delta}; remaining: {remaining if remaining is not None else '—'}){note}",
+                inline=True
+            )
+
             embed.add_field(name="Attack roll", value=attack_line, inline=True)
             if target_ac is not None:
                 embed.add_field(name="Result", value=("✅ **HIT!**" if hit else "❌ **MISS**"), inline=True)
@@ -5256,7 +5345,9 @@ class Combat(commands.Cog):
                                                           
         if needs_ammo and not _is_monster_file(atk_path):
             rem = ammo_remaining_after_first if ammo_remaining_after_first is not None else "—"
-            embed.add_field(name="Inventory", value=f"({needs_ammo} –1; remaining: {rem})", inline=True)
+            delta = "–0" if ignore_ammo else "–1"
+            note  = " (ignored)" if ignore_ammo else ""
+            embed.add_field(name="Inventory", value=f"({needs_ammo} {delta}; remaining: {rem}){note}", inline=True)
 
                                                                                       
 
