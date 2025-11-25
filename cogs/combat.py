@@ -1763,6 +1763,34 @@ def _monster_has_gibbering(att_cfg, att_path):
         pass
     return False
 
+def _monster_has_hex(att_cfg, att_path):
+    """
+    Return True if the monster lists a hex ability in its specials.
+    Looks for 'hex' tokens on the instance or its template. Used only to warn (not to block).
+    """
+    try:
+        s1 = " ".join([
+            (get_compat(att_cfg, "base", "special", fallback="") or ""),
+            (get_compat(att_cfg, "info", "special", fallback="") or "")
+        ]).lower()
+        if any(k in s1 for k in ("hex", "hag hex")):
+            return True
+
+        mtype = (get_compat(att_cfg, "info", "monster_type", fallback="")
+                 or get_compat(att_cfg, "info", "type", fallback="")).strip().lower()
+        p = _safe_monster_ini_path(mtype)
+        if p:
+            mcfg = read_cfg(p)
+            s2 = " ".join([
+                (get_compat(mcfg, "base", "special", fallback="") or ""),
+                (get_compat(mcfg, "info", "special", fallback="") or "")
+            ]).lower()
+            if any(k in s2 for k in ("hex", "hag hex")):
+                return True
+    except Exception:
+        pass
+    return False
+
 
 
 def _is_living_creature(t_cfg) -> bool:
@@ -18341,6 +18369,189 @@ class Combat(commands.Cog):
                         await msg.edit(content=content)
             except Exception:
                 pass
+
+    @commands.command(name="hex")
+    async def hag_hex(self, ctx, hag: str, target: str):
+        """
+        Hag Hex (special ability):
+          • Single creature within 20 ft.
+          • Target must Save vs Spells.
+          • On failed save, roll 1d4:
+              1 – Charmed (text only)
+              2 – Movement halved (text only)
+              3 – Stunned for 1 round (treated as paralysis)
+              4 – Confused for 1 round ([CN 1], like confusion / gibber)
+        Usage: !hex HA1 Testman
+        """
+        bcfg = _load_battles()
+        chan_id = str(ctx.channel.id)
+
+        if not bcfg or not bcfg.has_section(chan_id):
+            await ctx.send("❌ No battle here. Use `!battle` first.")
+            return
+
+        dm_id = bcfg.get(chan_id, "DM", fallback="")
+        if str(ctx.author.id) != str(dm_id):
+            await ctx.send("❌ Only the GM can use `!hex`.")
+            return
+
+        # Resolve hag
+        hag_name, hag_path = _resolve_char_ci(hag)
+        if not hag_path:
+            await ctx.send(f"❌ Hag '{hag}' not found.")
+            return
+
+        # Resolve target
+        tgt_disp, tgt_path = _resolve_char_ci(target)
+        if not tgt_path:
+            await ctx.send(f"❌ Target '{target}' not found.")
+            return
+
+        try:
+            acfg = read_cfg(att_path)
+            if not _monster_has_hex(acfg, att_path):
+                await ctx.send(f"⚠️ **{att_name}** doesn’t list a 'hex' special — proceeding anyway.")
+        except Exception:
+            pass
+
+
+        t_cfg = read_cfg(tgt_path)
+        pretty_tgt = tgt_disp or target
+        pretty_hag = hag_name or hag
+
+        # Save vs Spells (same style as confusion spell)
+        sv_ok = None
+        sv_roll = 10
+        sv_dc = 15
+        sv_pen = 0
+        for tag in ("spl", "spell", "spells"):
+            ok, r, dc, pen = self._roll_save(t_cfg, vs=tag, penalty=0)
+            if dc is not None:
+                sv_ok, sv_roll, sv_dc, sv_pen = ok, r, dc, pen
+                break
+        if sv_ok is None:
+            sv_ok = False  # if we couldn't find a table, treat as failed
+
+        d20_face = "**20** 🎉" if sv_roll == 20 else ("**1** 💀" if sv_roll == 1 else str(sv_roll))
+        pen_txt  = f" - {sv_pen}" if sv_pen else ""
+
+        embed = nextcord.Embed(
+            title="🧹 Hag’s Hex",
+            description=(
+                f"**{pretty_hag}** fixes **{pretty_tgt}** with a baleful curse.\n"
+                "The target must Save vs **Spells**; on a failed save roll **1d4** for the effect."
+            ),
+            color=random.randint(0, 0xFFFFFF),
+        )
+
+        result_line = "✅ **RESISTS**" if sv_ok else "❌ **FAILS**"
+        embed.add_field(
+            name="Save vs Spells",
+            value=f"d20 {d20_face}{pen_txt} vs **{sv_dc}** → {result_line}",
+            inline=False,
+        )
+
+        if sv_ok:
+            embed.add_field(
+                name="Outcome",
+                value="On a successful save, the hag’s hex has **no effect**.",
+                inline=False,
+            )
+            await ctx.send(embed=embed)
+            return
+
+        # On failed save: roll 1d4 on the hag table
+        eff_sum, eff_rolls, _ = roll_dice("1d4")
+        outcome = max(1, min(4, eff_sum))
+        roll_face = eff_rolls[0] if eff_rolls else eff_sum
+
+        effect_name = ""
+        effect_text = ""
+
+        # 1 — Charmed (display only)
+        if outcome == 1:
+            effect_name = f"1 — Charmed ({roll_face})"
+            effect_text = (
+                "💗 **CHARMED**\n"
+                f"**{pretty_tgt}** is beguiled by **{pretty_hag}** and regards her as a trusted friend.\n"
+                "They will not willingly attack the hag. Obviously suicidal or self-destructive orders "
+                "may allow a new save at the GM’s discretion."
+            )
+
+        # 2 — Movement halved (display only)
+        elif outcome == 2:
+            effect_name = f"2 — Movement Halved ({roll_face})"
+            effect_text = (
+                "🐌 **SLOWED**\n"
+                f"**{pretty_tgt}**’s movement is reduced to **half** normal."
+            )
+
+        # 3 — Stunned for 1 round (paralyzed)
+        elif outcome == 3:
+            effect_name = f"3 — Stunned ({roll_face})"
+            try:
+                names, _ = _parse_combatants(bcfg, chan_id)
+                key = _find_ci_name(names, pretty_tgt) or pretty_tgt
+                self._extend_paralyzed_timer(bcfg, chan_id, key, 2)
+                _save_battles(bcfg)
+                effect_text = (
+                    "💫 **STUNNED**\n"
+                    "Treated as **paralyzed** for **2 rounds**."
+                )
+            except Exception:
+                effect_text = (
+                    "💫 **STUNNED** — treated as paralyzed for **2 rounds**.\n"
+                    "An error occurred updating the tracker; GM should track this manually."
+                )
+
+        # 4 — Confused for 1 round (CN 1)
+        else:
+            effect_name = f"4 — Confused ({roll_face})"
+            cn_dur = 2
+            applied = False
+
+            if bcfg and bcfg.has_section(chan_id):
+                try:
+                    names, _ = _parse_combatants(bcfg, chan_id)
+                    key = _find_ci_name(names, pretty_tgt) or pretty_tgt
+                    s   = self._effect_slot_for(bcfg, chan_id, key)
+                except Exception:
+                    # Fallback if something explodes in the helpers
+                    try:
+                        s = _slot(pretty_tgt)
+                    except Exception:
+                        s = pretty_tgt.replace(" ", "_")
+
+                try:
+                    prev = bcfg.getint(chan_id, f"{s}.cn", fallback=0)
+                except Exception:
+                    prev = 0
+
+                bcfg.set(chan_id, f"{s}.cn", str(max(prev, cn_dur)))
+                bcfg.set(chan_id, f"{s}.cn_by", pretty_hag)
+                _save_battles(bcfg)
+                applied = True
+
+            if applied:
+                effect_text = (
+                    "🌀 **CONFUSED** — for **2 rounds**, the target acts unpredictably."
+                )
+            else:
+                effect_text = (
+                    "🌀 **CONFUSED** — for **2 rounds**, the target acts unpredictably.\n"
+                    "GM should apply confusion behavior manually (tracker update failed)."
+                )
+
+        embed.add_field(name=effect_name, value=effect_text, inline=False)
+        await ctx.send(embed=embed)
+
+        # Refresh tracker if we changed PAR or CN
+        try:
+            await self._update_tracker_message(ctx, bcfg, chan_id)
+        except Exception:
+            pass
+
+
 
 
     @commands.command(name="gibber")
