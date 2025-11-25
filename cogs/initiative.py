@@ -658,6 +658,23 @@ def _ensure_section(cfg, chan_id):
         cfg.set(chan_id, "join_seq", "0")
         cfg.set(chan_id, "etime_rounds", "0")
 
+def _ac_shift_delta(cfg, chan_id: str, slot: str) -> int:
+    """
+    Returns the net temporary AC shift for this slot:
+    +acbuf from defensive modes (Defend, quarterstaff stance, etc.)
+    +acpen from charge/rage penalties (usually negative).
+    """
+    try:
+        buf = cfg.getint(chan_id, f"{slot}.acbuf", fallback=0)
+    except Exception:
+        buf = 0
+    try:
+        pen = cfg.getint(chan_id, f"{slot}.acpen", fallback=0)
+    except Exception:
+        pen = 0
+    return buf + pen
+
+
 def _hmcm_badges(cfg, chan_id: str, slot: str, actor_name: str) -> str:
     """
     Return HM/CM badges for a given slot.
@@ -2585,6 +2602,10 @@ def _format_tracker_block(cfg, chan_id: str):
             except Exception:
                 pass
 
+        delta = _ac_shift_delta(cfg, chan_id, slot)
+        if delta:
+            tail +=f" • AC{delta:+}"
+            
         par = cfg.getint(chan_id, f"{slot}.paralyzed", fallback=0)
         if par > 0:
             ccq = cfg.getint(chan_id, f"{slot}.cc_blind_pending", fallback=0)
@@ -5574,6 +5595,10 @@ class Initiative(commands.Cog):
 
         tail = ""
 
+        delta = _ac_shift_delta(cfg, chan_id, slot)
+        if delta:
+            tail +=f" • AC{delta:+}"
+            
         par = cfg.getint(chan_id, f"{slot}.paralyzed", fallback=0)
         if par > 0:
             ccq = cfg.getint(chan_id, f"{slot}.cc_blind_pending", fallback=0)
