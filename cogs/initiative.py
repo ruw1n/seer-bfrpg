@@ -5955,6 +5955,9 @@ class Initiative(commands.Cog):
         """
         If `who` is a PC with an owner_id, auto-set that owner's active character
         to `who` and announce the switch.
+
+        This version normalizes spaces/underscores so we don't spam switches
+        when the already-active character is the same one.
         """
         if not who:
             return
@@ -5966,17 +5969,21 @@ class Initiative(commands.Cog):
         except Exception:
             pass
 
-        # Normalize to actual .coe casing if possible (Linux-safe)
+        # Derive file-base name (with underscores) and a pretty display name
         try:
             base_fn = f"{who.replace(' ', '_')}.coe"
             ci_fn = _ci_find_file(base_fn)
             if ci_fn:
-                who_norm = ci_fn[:-4].replace("_", " ")
+                base_name = ci_fn[:-4]                 
+                who_norm = base_name.replace("_", " ") 
             else:
+                base_name = who.replace(" ", "_")
                 who_norm = who
         except Exception:
+            base_name = who.replace(" ", "_")
             who_norm = who
 
+        # Snapshot uses the pretty/display name (matches [info] name)
         try:
             _hp, _mhp, _ac, owner_id = _char_snapshot(who_norm)
         except Exception:
@@ -5993,23 +6000,29 @@ class Initiative(commands.Cog):
         except Exception:
             cur_active = None
 
-        if cur_active and cur_active.strip().lower() == who_norm.strip().lower():
-            return  # already correct, no spam
+        def _canon(s: str) -> str:
+            """Canonicalize a character id: lowercased, spaces→underscores."""
+            return (s or "").strip().lower().replace(" ", "_")
+
+        # If the already-active character matches this one (ignoring spaces/_), do nothing
+        if cur_active and _canon(cur_active) == _canon(base_name):
+            return
+
+        target_name = base_name  # use the file-base / players.json-style id
 
         # set_active can fail for legacy/unregistered PCs; try register then retry
         try:
-            set_active(uid, who_norm)
+            set_active(uid, target_name)
         except Exception:
             try:
-                add_char(uid, who_norm)
-                set_active(uid, who_norm)
+                add_char(uid, target_name)
+                set_active(uid, target_name)
             except Exception:
                 return
 
         await ctx.send(
             f"🔀 Auto-switched <@{owner_id}>'s active character to **{who_norm}** for this turn."
         )
-
 
 
     @commands.command(name="n")
