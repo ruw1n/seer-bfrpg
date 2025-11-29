@@ -736,12 +736,47 @@ def _take_oil_burn(cfg_b, chan_id: str, name: str) -> int:
 
 
 def _item_lookup(self, name: str):
-    """Return (canon_name, item_dict) or (None, None) from item.lst, case-insensitive."""
-    key = normalize_name(name)
-    canon = self.item_index.get(key)
-    if not canon:
+    """
+    Return (canon_name, item_dict) or (None, None) from item.lst.
+
+    Resolution order:
+      1) Exact section name (case-sensitive)
+      2) Section name, case-insensitive
+      3) Normalized name through item_index (loose match)
+      4) Last-chance normalized scan over items
+    """
+    if not name:
         return None, None
-    return canon, self.items.get(canon, {})
+
+    k = str(name).strip()
+
+    # 1) Exact section name match (e.g. "Longsword+1")
+    if k in self.items:
+        return k, self.items[k]
+
+    # 2) Case-insensitive section name match
+    kl = k.lower()
+    for nm, data in self.items.items():
+        if nm.lower() == kl:
+            return nm, data
+
+    # 3) Normalized lookup via the index (handles aliases etc.)
+    norm = normalize_name(k)
+    canon = (
+        self.item_index.get(k)
+        or self.item_index.get(kl)
+        or self.item_index.get(norm)
+    )
+    if canon and canon in self.items:
+        return canon, self.items[canon]
+
+    # 4) Final fallback: normalize every item name and compare
+    for nm, data in self.items.items():
+        if normalize_name(nm) == norm:
+            return nm, data
+
+    return None, None
+
 
 def _item_ac(self, item: dict) -> int | None:
     v = item.get("AC") if "AC" in item else item.get("ac")
@@ -20391,13 +20426,8 @@ class Combat(commands.Cog):
         return None, suggestions
 
 
-    def _item_lookup(self, name: str):
-        """Return (canon_name, item_dict) or (None, None) from item.lst, case-insensitive."""
-        key = normalize_name(name)
-        canon = self.item_index.get(key)
-        if not canon:
-            return None, None
-        return canon, self.items.get(canon, {})
+    
+
 
 
     def _item_ac(self, item: dict) -> int | None:
@@ -21155,12 +21185,47 @@ class Combat(commands.Cog):
         
     
     def _item_lookup(self, name: str):
-        """Return (canon_name, item_dict) or (None, None) from item.lst, case-insensitive."""
-        key = normalize_name(name)
-        canon = self.item_index.get(key)
-        if not canon:
+        """
+        Return (canon_name, item_dict) or (None, None) from item.lst.
+
+        Resolution order:
+          1) Exact section name (case-sensitive)
+          2) Section name, case-insensitive
+          3) Normalized name through item_index (loose match)
+          4) Last-chance normalized scan over items
+        """
+        if not name:
             return None, None
-        return canon, self.items.get(canon, {})
+
+        k = str(name).strip()
+
+        # 1) Exact section name match (e.g. "Longsword+1")
+        if k in self.items:
+            return k, self.items[k]
+
+        # 2) Case-insensitive section name match
+        kl = k.lower()
+        for nm, data in self.items.items():
+            if nm.lower() == kl:
+                return nm, data
+
+        # 3) Normalized lookup via the index (handles aliases etc.)
+        norm = normalize_name(k)
+        canon = (
+            self.item_index.get(k)
+            or self.item_index.get(kl)
+            or self.item_index.get(norm)
+        )
+        if canon and canon in self.items:
+            return canon, self.items[canon]
+
+        # 4) Final fallback: normalize every item name and compare
+        for nm, data in self.items.items():
+            if normalize_name(nm) == norm:
+                return nm, data
+
+        return None, None
+
 
 
     def _item_ac(self, item: dict) -> int | None:
