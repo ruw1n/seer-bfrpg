@@ -59,7 +59,8 @@ movesilently=5
 hide=5
 listen=5
 climb=-15
-desc=Halflings are small, slightly stocky folk who stand around three feet tall and weigh around 60 pounds. They have curly brown hair on their heads and feet, but rarely have facial hair. They are usually fair-skinned, often with ruddy cheeks. Halflings are remarkably rugged for their small size. They are dexterous and nimble, capable of moving quietly and remaining very still. They usually go barefoot. Halflings are typically outgoing, unassuming and good-natured. They live about a hundred years.//Halflings are unusually accurate with all sorts of ranged weapons, gaining a bonus to accuracy, and also a bonus to initiative die rolls, due to their quick wit and reactions.//In their preferred forest terrain, they are able to hide very effectively, with a 90 percent chance of success. Even indoors, in dungeons or in non-preferred terrain, any halfling can `!hide` with 70 percent effectiveness, regardless of class.
+desc=Halflings are small, slightly stocky folk who stand around three feet tall and weigh around 60 pounds. They have curly brown hair on their heads and feet, but rarely have facial hair. They are usually fair-skinned, often with ruddy cheeks. Halflings are remarkably rugged for their small size. They are dexterous and nimble, capable of moving quietly and remaining very still. They usually go barefoot. Halflings are typically outgoing, unassuming and good-natured. They live about a hundred years.//Halflings are unusually accurate with all sorts of ranged weapons, gaining a bonus to accuracy, and also a bonus to initiative die rolls, due to their quick wit and reactions.//In their preferred forest terrain, they are able to hide very effectively, with a 90 percent chance of success. Even indoors, in dungeons or in non-preferred terrain, any halfling can `!hide` with 70 percent effectiveness, regardless of class.//Being a small race, Halflings cannot wield Large weapons at all (Greataxe, Longbow, Heavy Crossbow, Greatsword, Maul, Quarterstaff, Polearm) and must use Medium weapons with two hands, even if they can be used with one hand normally (Battleaxe, Shortbow, Light Crossbow, Longsword/Scimitar, Mace, Club/Cudgel/Walking Staff, Spear). 
+
 
 [Bugbear]
 class=Fighter Cleric Druid Thief Barbarian Paladin Scout
@@ -70,7 +71,7 @@ chamax=15
 movesilently=20
 hide=10
 skills=Darkvision
-desc=Bugbears look like huge, hairy goblins, standing about 6 feet tall. Their eyes are usually a darkish brown color. Bugbears can move very quietly, but are wild and relatively fearless, and bully smaller humanoids whenever possible.//Bugbears prefer to ambush opponents if they can. When hunting, they often send scouts ahead of the main group. Bugbear attacks are coordinated, and their tactics are sound if not brilliant. They are able to move in nearly complete silence, gaining a large bonus to their `movesilently` skill roll, if a thief or scout.
+desc=Bugbears look like huge, hairy goblins, standing about 6 feet tall. Their eyes are usually a darkish brown color. Bugbears can move very quietly, but are wild and relatively fearless, and bully smaller humanoids whenever possible.//Bugbears prefer to ambush opponents if they can. When hunting, they often send scouts ahead of the main group. Bugbear attacks are coordinated, and their tactics are sound if not brilliant. They are able to move in nearly complete silence, gaining a large bonus to their `movesilently` skill roll, if a thief or scout. Finally, a Bugbear has a Darkvision out to 60'.
 
 [Caveman]
 class=Fighter Cleric Druid Thief Ranger Barbarian Paladin Scout
@@ -86,7 +87,7 @@ movesilently=10
 openlock=-10
 removetrap=-10
 track=10
-desc=Cavemen are a species closely related to Humans; they are shorter and stockier, and much more heavily muscled. They do not all actually live in caves. Whether they are actually less intelligent than "normal" humans or not is a matter of debate, but it is true that they do not have the facility for language that other human, demi-human, and humanoid races have. However, they do seem to be able to communicate basic information amongst themselves through complex grunts and vocalizations similar to what one might hear from the great apes.//Caveman Clerics and Druids are still able to vocalize their spells despite this language limitation, doing so in peculiar ways that are unrecognizable by other races.//Cavemen are wise in the ways of nature, and make for excellent Druids or Rangers, but they lack the ability to communicate or understand advanced concepts such as arcane spellcasting. Cavemen can 'learn' languages, but only rudimentary concepts are understood.//Cavemen are very attuned to their surroundings, and like Elves are seldom surprised.
+desc=Cavemen are a species closely related to Humans; they are shorter and stockier, and much more heavily muscled. They do not all actually live in caves. Whether they are actually less intelligent than "normal" humans or not is a matter of debate, but it is true that they do not have the facility for language that other human, demi-human, and humanoid races have. However, they do seem to be able to communicate basic information amongst themselves through complex grunts and vocalizations similar to what one might hear from the great apes.//Caveman Clerics and Druids are still able to vocalize their spells despite this language limitation, doing so in peculiar ways that are unrecognizable by other races.//Cavemen are wise in the ways of nature, and make for excellent Druids or Rangers, but they lack the ability to communicate or understand advanced concepts such as arcane spellcasting. Cavemen can 'learn' languages, but only rudimentary concepts are understood.//Cavemen are very attuned to their surroundings, and like Elves are seldom surprised, only being surprised on a 1 instead of a 1-2 on the 1d6 roll.
 
 [Gnoll]
 class=Fighter Cleric Druid Barbarian Paladin Scout Magic-User Necromancer Spellcrafter
@@ -110,7 +111,7 @@ conmax=16
 skills=SecretDoor Stonecunning Darkvision Small
 openlock=10
 removetrap=10
-desc=Goblins are small, wicked humanoids who favor ambushes, overwhelming odds, dirty tricks, and any other edge they can devise. An adult goblin stands around 3' tall and weighs around 40 pounds. Its eyes are unusually bright and crafty-looking, varying in color from red to yellow. A goblin's skin color ranges from yellow to green to orange to red; usually all members of a single tribe are about the same color. Goblins wear clothing of dark leather.//Crafty and mechanically inclined, a goblin notices secret doors as well as an Elf, and is able to detect slanting passages, traps, shifting walls, and new construction as well as a Dwarf. Like most dark-dwelling races, a Goblin has Darkvision out to 60'.
+desc=Goblins are small, wicked humanoids who favor ambushes, overwhelming odds, dirty tricks, and any other edge they can devise. An adult goblin stands around 3' tall and weighs around 40 pounds. Its eyes are unusually bright and crafty-looking, varying in color from red to yellow. A goblin's skin color ranges from yellow to green to orange to red; usually all members of a single tribe are about the same color. Goblins wear clothing of dark leather.//Crafty and mechanically inclined, a goblin notices secret doors as well as an Elf, and is able to detect slanting passages, traps, shifting walls, and new construction as well as a Dwarf (Noticing traps on a 1-2 on a 1d6). Like most dark-dwelling races, a Goblin has Darkvision out to 60'.//Being a small race, Goblins cannot wield Large weapons at all (Greataxe, Longbow, Heavy Crossbow, Greatsword, Maul, Quarterstaff, Polearm) and must use Medium weapons with two hands, even if they can be used with one hand normally (Battleaxe, Shortbow, Light Crossbow, Longsword/Scimitar, Mace, Club/Cudgel/Walking Staff, Spear).
 
 [Hobgoblin]
 class=Fighter Cleric Druid Magic-User Thief Barbarian Paladin Scout Illusionist Necromancer Spellcrafter
@@ -132,7 +133,7 @@ openlock=5
 movesilently=5
 hide=5
 poi=4
-desc=Kobolds are small, dog-faced reptilian humanoids. A kobold is 2' tall and weighs about 40 pounds. Kobolds tend to perceive larger races as enemies, and are naturally distrustful when encountered. Regardless, kobolds are cunning foes. They prefer ranged combat, closing only when they can see their foes have been weakened. Whenever they can, kobolds prefer to ambush and set up traps.//A kobold may become any class, excluding the combination classes. Kobolds are masters of trapworks and are otherwise very mechanically inclined. They notice secret doors as well as an Elf and traps as well as a Dwarf. Kobolds have Darkvision out to 90'.
+desc=Kobolds are small, dog-faced reptilian humanoids. A kobold is 2' tall and weighs about 40 pounds. Kobolds tend to perceive larger races as enemies, and are naturally distrustful when encountered. Regardless, kobolds are cunning foes. They prefer ranged combat, closing only when they can see their foes have been weakened. Whenever they can, kobolds prefer to ambush and set up traps.//A kobold may become any class, excluding the combination classes. Kobolds are masters of trapworks and are otherwise very mechanically inclined. They notice secret doors as well as an Elf and traps as well as a Dwarf. Kobolds have Darkvision out to 90'.//Being a small race, Kobolds cannot wield Large weapons at all (Greataxe, Longbow, Heavy Crossbow, Greatsword, Maul, Quarterstaff, Polearm) and must use Medium weapons with two hands, even if they can be used with one hand normally (Battleaxe, Shortbow, Light Crossbow, Longsword/Scimitar, Mace, Club/Cudgel/Walking Staff, Spear).
 
 [Lizardman]
 class=Fighter Cleric Druid Barbarian Paladin Scout
@@ -142,7 +143,7 @@ skills=Swim Bite
 openlock=-10
 removetrap=-10
 pickpocket=-10
-desc=A lizard man is uaully 6' to 7' feet tall with green, gray, or brown scales. Its tail is used for balance and is 3' to 4' long. Adult males can weigh from 200 to 250 pounds and are always very strong. Lizardmen are largely indifferent to other races, being primarily interested in their own survival. If aroused, however, they are fearsome warriors, using simple but sound tactics.//Lizaard men generally prefer professions associated with nature or survival. Lizardmen have trouble relating to most other races.//Lizardmen are excellent swimmers and can hold their breath for an extended period of time (up to a full turn, or 60 rounds). Lizardmen can bite for 1d4 pounds + Strength modifier in damage, but must forgo any weapon attacks that round. A lizardman fighter can specialize in their own bite.
+desc=A lizard man is uaully 6' to 7' feet tall with green, gray, or brown scales. Its tail is used for balance and is 3' to 4' long. Adult males can weigh from 200 to 250 pounds and are always very strong. Lizardmen are largely indifferent to other races, being primarily interested in their own survival. If aroused, however, they are fearsome warriors, using simple but sound tactics.//Lizard men generally prefer professions associated with nature or survival. Lizardmen have trouble relating to most other races.//Lizardmen are excellent swimmers and can hold their breath for an extended period of time (up to a full turn, or 60 rounds). Lizardmen can bite for 1d4 pounds + Strength modifier in damage, but must forgo any weapon attacks that round. A lizardman fighter can specialize in their own bite.
 
 [Orc]
 class=Fighter Cleric Druid Thief Barbarian Paladin Scout
@@ -171,7 +172,7 @@ openlock=5
 removetrap=5
 listen=5
 climb=-10
-desc=Dwarves are a short, stocky race; both male and female Dwarves stand around four feet tall and typically weigh around 120 pounds. Their long hair and thick bears are dark brown, gray or black. They take great pride in their beards, sometimes braiding or forking them. They have a fair to ruddy complexion. Dwarves have stout frames and a strong, muscular build. They are rugged and resilient, with the capacity to endure great hardships. Dwarves are typically practical, stubborn and courageous. They can also be introspective, suspicious and possessive. They have a lifespan of three to four centuries.//All Dwarves have Darkvision with a 60' range, and are able to detect slanting passages, stonework traps, shifting walls and new construction on a roll of 1-2 on 1d6; a search must be performed before this roll may be made.
+desc=Dwarves are a short, stocky race; both male and female Dwarves stand around four feet tall and typically weigh around 120 pounds. Their long hair and thick bears are dark brown, gray or black. They take great pride in their beards, sometimes braiding or forking them. They have a fair to ruddy complexion. Dwarves have stout frames and a strong, muscular build. They are rugged and resilient, with the capacity to endure great hardships. Dwarves are typically practical, stubborn and courageous. They can also be introspective, suspicious and possessive. They have a lifespan of three to four centuries.//All Dwarves have Darkvision with a 60' range, and are able to detect slanting passages, stonework traps, shifting walls and new construction on a roll of 1-2 on 1d6; a search must be performed before this roll may be made.//Due to their stocky, powerful builds, Dwarves are able to use Medium weapons one-handed (Battleaxe, Shortbow, Light Crossbow, Longsword/Scimitar, Mace, Club/Cudgel/Walking Staff, Spear) and Large weapons in two hands, but Large weapons more than four feet in length are prohibited (Greatsword, Polearm, Longbow).
 
 [Gnome]
 class=Fighter Cleric Druid Magic-User Thief Barbarian Paladin Scout Illusionist Necromancer Spellcrafter Magethief
@@ -183,3 +184,56 @@ poi=4
 breath=3
 desc=Gnomes are small and stocky, moreso than halflings but not as much as dwarves; both male and female gnomes stand around three and a half feet tall and typically weigh around 90 pounds. Their hair and beards may be blond, brown, black, or sometimes red. They have a fair to ruddy complexion. The most noticeable features about a gnome from the standpoint of other races is their pointed ears and noses. They are renowned for their rapidly-changing moods, sometimes gruff and contrary, sometimes whimsical and humorous. They have a lifespan between two and three centuries long.//Gnomes are frail like elves, unable to roll higher than d6 for hit dice regardless of class. They are also small like halflings, unable to wield large weapons and needing to wield medium weapons in two hands. With respect to encumbrance, gnomes are equivalent to halflings.//Gnomes have the ability to see invisible creatures and objects within 30 feet. Such creatures and objects appear as strange magical glows in the shape of the creature or object. A Thief hiding in shadows, an invisible sprite, or a character wearing an elven cloak may all be detected in this way.
 
+[QuickLearner]
+desc=QuickLearner is the racial ability that gives you more experience earned. For humans, it is 10 percent, and for half-elves, half-orcs and half-ogres, it is 5 percent.
+
+[Darkvision]
+desc=Darkvision is the ability to see in the dark without the aid of a torch or lantern. Darkvision is experienced in black, white and shades of gray. Different races have different darkvision maximums: half-elves and half-ogres have 30 feet, orcs, half-orcs, dwarves, elves, goblins, hobgoblins, gnolls and bugbears have 60 feet, and kobolds have 90 feet.
+
+[SecretDoor]
+desc=SecretDoor is the ability to detect secret doors more effectively. This is handled automatically through the `!door` command, which any character of any race has access to. Having this ability will increase the likelihood that a secret door is found.//Note that full-blooded elves, as well as goblins, hobgoblins and kobolds, can also detect secret doors with but a cursory glance: for elf/goblin/kobold/hobgoblin characters, you may roll `!door` when entering each room, and this does not count as your exploration turn's action.//For other races such as half-elf and those without this ability, you may roll `!door` as your character's action on an exploration turn.
+
+[GhoulImmune]
+desc=GhoulImmune is the elven racial ability to ignore the paralyzing effect of a ghoul or ghast's claw attacks. Keep in mind this does not make the elf immune to all paralyzing monster abilities, but it does defend against the spell GhoulishHands.
+
+[Alert]
+desc=Alert is the racial ability to be surprised less often. Surprise rolls are called by the GM with the `!surprise` command, and failing one means the monsters get the drop on you - this can often prove fatal.
+
+[Frail]
+desc=Frail is a racial "ability" that denotes that your character's race is especially frail, and may not roll higher than a d6 for hit points, regardless of class.
+
+[Large]
+desc=Large characters have higher carry weight thresholds, as well as increased hit die values (which determine HP).
+
+[Aim]
+desc=Aim is the halfling racial ability which gives them greater accuracy, gaining a +1 to all attack rolls with ranged weapons.
+
+[QuickWit]
+desc=QuickWit is the halfling racial ability to react quickly to any danger, giving them a +1 on initiative rolls.
+
+[ForestStealth]
+desc=ForestStealth is the halfling racial ability that gives them automatic 90 percent success when hiding in any forest environment.
+
+[Hide]
+desc=Even when not hiding in a forest environment, a halfling gets an automatic 70 percent success with `!s hide`, the thief's "hide in shadows" ability, even if the halfling is not a thief or other class capable of using the hide skill!
+
+[Small]
+desc=Small races have lower carry weight thresholds (they get into 'heavy' weight and slower move speed more easily), as well as equipment restrictions. A small character must hold a longsword, mace, or battleaxe in two hands, and may not wield a greatsword, greataxe, maul, polearm, longbow, heavy crossbow, or quarterstaff. As such, the 'small' weapons such as warhammer, shortsword, handaxe and sling are ideal for small characters.
+
+[ReactPlus]
+desc=ReactPlus is the half-orc's racial ability to be received more amicably by others, whether monsters or men. Half-orcs make for natural diplomats as a result, very much unlike their full-blooded brethren.
+
+[Scent]
+desc=Scent is the gnoll's racial ability to detect hidden or invisible creatures with supernatural scent. This does not give the gnoll ability to see invisible creatures, and as such they will still have a -2 to attack rolls against them.
+
+[Stonecunning]
+desc=Stonecunning is the racial ability to detect slanting passages, shifting walls, new construction, and most importantly traps. This is handled automatically in the `!trap` command, which any race has access to regardless of having this ability. Having Stonecunning makes your character's race more effective at `!trap`, though there are other ways to increase this further, such as playing a Scout or Thief.
+
+[Swim]
+desc=Swim gives lizardmen a swim speed, as well as lets them hold their breath for a full turn (60 rounds) under water. Keep in mind wearing metal armor or carrying too much weight can still lead to drowning.
+
+[Bite]
+desc=Bite is the lizardman's racial ability to attack with a bite. Doing so is simple: `!a bite (target)` example: `!a bite go1`. Bites deal 1d6 + strength modifier in piercing damage. A lizardman fighter may specialize in their bite with `!spec bite`.
+
+[SeeInvisible]
+desc=SeeInvisible is the gnome's racial ability to naturally see any invisible creatures or objects within 30 feet. Such creatures and objects appear as strange magical glows in the shape of the creature or object. A Thief hiding in shadows, an invisible sprite, or a character wearing an elven cloak may all be detected in this way.
