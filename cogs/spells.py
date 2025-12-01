@@ -41,7 +41,7 @@ ANIMAL_HD = {
     "Cheetah":2,
     "GiantCrab":3,
     "Crocodile":2, "LargeCrocodile":6, "GiantCrocodile":15,
-    "Deinonychus":3, "Pterodactyle":1, "Pteranodon":5, "Stegosaurus":11, "Triceratops":11, "TRex":18,
+    "Deinonychus":3, "Pterodactyl":1, "Pteranodon":5, "Stegosaurus":11, "Triceratops":11, "TRex":18,
     "Dog":1, "RidingDog":2,
     "Eagle":2, "GiantEagle":4, "Elephant":10, "Falcon":1,
     "HugeBarracuda":5, "GiantBarracuda":9, "GiantBass":2, "GiantCatfish":8, "GiantPiranha":4,
@@ -3705,6 +3705,16 @@ class SpellsCog(commands.Cog, name="Spells"):
 
             sec_spell = None
 
+        # If the user explicitly forced race: or class:, ignore spell/item matches.
+        # This lets things like race:darkvision or class:accuracy pull from race.lst/class.lst
+        # even if a spell or item with the same name exists.
+        if force_race and sec_race:
+            sec_spell = None
+            sec_item = None
+        if force_class and sec_class:
+            sec_spell = None
+            sec_item = None
+
 
         chosen = None
         if force_class and sec_class:
@@ -3744,7 +3754,6 @@ class SpellsCog(commands.Cog, name="Spells"):
 
             all_classes = [s for s in class_cp.sections() if s.lower() != "monster"]
 
-
             def _xp_anchor(secname):
                 opts = class_cp[secname]
                 for key in ("xp9","xp10","xp8","xp7","xp6","xp5","xp4","xp3","xp2"):
@@ -3753,20 +3762,68 @@ class SpellsCog(commands.Cog, name="Spells"):
                         except: pass
                 return None
 
-
             def _ab_l10(secname):
                 arr = _int_list(class_cp[secname].get("AB", "")) or [0]
                 return arr[min(9, len(arr)-1)]
 
             opts = class_cp[sec]
-            desc = _format_desc(opts.get("desc", "")) or "_(No description yet — add `desc=` to this class in class.lst.)_"
 
+            # ---- Detect whether this section is a full class or just a class ability entry ----
+            keys_lower = {k.lower() for k in opts.keys()}
+
+            has_xp   = any(k.startswith("xp") for k in keys_lower)
+            has_hp   = ("hp9" in keys_lower) or ("hp20" in keys_lower)
+            has_ab   = "ab" in keys_lower
+            has_spells = any(k.startswith("spell") for k in keys_lower)  # spell1, spell2, etc.
+            has_saves  = any(k in keys_lower for k in ("poi","wand","para","breath","spell"))
+
+            is_full_class = has_xp or has_hp or has_ab or has_spells or has_saves
+
+            if not is_full_class:
+                # -------- Class ability definition (e.g. [Accuracy] with only desc=) --------
+                raw_desc = opts.get("desc", "") or ""
+                desc = _format_desc(raw_desc) if raw_desc.strip() else \
+                       "_(No description yet — add `desc=` to this class ability in class.lst.)_"
+
+                ability_norm = _norm(sec)
+
+                def _tokset(s):
+                    return {_norm(t) for t in re.split(r"[,\s/|]+", str(s or "")) if t.strip()}
+
+                # Find all *classes* that reference this ability in their skills= line.
+                appears_in = []
+                for csec in all_classes:
+                    if csec == sec:
+                        continue
+                    c_opts = class_cp[csec]
+                    skills_line = c_opts.get("skills", "") or ""
+                    if not skills_line.strip():
+                        continue
+                    if ability_norm in _tokset(skills_line):
+                        appears_in.append(csec)
+
+                appears_in.sort(key=str.lower)
+                classes_txt = ", ".join(appears_in) if appears_in else "—"
+
+                embed = nextcord.Embed(
+                    title=sec,
+                    description=desc,
+                    color=random.randint(0, 0xFFFFFF)
+                )
+                embed.add_field(name="Type", value="Class Ability", inline=True)
+                embed.add_field(name="Appears In Classes", value=classes_txt, inline=False)
+
+                await ctx.send(embed=embed)
+                return
+
+            # ===================== Full class (existing behavior) =====================
+
+            desc = _format_desc(opts.get("desc", "")) or "_(No description yet — add `desc=` to this class in class.lst.)_"
 
             cls_norm = _norm(sec)
             allowed_races = []
             for rsec in race_cp.sections():
                 r_opts = race_cp[rsec]
-
 
                 if _truthy(r_opts.get("hidden", "")) or _truthy(r_opts.get("secret", "")):
                     continue
@@ -3782,13 +3839,11 @@ class SpellsCog(commands.Cog, name="Spells"):
             allowed_races.sort(key=str.lower)
             allowed_races_txt = ", ".join(allowed_races) if allowed_races else "—"
 
-
             hd_line = ""
             if "hp9" in opts:
                 die = opts.get("hp9","").strip()
                 after9 = opts.get("hp20","").strip()
                 hd_line = f"{die} (then +{after9} / level after 9th)" if after9 else die
-
 
             prereqs = []
             for k, v in opts.items():
@@ -3798,7 +3853,6 @@ class SpellsCog(commands.Cog, name="Spells"):
                     except: pass
             prereq_text = ", ".join(prereqs) if prereqs else "—"
 
-
             def _int_list(s):
                 try: return [int(x) for x in str(s).split()]
                 except: return []
@@ -3807,7 +3861,6 @@ class SpellsCog(commands.Cog, name="Spells"):
             ab_milestones = f"L1 **+{_ab_at(1)}**, L5 **+{_ab_at(5)}**, L10 **+{_ab_at(10)}**"
 
             my_xp = _xp_anchor(sec)
-
 
             def _save_at_level(level):
                 out = []
@@ -3842,10 +3895,74 @@ class SpellsCog(commands.Cog, name="Spells"):
             return
 
 
+
         if kind == "race":
             opts = race_cp[sec]
-            desc = _format_desc(opts.get("desc", "")) or "_(No description yet — add `desc=` to this race in race.lst.)_"
 
+            # Detect whether this section is a full race or just a racial ability definition.
+            keys_lower = {k.lower() for k in opts.keys()}
+
+            has_class_line = "class" in keys_lower
+            has_banned     = "banned" in keys_lower
+
+            has_minmax = any(k.endswith("min") or k.endswith("max") for k in keys_lower)
+            has_saves  = any(k in keys_lower for k in ("poi", "wand", "para", "breath", "spell"))
+
+            # If it has none of the usual "race" fields, treat it as a racial ability entry.
+            is_full_race = has_class_line or has_banned or has_minmax or has_saves
+
+            if not is_full_race:
+                # Racial ability / trait definition (e.g. [QuickLearner] with desc= only).
+
+                raw_desc = opts.get("desc", "") or ""
+                desc = _format_desc(raw_desc) if raw_desc.strip() else \
+                       "_(No description yet — add `desc=` to this racial ability in race.lst.)_"
+
+                ability_norm = _norm(sec)
+
+                def _tokset(s):
+                    import re as _re
+                    return {_norm(t) for t in _re.split(r"[,\s/|]+", str(s or "")) if t.strip()}
+
+                # Find all *races* that reference this ability in their skills= line.
+                appears_in = []
+                for rsec in race_cp.sections():
+                    if rsec == sec:
+                        continue
+
+                    r_opts = race_cp[rsec]
+
+                    # Skip other ability-only sections (no class= line).
+                    if not (r_opts.get("class", "") or "").strip():
+                        continue
+
+                    # Respect hidden/secret and HIDE_RACES, like the class-handling code.
+                    if _truthy(r_opts.get("hidden", "")) or _truthy(r_opts.get("secret", "")):
+                        continue
+                    if _norm(rsec) in HIDE_RACES:
+                        continue
+
+                    skills_line = r_opts.get("skills", "") or ""
+                    if ability_norm in _tokset(skills_line):
+                        appears_in.append(rsec)
+
+                appears_in.sort(key=str.lower)
+                races_txt = ", ".join(appears_in) if appears_in else "—"
+
+                embed = nextcord.Embed(
+                    title=sec,
+                    description=desc,
+                    color=random.randint(0, 0xFFFFFF)
+                )
+                embed.add_field(name="Type", value="Racial Ability", inline=True)
+                embed.add_field(name="Appears In Races", value=races_txt, inline=False)
+
+                await ctx.send(embed=embed)
+                return
+
+            # ========= Full race (existing behavior) =========
+
+            desc = _format_desc(opts.get("desc", "")) or "_(No description yet — add `desc=` to this race in race.lst.)_"
 
             cls_line = (opts.get("class", "") or "").strip()
             if cls_line:
@@ -3853,10 +3970,8 @@ class SpellsCog(commands.Cog, name="Spells"):
             else:
                 allowed_classes = "—"
 
-
             banned_line = (opts.get("banned", "") or "").strip()
             banned_txt = ", ".join(banned_line.split()) if banned_line else "—"
-
 
             MIN_KEYS = ("str","dex","con","int","wis","cha")
             mins, maxs = [], []
@@ -3872,9 +3987,7 @@ class SpellsCog(commands.Cog, name="Spells"):
             min_text = ", ".join(mins) if mins else "—"
             max_text = ", ".join(maxs) if maxs else "—"
 
-
             skills_text = (opts.get("skills", "") or "—").replace(" ", ", ")
-
 
             SAVE_LABELS = {
                 "poi":"Death/Poison",
@@ -3892,7 +4005,6 @@ class SpellsCog(commands.Cog, name="Spells"):
                     except:
                         pass
             save_mod_text = "\n".join(save_mod_lines) if save_mod_lines else "—"
-
 
             SKILL_LABELS = {
                 "openlock":"Open Lock",
@@ -3932,6 +4044,7 @@ class SpellsCog(commands.Cog, name="Spells"):
 
             await ctx.send(embed=embed)
             return
+
 
 
         if kind == "item":
