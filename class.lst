@@ -572,6 +572,63 @@ spell=15 14 14 13 13 13 13 12 12 11 11 11 11 10 10 9 9 9 9 8
 AB=1 1 2 2 3 3 4 4 5 5 5 6 6 6 7 7 7 8 8 8
 desc=Members of this powerful class that combines stealth and illusion may cast spells while wearing leather armor. These characters roll four-sided dice for hit points.
 
+[Accuracy]
+desc=Accuracy is the Scout class's specialty with ranged weapons. When using any ranged weapon, a Scout adds +1 to all attack rolls automatically.
+
+[TurnUndead]
+desc=TurnUndead is a class ability shared by Clerics and Paladins, which allows them to send undead creatures fleeing in terror. It is used by `!turn`, ex. `!turn zo1 zo2 sk1 sk2 sk3`. Turn Undead has no range limit, but the undead must be within the cleric or paladin's line of sight.//A cleric is twice as effective at turning undead as a paladin; paladins are treated as 1/2 their level when determining the power of the ability. Turn Undead becomes more powerful as the character levels up, working on stronger undead creatures.
+
+[AnimalAffinity]
+desc=AnimalAffinity is the Druid class ability to calm and/or befriend animals. This is done with `!calm`, ex. `!calm wo1 wo2 wo3`. Add the `-tame` flag if the animals themselves are already tame, or `-monstrous` if the animal is actually a magical beast, such as a griffin, pegasus, or chimera. The bot will state whether the animal is calmed or befriended. If the druid wishes to recruit a calmed creature, perhaps a spell might assist. If the party attacks a calmed creature, it is no longer calmed.
+
+[WeaponSpec]
+desc=WeaponSpec is the Fighter class ability to specialize in their weapon of choice. This is done with `!spec (weapon)`, ex. `!spec longsword`. Specializing in a weapon will impart bonuses onto all weapons of that type, so specializing in longsword will mean your normal longsword as well as your magic flaming longsword are equally effective in your hands. Specializing in a weapon gives bonuses to attack and damage rolls, as well as multiple attacks, based on the fighter's level, as follows://`L1-3:  +1/+0   (1 attack)`//`L4-6:  +1/+1   (1 attack)`//`L7-9:  +2/+1   (1 attack)`//`L10-12:+2/+2   (2 attacks)`//`L13-15:+3/+2   (2 attacks)`//`L16-18:+3/+3   (2 attacks)`//`L19-20:+4/+3   (3 attacks)`//Fighters also gain the ability called "Heroic Called Shot" with their specialized weapon. Any class may use called shots with `!a (weapon) (target) called`: if the called shot hits, the target may make a save vs. Death Ray. On a failure, the called shot succeeds. A called shot can be anything like a trip, disarm, push, blind, frighten, etc. The GM will work out the bonuses according to their ruling. Fighters, however, get to perform called shots automatically, on top of dealing damage: if their attack roll exceeds the target's AC by 4, a called shot attempt is automatically rolled.
+
+[NoSneak]
+desc=NoSneak is the Barbarian class ability to ignore a Thief's sneak attack, a Scout's snipe, or an Assassin's death strike, unless the Thief/Scout/Assassin is higher level than the Barbarian.
+
+[AnimalReflexes]
+desc=AnimalReflexes is the Barbarian class ability to be surprised less often. Barbarians are only surprised by a 1 on the 1d6.
+
+[Runner]
+desc=Runner is the Barbarian class ability that gives them a movement speed boost of 5 feet, factored in automatically.
+
+[Rage]
+desc=Rage is the Barbarian class ability to swing wildly, adding +2 to both attack and damage rolls, but reducing the Barbarian's AC by 2 until the start of their next turn. In this bot, rage is not a state one enters, but rather a powerful burst of rage in that moment. To use rage with one's attack, simply add `rage` to the end of the attack command, ex. `!a greataxe or1 rage`.
+
+[Might]
+desc=Might is the Barbarian class ability that adds 2 times strength modifier to all melee weapon attacks, factored in automatically.
+
+[UnarmoredDefense]
+desc=UnarmoredDefense is the Barbarian class ability that gives ascending AC when the barbarian is wearing no armor, based on level. At first level, Leather Armor will be better than the unarmored defense, but that quickly changes. Barbarian unarmored AC is as follows://`Level 1:  12 AC`//`Level 2:  13 AC`//`Level 3:  14 AC`//`Level 4:  16 AC`//`Level 5:  17 AC`//`Level 6:  18 AC`//`Level 7+: 20 AC`
+
+[MagicWeapon]
+desc=MagicWeapon is the Paladin class ability to transform a mundane weapon into a magical weapon, for the purpose of overcoming nonmagical resistance or immunity. This is done with `!magicweapon`, ex. `!magicweapon longsword`. A paladin can only make their own equipped weapon magical, not someone else's. A paladin may do this on the same turn as attacking, but may only bless one weapon per combat round. A weapon stays blessed (magical) for a full turn (60 combat rounds). This ability may be used indefinitely.
+
+[LayonHands]
+desc=LayonHands is the Paladin class ability to impart divine healing by pressing the palms of both hands onto one's own body, or an ally's body, and offering prayer. The divine healing is equal to 2 + Charisma modifier. Keep in mind Paladin spellcasting is keyed off of Wisdom. To use, `!loh` (for self) or `!loh (target)` on an ally.//At level 7, paladins can cure diseases with lay on hands, to do so would be `!loh (target) disease`. At level 11, paladins can neutralize poison in much the same way: `!loh (target) poison`.//Paladins have 1 use of this ability per day at level 1, 2 at level 3, 3 at level 5, 4 at level 7, and so on.
+
+[ProtectionAura]
+desc=Paladins radiate a constant ProtectionFromEvil (or ProtectionFromGood) aura in a 10' radius. This is handled manually, as in there is no automation in the bot for it. Against summoned evil/good creatures, extraplanar evil/good creatures, or creatures with sufficiently evil/good intent (determined by the GM), the paladin and those within their aura receive a bonus of +2 to AC and saving throws, and are immune to being charmed by the target. Summoned and extraplanar creatures matching the "protection from" classification are also completely unable to physically touch the paladin and those within their aura.//The Paladin can also DetectEvil (or DetectGood), at will, as the spell. This is done with `!cast detectevil -i`. Keep in mind that a paladin chooses whether to protect from/detect evil or good once, upon character creation, and this cannot change without the GM's permission: you do not get access to both DetectEvil and DetectGood.
+
+[FavoredEnemy]
+desc=FavoredEnemy is the Ranger class ability that adds a bonus of +3 to damage rolls against their favored enemy type. This enemy might be a certain category of creature such as giants, humanoids, dragons, or undead. With the GM's permission, the list might include rival organizations, nations, or similar agencies. To use, simply add `fav` to the end of an attack command, such as `!a longbow go1 fav`.
+
+[BowExpert]
+desc=BowExpert is the Ranger specialty with shortbows and longbows: all rangers automatically add +2 to attack rolls performed with these weapons. This ability also allows rangers to fire 2 shots per turn with these weapons, starting at level 9.
+
+[SneakAttack]
+desc=SneakAttack is the Thief ability to deal double damage on an unaware opponent. Sneak attacks are **melee only**, and cannot be performed with ranged weapons: if you want to sneak attack from range, consider a Scout.//In order to use, simply add `sneak` to the end of an attack roll when the GM determines your attack qualifies for sneak attack. This adds +4 to the attack roll as well as doubling the damage. This double damage can stack with a spear's charge and a critical hit.//You may only attempt a sneak attack on a given monster once per combat, barring special GM permission.
+
+[SniperShot]
+desc=SniperShot is the Scout ability to deal double damage on an unaware opponent. Snipes are **ranged only**, and cannot be performed with melee weapons: if you want to sneak attack from melee, consider a Thief.//In order to use, simply add `snipe` to the end of an attack roll when the GM determines your attack qualifies for a snipe. Ex: `!a heavyxbow go1 snipe`.//You may only attempt a sniper shot on a given monster once per combat, barring special GM permission.
+
+[Sharpshooter]
+desc=Sharpshooter is the Scout ability to ignore the penalty for attacking at a weapon's long range. This is unlocked at level 9.
+
+[DeathStrike]
+desc=DeathStrike is the Assassin class ability to instantly kill an opponent with a fatal blow. In order to use, the Assassin must be approaching the target unawares, such as from behind when they are distracted by an ally, or after successfully hiding or moving silently. Death strikes are **melee only**, and also must be used with a one-handed weapon; you may death strike with a longsword, but not a greatsword.//In order to use, simply add `kill` to the end of an attack roll, ex. `!a dagger go1 kill`. This adds +4 to the attack roll, and if the attack hits, the target must save vs. Death or die instantly. Even if the target passes the save, this attack deals normal damage. Characters two or more levels lower than the Assassin (or monsters with HD two or more less than the Assassin's level) are denied a saving throw.//You may only attempt a death strike on a given monster once per combat, barring special GM permission.
+
 [monster]
 hd1=1
 hd2=2
