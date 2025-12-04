@@ -279,10 +279,54 @@ def load_classes(file_path):
     return classes
 
 
-class_data = load_classes('class.lst')
-race_data  = load_races('race.lst')
-# Canonical class names pulled from class.lst
-VALID_CLASS_NAMES = {name.strip().lower() for name in class_data.keys()}
+class_data = load_classes("class.lst")
+race_data  = load_races("race.lst")
+
+
+def _is_playable_class_section(name: str, data: dict) -> bool:
+    """
+    Real PC classes in class.lst (Fighter, Cleric, Spellcrafter, etc.)
+    have XP progression keys like xp2/xp3/etc.
+
+    Ability-only sections (Accuracy, SneakAttack, Rage, etc.) and the
+    helper 'monster' section do not, so we exclude those here.
+    """
+    for k in (data or {}).keys():
+        k_l = str(k).strip().lower()
+        if k_l.startswith("xp") and k_l[2:].isdigit():
+            return True
+    return False
+
+
+PLAYABLE_CLASS_SECTIONS = {
+    name
+    for (name, data) in class_data.items()
+    if _is_playable_class_section(name, data)
+}
+
+# Canonical class names pulled from class.lst (real PC classes only)
+VALID_CLASS_NAMES = {name.strip().lower() for name in PLAYABLE_CLASS_SECTIONS}
+
+
+def _is_playable_race_section(name: str, data: dict) -> bool:
+    """
+    Real races in race.lst define a 'class' field listing allowed classes.
+    Racial ability stubs (QuickLearner, Darkvision, Bite, etc.) do not.
+    """
+    for k in (data or {}).keys():
+        if str(k).strip().lower() == "class":
+            return True
+    return False
+
+
+PLAYABLE_RACE_SECTIONS = {
+    name
+    for (name, data) in race_data.items()
+    if _is_playable_race_section(name, data)
+}
+
+VALID_RACE_NAMES = {name.strip().lower() for name in PLAYABLE_RACE_SECTIONS}
+
 
 
 def get_race(races_cfg, race_name):
@@ -743,14 +787,16 @@ class SheetCog(commands.Cog):
         char_class = standardize_class_name(char_class)
         char_name = name.strip()
 
-        # Validate class against class.lst so typos like "Figher" are rejected
+        # Validate class against class.lst so typos like "Figher" are rejected.
+        # VALID_CLASS_NAMES only contains real PC classes (not class abilities).
         if char_class.strip().lower() not in VALID_CLASS_NAMES:
-            valid_list = ", ".join(sorted(class_data.keys()))
+            valid_list = ", ".join(sorted(PLAYABLE_CLASS_SECTIONS))
             await ctx.send(
                 f"❌ Unknown class '{char_class}'. "
                 f"Please choose one of: {valid_list}"
             )
             return
+
 
         existing_disp, existing_path = _resolve_char_ci(char_name)
         if existing_path:
@@ -759,11 +805,17 @@ class SheetCog(commands.Cog):
 
         file_name = f"{char_name.replace(' ', '_')}.coe"
 
-        races_cfg = load_races("race.lst")
+        # Race validation: only treat real races (those with a 'class' list)
+        # as valid. This avoids racial ability stubs like QuickLearner, Bite, etc.
         race_lower = race.lower()
-        if race_lower not in {r.lower() for r in races_cfg.keys()}:
-            await ctx.send(f"Unknown race '{race}'. Please choose a valid race.")
+        if race_lower not in VALID_RACE_NAMES:
+            valid_races = ", ".join(sorted(PLAYABLE_RACE_SECTIONS))
+            await ctx.send(
+                f"❌ Unknown race '{race}'. "
+                f"Please choose one of: {valid_races}"
+            )
             return
+
 
         stat_keys = ['str', 'dex', 'con', 'int', 'wis', 'cha']
 
