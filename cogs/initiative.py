@@ -4288,6 +4288,10 @@ class Initiative(commands.Cog):
                     else:
                         hp_line = f"{old_hp} → **{new_hp}**"
 
+                    # Add DEAD! marker if they dropped to 0 or below
+                    if new_hp <= 0:
+                        hp_line += "  ☠️ **DEAD!**"
+
                     dmg_line = f"{die} [{', '.join(str(r) for r in rolls)}]"
                     dmg_line += (f" → **{final}** ({note})" if note else f" → **{final}**")
 
@@ -4327,6 +4331,7 @@ class Initiative(commands.Cog):
                             except Exception: pass
                         except Exception:
                             pass
+
 
         try:
             x_sw = cfg.get(chan_id, f"{slot}.x_swallow", fallback="")
@@ -6604,20 +6609,33 @@ class Initiative(commands.Cog):
           !mon <name> [count] [flags...]
 
         Flags (orderless; -x or -x both OK):
-          -nolair   -> don’t queue lair hoards (A..O)
-          -noind    -> don’t roll individual treasure (P..V)
-          -noloot   -> no treasure handling at all (implies both of the above)
-          -1hp       -> spawn with 1 HP (keeps full max HP)
+          -nolair              -> don’t queue lair hoards (A..O)
+          -noind               -> don’t roll individual treasure (P..V)
+          -noloot              -> no treasure handling at all (implies both of the above)
+          -1hp                 -> spawn with 1 HP (keeps full max HP)
+          -owner <char|@user|id> -> assign monster ownership to that PC’s player or Discord user
         """
 
+        # Parse args: [count], flags, and optional "-owner X"
         count = None
-        raw_flags = []
-        for tok in args:
-            t = str(tok).strip()
+        raw_flags: list[str] = []
+        owner_spec: str | None = None
+
+        args_list = list(args)
+        i = 0
+        while i < len(args_list):
+            t = str(args_list[i]).strip()
+            tl = t.lower()
             if count is None and re.fullmatch(r"\d+", t):
                 count = int(t)
+            elif tl in ("-owner", "--owner", "-o"):
+                if i + 1 < len(args_list):
+                    owner_spec = str(args_list[i + 1]).strip()
+                    i += 1
             else:
                 raw_flags.append(t)
+            i += 1
+
         if count is None:
             count = 1
         if count <= 0 or count > 50:
@@ -6627,7 +6645,7 @@ class Initiative(commands.Cog):
         fset = {re.sub(r"^-?", "-", f.strip().lower()) for f in raw_flags}
         want_lair  = "-noloot" not in fset and "-nolair" not in fset
         want_indiv = "-noloot" not in fset and not ({"-noind", "-no-ind", "-noindividual"} & fset)
-        spawn_at_1hp = any(f in fset for f in ("-1hp", "-1hp", "-onehp", "-hp1"))
+        spawn_at_1hp = any(f in fset for f in ("-1hp", "-onehp", "-hp1"))
 
         cfg = _load_battles()
         chan_id = _section_id(ctx.channel)
@@ -6639,6 +6657,53 @@ class Initiative(commands.Cog):
         if str(ctx.author.id) != str(dm_id):
             await ctx.send("❌ Only the DM can use `!mon` in this battle.")
             return
+
+        # Resolve -owner (optional)
+        def _resolve_owner_spec(spec: str) -> tuple[str | None, str | None]:
+            """
+            Returns (owner_id, controller_name)
+
+            - If given a mention or raw numeric id, owner_id is that id, controller_name is None.
+            - If given a character name, owner_id is that PC's owner_id and controller_name is the PC name.
+            """
+            spec = (spec or "").strip()
+            if not spec:
+                return None, None
+
+            # 1) Discord ID / mention
+            m = re.search(r"(\d{15,25})", spec)
+            if m:
+                return m.group(1), None
+
+            # 2) Character name (local .coe)
+            try:
+                disp, path = _resolve_char_ci_local(spec)
+            except Exception:
+                disp, path = (None, None)
+
+            if path and os.path.exists(path):
+                pcfg = read_cfg(path)
+                owner_id = (get_compat(pcfg, "info", "owner_id", fallback="") or "").strip()
+                if not owner_id:
+                    legacy = (get_compat(pcfg, "info", "owner", fallback="") or "")
+                    m2 = re.search(r"(\d{15,25})", legacy)
+                    owner_id = m2.group(1) if m2 else ""
+                if owner_id:
+                    return owner_id, (disp or spec)
+
+            return None, None
+
+        owner_id_override: str | None = None
+        controller_name: str | None = None
+        if owner_spec:
+            owner_id_override, controller_name = _resolve_owner_spec(owner_spec)
+            if not owner_id_override:
+                await ctx.send(f"⚠️ Could not resolve owner from `{owner_spec}`; monsters will be owned by the DM.")
+            else:
+                if controller_name:
+                    await ctx.send(f"👤 Monsters will be assigned to **{controller_name}**’s player as owner.")
+                else:
+                    await ctx.send(f"👤 Monsters will be assigned to <@{owner_id_override}> as owner.")
 
         tpl = _load_monster_template(mon_name)
         if not tpl:
@@ -6685,7 +6750,6 @@ class Initiative(commands.Cog):
         SAVE_KEYS = ("poi", "wand", "para", "breath", "spell")
 
         def _nm_saves() -> dict[str, str]:
-
             return {k: str(_class_save_target("Fighter", 1, k) + 1) for k in SAVE_KEYS}
 
         saveas_raw = str(tpl.get("saveas", "Fighter 1")).strip()
@@ -6710,6 +6774,10 @@ class Initiative(commands.Cog):
         names, scores = _parse_combatants(cfg, chan_id)
         join_seq = cfg.getint(chan_id, "join_seq", fallback=0)
 
+        # Used to decide whether to tag undead minions as 'commandundead'
+        tpl_type = str(tpl.get("type", "")).strip().lower()
+        is_undead_tpl = ("undead" in tpl_type)
+
         for _ in range(count):
             i = 1
             while f"{prefix}{i}" in existing:
@@ -6727,7 +6795,6 @@ class Initiative(commands.Cog):
 
                 frac = round(hd_val - full, 3)
                 if full == 0:
-
                     if abs(frac - 0.5) < 1e-6:
                         hp += random.randint(1, 4)
                     elif abs(frac - 0.25) < 1e-6:
@@ -6735,10 +6802,8 @@ class Initiative(commands.Cog):
                     elif abs(frac - 0.125) < 1e-6:
                         hp += 1
                     else:
-
                         hp += 1
                 else:
-
                     if abs(frac - 0.5) < 1e-6:
                         hp += random.randint(1, 4)
 
@@ -6750,13 +6815,22 @@ class Initiative(commands.Cog):
             coe = configparser.ConfigParser()
             coe.optionxform = str
             coe["version"] = {"current": "08082018"}
+
+            owner_id_val = str(dm_id)
+            if owner_id_override:
+                owner_id_val = str(owner_id_override)
+
             coe["info"] = {
                 "race": "Monster", "class": "Monster", "sex": "",
-                "name": mon, "owner_id": str(dm_id),
+                "name": mon, "owner_id": owner_id_val,
                 "monster_type": mon_name, "battle_chan": chan_id,
             }
             if skills_str:
                 coe["info"]["skills"] = skills_str
+            if controller_name:
+                # Mark who is actually controlling this monster (e.g., Lok)
+                coe["info"]["controller"] = controller_name
+
             coe["max"] = {"hp": str(hp)}
             coe["cur"] = {
                 "hp": str(1 if spawn_at_1hp else hp),
@@ -6772,7 +6846,6 @@ class Initiative(commands.Cog):
                 "resist": resist,
                 "reduce1": reduce1,
                 "immune": immune,
-
                 "hd": str(hd_val),
             }
 
@@ -6799,8 +6872,6 @@ class Initiative(commands.Cog):
 
             coe["stats"] = stats
             coe["base"]  = dict(stats)
-
-            coe["base"]  = dict(stats)
             coe["saves"] = saves_out
             coe["thief_mods"] = {}
             coe["banned_weapons"] = {"list": ""}
@@ -6811,7 +6882,6 @@ class Initiative(commands.Cog):
 
             spells_line = str(tpl.get("spells", "")).strip()
             if spells_line:
-
                 mon_magic = {}
                 mon_left  = {}
                 listed = []
@@ -6825,13 +6895,13 @@ class Initiative(commands.Cog):
                               tpl.get(tok.lower(), None) or
                               tpl.get(key, None))
                     try:
-                        count = int(str(raw_ct).strip()) if raw_ct is not None else 1
+                        count_tok = int(str(raw_ct).strip()) if raw_ct is not None else 1
                     except Exception:
-                        count = 1
+                        count_tok = 1
 
                     listed.append(key)
-                    mon_magic[f"{key}_total"] = str(max(0, count))
-                    mon_left[f"{key}_left"]   = str(max(0, count))
+                    mon_magic[f"{key}_total"] = str(max(0, count_tok))
+                    mon_left[f"{key}_left"]   = str(max(0, count_tok))
 
                 cl_raw = tpl.get("casterlevel", None) or tpl.get("cl", None)
                 try:
@@ -6859,15 +6929,22 @@ class Initiative(commands.Cog):
 
             for opt_key, _ in list(cfg.items(chan_id)):
                 if opt_key.startswith(f"{s}."):
-                  cfg.remove_option(chan_id, opt_key)
+                    cfg.remove_option(chan_id, opt_key)
 
-                if cfg.has_option(chan_id, mon):
-                 cfg.remove_option(chan_id, mon)
+            if cfg.has_option(chan_id, mon):
+                cfg.remove_option(chan_id, mon)
+
             cfg.set(chan_id, f"{s}.dex", "0")
             join_seq += 1
             cfg.set(chan_id, "join_seq", str(join_seq))
             cfg.set(chan_id, f"{s}.join", str(join_seq))
             cfg.set(chan_id, f"{s}.disp", mon)
+
+            # Tag as a minion of controller_name for hints + command-undead semantics
+            if owner_id_override and controller_name:
+                cfg.set(chan_id, f"{s}.minion_by", controller_name)
+                if is_undead_tpl:
+                    cfg.set(chan_id, f"{s}.minion_type", "commandundead")
 
             created.append((mon, d6, hp))
             xp_added += max(0, xp_each)
@@ -6894,9 +6971,7 @@ class Initiative(commands.Cog):
                                   or str(tpl.get("lair_gold", "")).strip()
                                   or str(tpl.get("extra_gold", "")).strip())
                 if bonus_spec_raw:
-
                     spec_norm = bonus_spec_raw.replace("×", "x").replace("*", "x").replace(" ", "")
-
                     for L in set(lair_letters):
                         opt = f"tre_lair_bonus_{L}"
                         if not cfg.has_option(chan_id, opt) or not cfg.get(chan_id, opt, fallback="").strip():
@@ -6919,13 +6994,13 @@ class Initiative(commands.Cog):
         def _fmt_pm(n): return f"+{n}" if n >= 0 else str(n)
         lines = []
         for (mon, ini, _hp) in created:
-
             shown = f"1d6 = {ini - init_bonus}"
             if init_bonus:
                 shown += f" {_fmt_pm(init_bonus)}"
             shown += f" → **{ini}**"
             lines.append(f"🧟 **{mon}** joins initiative! ({shown})")
         await ctx.send("\n".join(lines))
+
 
     @commands.command(name="tally")
     async def tally_xp(self, ctx, *args):
@@ -8120,6 +8195,10 @@ class Initiative(commands.Cog):
         expl_clock = cfg.getint(chan_id, "expl_clock", fallback=0) + TOTAL_ROUNDS
         cfg.set(chan_id, "expl_clock", str(expl_clock))
         cfg.set(chan_id, "etime_rounds", str(expl_clock))
+
+        # Keep the main 'round' counter aligned with exploration time
+        _inc_cfg_int(cfg, chan_id, "round", TOTAL_ROUNDS)
+
         changed = True
 
         for _ in range(turns):
@@ -8354,7 +8433,24 @@ class Initiative(commands.Cog):
                      for actor, fx in sorted(expired_by_label.items())]
             embed.add_field(name="Expired effects", value="\n".join(lines), inline=False)
 
-        await ctx.send(embed=embed)
+        # Ping the DM as a reminder to move allied monsters
+        dm_id = cfg.get(chan_id, "DM", fallback="")
+        dm_mention = f"<@{dm_id}>" if dm_id and str(dm_id).isdigit() else ""
+        content = None
+        if dm_mention:
+            seg = "turn" if turns == 1 else "turns"
+            content = (
+                f"{dm_mention} ⏰ Reminder: move any allied monsters during "
+                f"this exploration turn (monsters are skipped by `!t`)."
+            )
+            
+        await ctx.send(
+            content=content,
+            embed=embed,
+            allowed_mentions=nextcord.AllowedMentions(
+                users=True, roles=False, everyone=False
+            ),
+        )
 
     def _get_expl_clock(self, cfg, chan_id: str) -> int:
 
@@ -8718,6 +8814,7 @@ class Initiative(commands.Cog):
           - Announces who's up next for exploration with a mention.
           - Posts an exploration embed (movement, clock, actions).
           - On wrap to the top, runs 'nt' (or fallback) *then* shows the updated clock.
+          - Monsters are skipped; only PCs get pings.
         """
         cfg = _load_battles()
         chan_id = _section_id(ctx.channel)
@@ -8730,15 +8827,40 @@ class Initiative(commands.Cog):
             await ctx.send("ℹ️ No combatants yet.")
             return
 
-        next_name, wraps = _exploration_next(cfg, chan_id)
+        wraps_any = False
+        next_name = None
+
+        # Step through the order up to once per combatant, skipping monsters
+        for _ in range(len(names)):
+            candidate, wraps = _exploration_next(cfg, chan_id)
+            if not candidate:
+                await ctx.send("ℹ️ No one to ping.")
+                return
+
+            wraps_any = wraps_any or wraps
+
+            # Advance exploration pointer to this candidate
+            cfg.set(chan_id, "turn_e", candidate)
+            _save_battles(cfg)
+
+            # Determine if this combatant is a monster (class = Monster in its .coe)
+            try:
+                is_mon = _is_monster(candidate)
+            except Exception:
+                is_mon = False
+
+            if not is_mon:
+                next_name = candidate
+                break
+            # else: keep looping, this one is a monster
+
+        # If we never found a non-monster, report and bail
         if not next_name:
-            await ctx.send("ℹ️ No one to ping.")
+            await ctx.send("ℹ️ No player characters in the exploration order to act (all monsters).")
             return
 
-        cfg.set(chan_id, "turn_e", next_name)
-        _save_battles(cfg)
-
-        if wraps:
+        # Handle wrap(s) just like before (only once per call)
+        if wraps_any:
             try:
                 nt_cmd = self.bot.get_command("nt")
                 if nt_cmd:
@@ -8748,12 +8870,18 @@ class Initiative(commands.Cog):
                     cfg.set(chan_id, "round", str(old + 60))
                     _save_battles(cfg)
                     await ctx.send("⌛ **A full exploration turn passes.**")
-                    try:    await self._apply_turn_disease_local(ctx, cfg, chan_id)
-                    except: pass
-                    try:    await self._apply_turn_strength_recovery(ctx, cfg, chan_id)
-                    except: pass
-                    try:    await self._update_tracker_message(ctx, cfg, chan_id)
-                    except: pass
+                    try:
+                        await self._apply_turn_disease_local(ctx, cfg, chan_id)
+                    except Exception:
+                        pass
+                    try:
+                        await self._apply_turn_strength_recovery(ctx, cfg, chan_id)
+                    except Exception:
+                        pass
+                    try:
+                        await self._update_tracker_message(ctx, cfg, chan_id)
+                    except Exception:
+                        pass
             except Exception:
                 pass
 
@@ -8766,11 +8894,13 @@ class Initiative(commands.Cog):
             except Exception:
                 pass
 
+        # Auto-activate for the PC we landed on
         try:
             await self._auto_activate_for_turn(ctx, next_name)
         except Exception:
             pass
-            
+
+        # Movement for that PC
         try:
             base_mv, turn_mv = _move_rates_for_char(next_name)
         except Exception:
@@ -8782,10 +8912,16 @@ class Initiative(commands.Cog):
             title=f"🧭 Exploration Turn: {next_name}",
             color=nextcord.Color.blurple()
         )
-        emb.add_field(name="Movement this turn", value=f"**{turn_mv}**′ (3× base {base_mv}′)", inline=False)
-        emb.add_field(name="Exploration clock",
+        emb.add_field(
+            name="Movement this turn",
+            value=f"**{turn_mv}**′ (3× base {base_mv}′)",
+            inline=False
+        )
+        emb.add_field(
+            name="Exploration clock",
             value=f"{exp_rounds} rounds ({self._format_turns_from_rounds(exp_rounds)})",
-            inline=False)
+            inline=False
+        )
         emb.add_field(
             name="Things you can do now",
             value=(
@@ -8805,6 +8941,9 @@ class Initiative(commands.Cog):
             embed=emb,
             allowed_mentions=nextcord.AllowedMentions(users=True, roles=False, everyone=False),
         )
+
+       
+
 
     @commands.command(name="treset")
     async def exploration_reset(self, ctx):
