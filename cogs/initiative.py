@@ -1930,6 +1930,21 @@ def _save_battles(cfg):
 def _section_id(channel):
     return str(channel.id)
 
+def _get_battle_mode(cfg, chan_id: str) -> bool:
+    """Return True if this channel is in battle (combat) mode; False = exploration mode."""
+    try:
+        return cfg.getint(chan_id, "battle_mode", fallback=0) > 0
+    except Exception:
+        return False
+
+
+def _set_battle_mode(cfg, chan_id: str, on: bool) -> None:
+    """Set battle mode on/off for this channel."""
+    if not cfg.has_section(chan_id):
+        cfg.add_section(chan_id)
+    cfg.set(chan_id, "battle_mode", "1" if on else "0")
+
+
 def _parse_combatants(cfg, chan_id):
     names_line = cfg.get(chan_id, "list", fallback="")
     names = [n for n in names_line.split() if n]
@@ -5315,6 +5330,7 @@ class Initiative(commands.Cog):
         cfg.set(chan_id, "join_seq", "0")
         cfg.set(chan_id, "message_id", "0")
         cfg.set(chan_id, "attacks_hint", "1")
+        cfg.set(chan_id, "battle_mode", "0")  # 0 = exploration, 1 = combat
         _save_battles(cfg)
 
         block = _format_tracker_block(cfg, chan_id)
@@ -5327,6 +5343,56 @@ class Initiative(commands.Cog):
         cfg.set(chan_id, "message_id", str(msg.id))
         _save_battles(cfg)
         await self._update_tracker_message(ctx, cfg, chan_id)
+
+
+    @commands.command(name="battle")
+    async def battle_mode(self, ctx, state: str | None = None):
+        """
+        Toggle or set battle/exploration mode for this channel.
+
+        Usage:
+          !battle        -> toggle (off -> on, on -> off)
+          !battle on     -> force combat/battle mode
+          !battle off    -> force exploration mode
+
+        When battle is ON:
+          !n = normal combat next-turn behavior.
+        When battle is OFF:
+          !n = acts like !t (exploration turn).
+        """
+        cfg = _load_battles()
+        chan_id = _section_id(ctx.channel)
+
+        if not cfg.has_section(chan_id):
+            await ctx.send("❌ No initiative running here. Use `!init` first.")
+            return
+
+        dm_id = cfg.get(chan_id, "DM", fallback="")
+        is_dm = (str(ctx.author.id) == str(dm_id)) or getattr(ctx.author.guild_permissions, "manage_guild", False)
+        if not is_dm:
+            await ctx.send("❌ Only the DM (or someone with Manage Server) can change battle mode.")
+            return
+
+        current = _get_battle_mode(cfg, chan_id)
+        arg = (state or "").strip().lower()
+
+        if arg in {"on", "start", "combat", "fight"}:
+            new = True
+        elif arg in {"off", "stop", "explore", "exploration"}:
+            new = False
+        elif arg in {"", "toggle"}:
+            new = not current
+        else:
+            await ctx.send("Usage: `!battle`, `!battle on`, or `!battle off`.")
+            return
+
+        _set_battle_mode(cfg, chan_id, new)
+        _save_battles(cfg)
+
+        mode = "⚔️ **BATTLE**" if new else "🧭 **EXPLORATION**"
+        detail = "(`!n` = combat rounds)" if new else "(`!n` = exploration turns)"
+        await ctx.send(f"{mode} mode for this channel {detail}.")
+
 
     @commands.command(name="join")
     async def join_initiative(self, ctx, *, name: str | None = None):
@@ -6031,7 +6097,27 @@ class Initiative(commands.Cog):
 
 
     @commands.command(name="n")
-    async def next_turn(self, ctx):
+    async def smart_next(self, ctx):
+        """
+        Smart next-turn:
+        - If battle mode is ON, advance combat round (old !n behavior).
+        - If battle mode is OFF, act like old !t behavior (exploration turn).
+        """
+        cfg = _load_battles()
+        chan_id = _section_id(ctx.channel)
+
+        if not cfg.has_section(chan_id):
+            await ctx.send("❌ No initiative running here. Use `!init` first.")
+            return
+
+        if _get_battle_mode(cfg, chan_id):
+            # Normal combat next-turn behavior
+            await self._advance_combat_turn(ctx)
+        else:
+            await self.exploration_step(ctx)
+
+
+    async def _advance_combat_turn(self, ctx):
         cfg = _load_battles()
         chan_id = str(ctx.channel.id)
         if not cfg.has_section(chan_id):
@@ -8441,7 +8527,7 @@ class Initiative(commands.Cog):
             seg = "turn" if turns == 1 else "turns"
             content = (
                 f"{dm_mention} ⏰ Reminder: move any allied monsters during "
-                f"this exploration turn (monsters are skipped by `!t`)."
+                f"this exploration turn (monsters are skipped in exploration)."
             )
             
         await ctx.send(
@@ -8807,7 +8893,7 @@ class Initiative(commands.Cog):
         except Exception:
             await ctx.send(f"🧭 Exploration Turn: **{who_name}**")
 
-    @commands.command(name="t")
+
     async def exploration_step(self, ctx):
         """
         Exploration order ping:
