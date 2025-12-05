@@ -20,7 +20,7 @@ from cogs.initiative import (
     _sorted_entries, _section_id, _format_tracker_block,
     _life_bar, _slot, _save_battles,
     _add_oil_burn, _apply_stoneskin_absorb, _choose_slot_for_effects,
-    _find_ci_or_partial_name,
+    _find_ci_or_partial_name
 )
 from utils.players import get_active
 from utils.ini import read_cfg, get_compat, getint_compat, write_cfg
@@ -14366,12 +14366,11 @@ class Combat(commands.Cog):
             if str(ctx.author.id) == str(dm_id):
                 allowed = True
         else:
-                                                                             
             for sec in bcfg.sections():
                 if bcfg.get(sec, "DM", fallback="") == str(ctx.author.id):
                     allowed = True
                     break
-                    
+
         if not allowed:
             await ctx.send("❌ Only the GM (this battle) or users with **Manage Server** may use `!damage`.")
             return
@@ -14390,19 +14389,16 @@ class Combat(commands.Cog):
         rolls = []
         flat = 0
         try:
-                                         
             s, rolls, flat = roll_dice(amount_raw)
             val = s + flat
             used_dice = True
         except Exception:
-                                                       
             try:
                 val = int(amount_raw.replace("+", ""))
             except Exception:
                 await ctx.send("❌ Invalid amount. Use a number (e.g. `3`) or dice (e.g. `3d6+5`).")
                 return
 
-                                                       
         delta_hp = -val
         new_hp = max(0, min(max_hp, old_hp + delta_hp))
         tgt_cfg["cur"]["hp"] = str(new_hp)
@@ -14434,27 +14430,60 @@ class Combat(commands.Cog):
 
         await ctx.send(embed=embed)
 
+        # If a monster dies, remove it from initiative and advance turn correctly
         if is_mon and new_hp <= 0:
             try:
                 if bcfg.has_section(chan_id):
+                    # Grab current combatants and compute who should go next BEFORE removal
                     names, scores = _parse_combatants(bcfg, chan_id)
                     name_key = _find_ci_name(names, tgt_name) or tgt_name
+
+                    current_turn = (bcfg.get(chan_id, "turn", fallback="") or "").strip()
+                    next_turn = None
+
+                    if name_key in names and current_turn == name_key:
+                        # Compute ordered initiative list and find the next name after the dying one
+                        ordered = [e["name"] for e in _sorted_entries(bcfg, chan_id)]
+                        try:
+                            idx = ordered.index(name_key)
+                        except ValueError:
+                            idx = -1
+
+                        if idx != -1 and len(ordered) > 1:
+                            # Walk forward until we find a different name, wrapping if needed
+                            for offset in range(1, len(ordered)):
+                                cand = ordered[(idx + offset) % len(ordered)]
+                                if cand != name_key:
+                                    next_turn = cand
+                                    break
+
+                    # Now actually remove from initiative / tracker
                     if name_key in names:
                         names = [n for n in names if n != name_key]
+
                         if bcfg.has_option(chan_id, name_key):
                             bcfg.remove_option(chan_id, name_key)
+
                         slot = _slot(name_key)
                         for suf in (".dex", ".join", ".disp"):
                             opt = f"{slot}{suf}"
                             if bcfg.has_option(chan_id, opt):
                                 bcfg.remove_option(chan_id, opt)
+
                         _write_combatants(bcfg, chan_id, names, scores)
-                        if bcfg.get(chan_id, "turn", fallback="") == name_key:
-                            ents = _sorted_entries(bcfg, chan_id)
-                            bcfg.set(chan_id, "turn", ents[0]["name"] if ents else "")
+
+                        # If it was their turn, move the turn pointer to the *next* in initiative
+                        if current_turn == name_key:
+                            if next_turn and next_turn in names:
+                                bcfg.set(chan_id, "turn", next_turn)
+                            else:
+                                # Fallback: first remaining entry, or blank if none
+                                ents = _sorted_entries(bcfg, chan_id)
+                                bcfg.set(chan_id, "turn", ents[0]["name"] if ents else "")
+
                         _save_battles(bcfg)
 
-                                                                         
+                        # Refresh the pinned tracker message
                         try:
                             msg_id = bcfg.getint(chan_id, "message_id", fallback=0)
                             if msg_id:
@@ -14465,7 +14494,19 @@ class Combat(commands.Cog):
                         except Exception:
                             pass
 
-                                                 
+                        # 🔔 After all that, tell the GM whose turn it is *now*
+                        try:
+                            turn_name = (bcfg.get(chan_id, "turn", fallback="") or "").strip()
+                            if turn_name:
+                                round_no = bcfg.getint(chan_id, "round", fallback=0)
+                                ini_score = scores.get(turn_name, 0)
+                                await ctx.send(
+                                    f"🎯 It is now **{turn_name}**'s turn "
+                                    f"(initiative {ini_score}, round {round_no})."
+                                )
+                        except Exception:
+                            pass
+
                 try:
                     os.remove(tgt_path)
                 except Exception:
@@ -14475,6 +14516,7 @@ class Combat(commands.Cog):
             except Exception:
                 pass
 
+        # Generic "refresh tracker" at the end (kept from your original)
         try:
             if bcfg.has_section(chan_id):
                 msg_id = bcfg.getint(chan_id, "message_id", fallback=0)
@@ -14488,6 +14530,7 @@ class Combat(commands.Cog):
                         pass
         except Exception:
             pass
+
 
 
     @commands.command(name="msave")
