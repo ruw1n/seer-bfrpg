@@ -660,6 +660,7 @@ class Crafting(commands.Cog):
         if block:
             await ctx.send("\n".join(block))
 
+
     def _embed_lines(self, title: str, subtitle: str, lines: list[str], *, color=None):
         import random, nextcord
         color = color or random.randint(0, 0xFFFFFF)
@@ -819,6 +820,12 @@ class Crafting(commands.Cog):
                     f"Spell scroll **{spell}** ({scroll_class} L{L}): −{10*L}% chance, {days}d, {int(cost)} gp."
                 )
 
+            if safe_boost:
+                plus += 25
+                cost *= 2
+                days = int(max(1, math.ceil(days * 2)))
+                notes.append("Safety boost: +25% chance, ×2 cost/time.")
+
 
 
         elif t in {"potion","single_use"}:
@@ -856,6 +863,12 @@ class Crafting(commands.Cog):
                     days = (7 + L) * 2
                     cost = 50 * L * days
                     notes.append(f"Single-use (non-spell, L{L}): −{10*L}% chance, {days}d, {int(cost)} gp.")
+
+            if safe_boost:
+                plus += 25
+                cost *= 2
+                days = int(max(1, math.ceil(days * 2)))
+                notes.append("Safety boost: +25% chance, ×2 cost/time.")
 
 
         elif t in {"weapon","armor"}:
@@ -1291,8 +1304,9 @@ class Crafting(commands.Cog):
 
                 lines.append(f"↳ ready ~ **{when_str}** ({rel})")
 
-            await ctx.send("**Your crafting projects:**\n" + "\n".join(lines))
+            await self._send_large(ctx, ["**Your crafting projects:**"] + lines)
             return
+
 
 
         if sub in {"quote","start"}:
