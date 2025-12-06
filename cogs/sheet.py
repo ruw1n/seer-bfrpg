@@ -828,7 +828,7 @@ class SheetCog(commands.Cog):
 
         stats = {k: (_roll_4d6_drop_lowest() if use_4d6 else _roll_3d6()) for k in stat_keys}
 
-        char_race_data = get_race(races_cfg, race)
+        char_race_data = get_race(self.races_cfg, race)
         smin, smax = self._stat_bounds(race, char_class)
         for s in stat_keys:
             stats[s] = max(smin[s], min(smax[s], stats[s]))
