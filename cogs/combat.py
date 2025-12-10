@@ -6767,7 +6767,7 @@ class Combat(commands.Cog):
                             if allow_save:
                                 ok, roll, dc, _ = self._roll_save(read_cfg(tgt_path), vs="poi", penalty=0)
                                 if ok:
-                                    embed.add_field(name="Constitution Drain", value=f"Save vs Death: {roll} vs {dc} → **RESISTED**.", inline=False)
+                                    embed.add_field(name="Constitution Drain", value=f"Save vs Death: {roll} vs {dc} → **RESISTED**", inline=False)
                                     con_loss = 0
                             if con_loss > 0:
                                 hp_delta = self._apply_conloss_points(read_cfg(tgt_path), con_loss)
@@ -6811,7 +6811,7 @@ class Combat(commands.Cog):
                                     if ok:
                                         embed.add_field(
                                             name="Paralysis",
-                                            value=f"Save vs Paralyze: {sv_roll} vs {sv_target} → **RESISTED**.",
+                                            value=f"Save vs Paralyze: {sv_roll} vs {sv_target} → **RESISTED**",
                                             inline=False
                                         )
                                     else:
@@ -6882,7 +6882,7 @@ class Combat(commands.Cog):
                         else:
                             ok, sv_roll, sv_target, _ = self._roll_save(t_cfg, vs="poi", penalty=0)
                             if ok:
-                                embed.add_field(name="Poison", value=f"Save vs Death/Poison: {sv_roll} vs {sv_target} → **RESISTED**.", inline=False)
+                                embed.add_field(name="Poison", value=f"Save vs Death/Poison: {sv_roll} vs {sv_target} → **RESISTED**", inline=False)
                             else:
                                                
                                 old_hp = getint_compat(t_cfg, "cur", "hp", fallback=0)
@@ -7643,7 +7643,7 @@ class Combat(commands.Cog):
                                 if ok_b:
                                     embed.add_field(
                                         name=f"Poison #{shot_idx}",
-                                        value=f"Save vs Death/Poison: {sv_roll_b} vs {sv_target_b} → **RESISTED**.",
+                                        value=f"Save vs Death/Poison: {sv_roll_b} vs {sv_target_b} → **RESISTED**",
                                         inline=False
                                     )
                                 else:
@@ -8979,7 +8979,7 @@ class Combat(commands.Cog):
                 if ok:
                     embed.add_field(
                         name="Paralysis",
-                        value=f"Save vs {self._sv_label(used_vs)}: {sv_roll} vs {sv_dc} → ✅ **RESISTED**.",
+                        value=f"Save vs {self._sv_label(used_vs)}: {sv_roll} vs {sv_dc} → ✅ **RESISTED**",
                         inline=False
                     )
                 else:
@@ -9022,7 +9022,7 @@ class Combat(commands.Cog):
             if ok:
                 embed.add_field(
                     name="Paralysis",
-                    value=f"Save vs {self._sv_label(used_tag)}: {sv_roll} vs {sv_dc} → ✅ **RESISTED**.",
+                    value=f"Save vs {self._sv_label(used_tag)}: {sv_roll} vs {sv_dc} → ✅ **RESISTED**",
                     inline=False
                 )
             else:
@@ -9111,7 +9111,7 @@ class Combat(commands.Cog):
                 if sv_ok:
                     embed.add_field(
                         name="Stun",
-                        value=f"Save vs Poison: {sv_roll}{btxt} vs {sv_dc} → ✅ **RESISTED**.",
+                        value=f"Save vs Poison: {sv_roll}{btxt} vs {sv_dc} → ✅ **RESISTED**",
                         inline=False
                     )
                 else:
@@ -9516,7 +9516,7 @@ class Combat(commands.Cog):
                 if sv_ok:
                     embed.add_field(
                         name="Death Ray",
-                        value=f"Save vs Death Ray: {sv_num}{btxt} vs {sv_dc_txt} → ✅ **RESISTED**.",
+                        value=f"Save vs Death Ray: {sv_num}{btxt} vs {sv_dc_txt} → ✅ **RESISTED**",
                         inline=False
                     )
                 else:
@@ -9584,7 +9584,7 @@ class Combat(commands.Cog):
                 if sv_ok:
                     embed.add_field(
                         name="Poison",
-                        value=f"Save vs Poison: {sv_roll}{btxt} vs {sv_dc} → ✅ **RESISTED**.",
+                        value=f"Save vs Poison: {sv_roll}{btxt} vs {sv_dc} → ✅ **RESISTED**",
                         inline=False
                     )
                 else:
@@ -9842,7 +9842,7 @@ class Combat(commands.Cog):
                         if ok:
                             embed.add_field(
                                 name="Petrification",
-                                value=f"Save vs Petrification: {sv_roll} vs {sv_dc} → ✅ **RESISTED**.",
+                                value=f"Save vs Petrification: {sv_roll} vs {sv_dc} → ✅ **RESISTED**",
                                 inline=False
                             )
                         else:
@@ -9896,7 +9896,7 @@ class Combat(commands.Cog):
                         ok, roll, dc, _pen = self._roll_save(tgt_cfg, vs="poi", penalty=0)
                         if ok:
                             resisted = True
-                            embed.add_field(name="Constitution Drain", value=f"Save vs Death: {roll} vs {dc} → **RESISTED**.", inline=False)
+                            embed.add_field(name="Constitution Drain", value=f"Save vs Death: {roll} vs {dc} → **RESISTED**", inline=False)
 
                     if not resisted:
                         hp_delta = self._apply_conloss_points(tgt_cfg, con_loss)
@@ -10943,7 +10943,7 @@ class Combat(commands.Cog):
                 if ok:
                     embed.add_field(
                         name="Paralysis",
-                        value=f"Save vs {self._sv_label(used_vs)}: {sv_roll} vs {sv_dc} → ✅ **RESISTED**.",
+                        value=f"Save vs {self._sv_label(used_vs)}: {sv_roll} vs {sv_dc} → ✅ **RESISTED**",
                         inline=False
                     )
                 else:
@@ -10987,7 +10987,7 @@ class Combat(commands.Cog):
             if ok:
                 embed.add_field(
                     name="Paralysis",
-                    value=f"Save vs {self._sv_label(used_tag)}: {sv_roll} vs {sv_dc} → ✅ **RESISTED**.",
+                    value=f"Save vs {self._sv_label(used_tag)}: {sv_roll} vs {sv_dc} → ✅ **RESISTED**",
                     inline=False
                 )
             else:
@@ -11074,7 +11074,7 @@ class Combat(commands.Cog):
                 if sv_ok:
                     embed.add_field(
                         name="Stun",
-                        value=f"Save vs Poison: {sv_roll}{btxt} vs {sv_dc} → ✅ **RESISTED**.",
+                        value=f"Save vs Poison: {sv_roll}{btxt} vs {sv_dc} → ✅ **RESISTED**",
                         inline=False
                     )
                 else:
@@ -11477,7 +11477,7 @@ class Combat(commands.Cog):
                 if sv_ok:
                     embed.add_field(
                         name="Death Ray",
-                        value=f"Save vs Death Ray: {sv_num}{btxt} vs {sv_dc_txt} → ✅ **RESISTED**.",
+                        value=f"Save vs Death Ray: {sv_num}{btxt} vs {sv_dc_txt} → ✅ **RESISTED**",
                         inline=False
                     )
                 else:
@@ -11546,7 +11546,7 @@ class Combat(commands.Cog):
                 if sv_ok:
                     embed.add_field(
                         name="Poison",
-                        value=f"Save vs Poison: {sv_roll}{btxt} vs {sv_dc} → ✅ **RESISTED**.",
+                        value=f"Save vs Poison: {sv_roll}{btxt} vs {sv_dc} → ✅ **RESISTED**",
                         inline=False
                     )
                 else:
@@ -11805,7 +11805,7 @@ class Combat(commands.Cog):
                         if ok:
                             embed.add_field(
                                 name="Petrification",
-                                value=f"Save vs Petrification: {sv_roll} vs {sv_dc} → ✅ **RESISTED**.",
+                                value=f"Save vs Petrification: {sv_roll} vs {sv_dc} → ✅ **RESISTED**",
                                 inline=False
                             )
                         else:
@@ -19384,7 +19384,7 @@ class Combat(commands.Cog):
             if dc is None:
                 ok = True                                          
             if ok:
-                emb.add_field(name=disp, value=f"Save vs Spells: {roll} vs {dc} → ✅ **RESISTED**.", inline=False)
+                emb.add_field(name=disp, value=f"Save vs Spells: {roll} vs {dc} → ✅ **RESISTED**", inline=False)
             else:
                 emb.add_field(name=disp, value=f"Save vs Spells: {roll} vs {dc} → ❌ **FAIL**", inline=False)                                                        
                 await self._apply_dance_poison_on_hit(ctx, bcfg, chan_id, "Tarantula", disp, tcfg, emb, primary=False)
@@ -23004,7 +23004,7 @@ class Combat(commands.Cog):
                 sv_ok, sv_roll, sv_dc, _ = _save_vs_spells(t_cfg)
                 if sv_dc is not None:
                     if sv_ok:
-                        lines.append(f"• **{tgt_disp}** (HD {hd}): Save vs Spells {sv_roll} vs {sv_dc} → **RESISTED**.")
+                        lines.append(f"• **{tgt_disp}** (HD {hd}): Save vs Spells {sv_roll} vs {sv_dc} → **RESISTED**")
                         continue
                     else:
                         lines.append(f"• **{tgt_disp}** (HD {hd}): Save vs Spells {sv_roll} vs {sv_dc} → **FAIL**.")
@@ -28921,7 +28921,7 @@ class Combat(commands.Cog):
         if ok:
             embed.add_field(
                 name="Burn (poison)",
-                value=f"Save vs Poison: {roll} vs {dc} → ✅ **RESISTED**.",
+                value=f"Save vs Poison: {roll} vs {dc} → ✅ **RESISTED**",
                 inline=False
             )
             return
@@ -29017,7 +29017,7 @@ class Combat(commands.Cog):
             if ok:
                 embed.add_field(
                     name="Dance Poison",
-                    value=f"Save vs Poison: {roll} vs {dc} → ✅ **RESISTED**.",
+                    value=f"Save vs Poison: {roll} vs {dc} → ✅ **RESISTED**",
                     inline=False
                 )
                 return
