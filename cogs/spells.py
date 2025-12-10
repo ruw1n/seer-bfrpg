@@ -4225,7 +4225,7 @@ class SpellsCog(commands.Cog, name="Spells"):
                     return i
             return None
 
-    @commands.command(name="prepare")
+    @commands.command(name="prepare", aliases=["prep"])
     async def prepare_spell(self, ctx, *, spell_spec: str):
         """
         Prepare a spell.
@@ -10399,7 +10399,7 @@ class SpellsCog(commands.Cog, name="Spells"):
                 sv_ok, sv_roll, sv_dc, _ = _save_vs_spells(t_cfg)
                 if sv_dc is not None:
                     if sv_ok:
-                        lines.append(f"• **{tgt_disp}** (HD {hd}): Save vs Spells {sv_roll} vs {sv_dc} → **RESISTED**.")
+                        lines.append(f"• **{tgt_disp}** (HD {hd}): Save vs Spells {sv_roll} vs {sv_dc} → **RESISTED**")
                         continue
                     else:
                         lines.append(f"• **{tgt_disp}** (HD {hd}): Save vs Spells {sv_roll} vs {sv_dc} → **FAIL**")
@@ -10735,7 +10735,7 @@ class SpellsCog(commands.Cog, name="Spells"):
                 sv_ok, sv_roll, sv_dc, _ = _save_vs_spells(t_cfg)
                 if sv_dc is not None:
                     if sv_ok:
-                        lines.append(f"• **{tgt_disp}** (HD {hd}): Save vs Spells {sv_roll} vs {sv_dc} → **RESISTED**.")
+                        lines.append(f"• **{tgt_disp}** (HD {hd}): Save vs Spells {sv_roll} vs {sv_dc} → **RESISTED**")
                         continue
                     else:
                         lines.append(f"• **{tgt_disp}** (HD {hd}): Save vs Spells {sv_roll} vs {sv_dc} → **FAIL**.")
@@ -18999,7 +18999,7 @@ class SpellsCog(commands.Cog, name="Spells"):
             if hd > clv:
                 ok, sv_roll, sv_dc, _ = _roll_save_spells(t_cfg)
                 if ok:
-                    lines.append(f"• **{pretty}** (HD {hd}): Save vs Spells {sv_roll} vs {sv_dc} → ✅ **RESISTED**.")
+                    lines.append(f"• **{pretty}** (HD {hd}): Save vs Spells {sv_roll} vs {sv_dc} → ✅ **RESISTED**")
                     continue
                 else:
                     lines.append(f"• **{pretty}** (HD {hd}): Save vs Spells {sv_roll} vs {sv_dc} → **FAIL**")
@@ -25502,7 +25502,7 @@ class SpellsCog(commands.Cog, name="Spells"):
             ok, roll, dc, _ = self._roll_save(cfg, vs="pois", penalty=0)
             face = "**20** 🎉" if roll == 20 else ("**1** 💀" if roll == 1 else str(roll))
             if ok:
-                embed.add_field(name="Effect", value=f"☠️ Save vs Poison: {face} ≥ **{dc}** → **RESISTED**.", inline=False)
+                embed.add_field(name="Effect", value=f"☠️ Save vs Poison: {face} ≥ **{dc}** → **RESISTED**", inline=False)
             else:
                 old = getint_compat(cfg, "cur", "hp", fallback=0)
                 if not cfg.has_section("cur"):
