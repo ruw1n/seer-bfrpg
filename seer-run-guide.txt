@@ -180,6 +180,17 @@ I type !help and nothing happens
 "ModuleNotFoundError" when starting
   • You skipped the "pip install -r requirements.txt" step or you installed outside the virtual env. Activate the env and install again.
 
+• If you see: ModuleNotFoundError: No module named 'audioop'
+  - You are probably using Python 3.13 or newer. The built-in 'audioop' module was removed in 3.13.
+  - Easiest fix: install Python 3.12.x instead.
+  - Advanced: stay on 3.13+ and install a backport inside your venv:
+      pip install audioop-lts
+
+• If you see: ModuleNotFoundError: No module named 'pkg_resources'
+  - On Python 3.12+, new virtual environments no longer include 'setuptools' by default.
+  - Inside your activated venv, run:
+      pip install setuptools
+
 "CommandNotFoundError" or "PermissionError" activating venv on Windows
   • Open PowerShell as Administrator once and run:
       Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
