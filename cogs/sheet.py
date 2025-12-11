@@ -518,6 +518,13 @@ class SheetCog(commands.Cog):
         cfg.set("stats", "ac", str(new_ac))
         return new_ac
 
+    def _recompute_ac_sheet(self, cfg, channel=None) -> int:
+        """
+        Sheet-level wrapper around the shared AC calculation.
+        Keeps API stable for reroll/swap and lets us pass channel for HR toggles.
+        """
+        return self._recompute_ac(cfg, channel=channel)
+
 
 
 
@@ -1249,11 +1256,14 @@ class SheetCog(commands.Cog):
         old_ac = getint_compat(config, "stats", "ac", fallback=0)
         old_move = getint_compat(config, "stats", "move", fallback=0)
 
-        # recompute derived stats
         try:
+            self._recompute_ac_sheet(config, channel=ctx.channel)
+        except TypeError:
+            # just in case older signature is still around
             self._recompute_ac_sheet(config)
         except Exception:
             pass
+
         try:
             self._recompute_move(config)  # STR might have changed
         except Exception:
