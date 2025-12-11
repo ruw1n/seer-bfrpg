@@ -179,7 +179,11 @@ seer/
 
 ##  Installation Notes
 
-- **Python**: 3.10+ recommended.  
+- **Python**: Tested with **3.10–3.12**.  
+  - Python **3.13+** removed the built-in `audioop` module, which some Discord libs still expect. If you run into `ModuleNotFoundError: audioop` on 3.13+, either:
+    - use Python **3.12.x** (recommended), or
+    - install the backport inside your venv: `pip install audioop-lts`.
+  - On Python **3.12+**, if you see `ModuleNotFoundError: pkg_resources`, run `pip install setuptools` in your virtualenv (Python no longer pre-installs `setuptools` in new venvs). :contentReference[oaicite:3]{index=3}
 - **Discord Intents**: Make sure **Message Content Intent** is enabled for the bot.  
 - **Permissions**: Some commands are GM-only; a few are server-owner only.  
 - **Data**: Ensure `data/` contains your items list, `spell.lst`, and any class spell progressions your ruleset expects. Monsters go in `data/monsters/*.ini`.
