@@ -16007,44 +16007,98 @@ class Combat(commands.Cog):
     async def defend(self, ctx):
         """
         Take the Defend action: +4 AC until the start of your next turn.
-        Must be your turn in an active initiative.
+
+        Behavior:
+          • Uses whoever currently has the turn in this initiative.
+          • PCs: only the GM, the owner of the character, or the player with that
+            character active may use !defend.
+          • Monsters: only the GM or the controller (from battle state / .coe) may use !defend.
         """
-                                  
-        char_name = get_active(ctx.author.id)
-        if not char_name:
-            await ctx.send("❌ No active character. Use `!char <name>` first.")
-            return
 
-        coe = f"{char_name.replace(' ', '_')}.coe"
-        if not os.path.exists(coe):
-            await ctx.send(f"❌ Character file not found for **{char_name}**.")
-            return
-
+        # Load battle + current turn
         cfg_b = _load_battles()
-        chan_id = str(ctx.channel.id)
+        chan_id = _section_id(ctx.channel)
         if not cfg_b.has_section(chan_id):
             await ctx.send("❌ No active initiative in this channel.")
             return
 
-        names, _scores = _parse_combatants(cfg_b, chan_id)
-        turn_name = cfg_b.get(chan_id, "turn", fallback="")
-        if char_name not in names:
-            await ctx.send(f"❌ **{char_name}** is not in the current initiative.")
-            return
-        if char_name != turn_name:
-            await ctx.send(f"⏳ It's not **{char_name}**'s turn. (Current: **{turn_name or '—'}**)")
+        turn_name = (cfg_b.get(chan_id, "turn", fallback="") or "").strip()
+        if not turn_name:
+            await ctx.send("❌ No one has the turn yet. Use `!n` to start the round.")
             return
 
-                            
+        names, _scores = _parse_combatants(cfg_b, chan_id)
+        if turn_name not in names:
+            await ctx.send(f"❌ **{turn_name}** is not in the current initiative.")
+            return
+
+        disp_name = turn_name
+        coe = f"{disp_name.replace(' ', '_')}.coe"
+        if not os.path.exists(coe):
+            await ctx.send(f"❌ Character file not found for **{disp_name}**.")
+            return
+
+        t_cfg = read_cfg(coe)
+
+        # Is this a monster or a PC?
         try:
-            slot_me = _slot(char_name)
+            cls_lc = (get_compat(t_cfg, "info", "class", fallback="") or "").strip().lower()
+            race_lc = (get_compat(t_cfg, "info", "race", fallback="") or "").strip().lower()
         except Exception:
-            slot_me = char_name.replace(" ", "_")
+            cls_lc = race_lc = ""
+
+        is_mon = (cls_lc == "monster") or (race_lc == "monster")
+        try:
+            # Fallback to template-based detection if needed
+            is_mon = is_mon or _is_monster_file(coe)
+        except Exception:
+            pass
+
+        # Who is GM for this battle?
+        dm_id = (cfg_b.get(chan_id, "DM", fallback="") or "").strip()
+        is_gm = (str(ctx.author.id) == str(dm_id))
+
+        # Permission check
+        if is_mon:
+            # Monsters: GM or controller only
+            controller_id = await _controller_id_for_monster(ctx, cfg_b, chan_id, disp_name)
+            is_controller = controller_id and (str(ctx.author.id) == str(controller_id))
+
+            if not (is_gm or is_controller):
+                owner_hint = f" <@{controller_id}>" if controller_id else ""
+                await ctx.send(
+                    f"❌ Only the GM or the controller{owner_hint} can use `!defend` for **{disp_name}**."
+                )
+                return
+        else:
+            # PCs: GM, owner_id, or the player whose active character matches
+            owner_id = (get_compat(t_cfg, "info", "owner_id", fallback="") or "").strip()
+            is_owner = owner_id and (str(ctx.author.id) == str(owner_id))
+
+            active_name = get_active(ctx.author.id)
+            is_active_char = bool(
+                active_name
+                and active_name.strip().lower() == disp_name.strip().lower()
+            )
+
+            if not (is_gm or is_owner or is_active_char):
+                await ctx.send(
+                    f"❌ Only the GM or the owner of **{disp_name}** may use `!defend` for them."
+                )
+                return
+
+        # Apply +4 AC buffer for this turn holder
+        try:
+            names_keyed, _ = _parse_combatants(cfg_b, chan_id)
+            me_key = _find_ci_name(names_keyed, disp_name) or disp_name
+            slot_me = _slot(me_key)
+        except Exception:
+            slot_me = disp_name.replace(" ", "_")
 
         cfg_b.set(chan_id, f"{slot_me}.acbuf", "4")
         _save_battles(cfg_b)
 
-                                          
+        # Refresh tracker message, if present
         try:
             msg_id = cfg_b.getint(chan_id, "message_id", fallback=0)
             if msg_id:
@@ -16056,11 +16110,12 @@ class Combat(commands.Cog):
             pass
 
         embed = nextcord.Embed(
-            title=f"{char_name} defends!",
-            description="+4 AC until the **start** of your next turn.",
-            color=random.randint(0x000000, 0xFFFFFF)
+            title=f"{disp_name} defends!",
+            description="+4 AC until the **start** of their next turn.",
+            color=random.randint(0x000000, 0xFFFFFF),
         )
         await ctx.send(embed=embed)
+
 
 
     @commands.command(name="conloss")
