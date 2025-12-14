@@ -969,12 +969,13 @@ class SheetCog(commands.Cog):
         else:                     move = heavy_spd
 
         config = configparser.ConfigParser()
+        safe_base = _safe_char_basename(char_name)
         config['version'] = {'current': '08082018'}
         config['info'] = {
             'race': str(race or '').title(),
             'class': str(char_class or ''),
             'sex': str(sex or ''),
-            'name': str(char_name or ''),
+            'name': str(safe_base or ''),
             'owner_id': str(ctx.author.id),
         }
         config['stats'] = {
@@ -1153,9 +1154,15 @@ class SheetCog(commands.Cog):
         if weapons:
             gear_lines.append(f"**Weapons**: {', '.join(weapons)}")
 
+        safe_base = _safe_char_basename(char_name)  # this is what the filename uses
+
+        desc = f"_Saved as **{safe_base}**_"
+        if safe_base != char_name:
+            desc += f"\nDisplay name: **{char_name}**"
+
         embed = nextcord.Embed(
-            title=f"Character Created!",
-            description=f"_Saved as **{char_name}**_",
+            title="Character Created!",
+            description=desc,
             color=random.randint(0, 0xFFFFFF),
         )
 
@@ -5001,6 +5008,241 @@ Zundrin"""
             inline=False
         )
         await ctx.send(embed=embed)
+
+
+    @commands.command(name="notes")
+    async def character_notes(self, ctx, *args):
+        """
+        Personal notes for your active character.
+
+        Usage:
+          !notes                      -> list notes (page 1)
+          !notes -p 2                 -> list notes (page 2)
+          !notes add <text>           -> add a note
+          !notes <number>             -> view that note
+          !notes remove <number>      -> delete that note
+
+        Aliases:
+          remove: rm, del, delete
+        Pagination:
+          -p N, -page N, -page=N
+        """
+        import os, math, re, textwrap, nextcord
+
+        # --- Helper: find active character & config ---
+        char_name = get_active(ctx.author.id)
+        if not char_name:
+            await ctx.send("❌ No active character. Use `!char <name>` first.")
+            return
+
+        path = f"{char_name.replace(' ', '_')}.coe"
+        if not os.path.exists(path):
+            await ctx.send(f"❌ Character file not found for **{char_name}**.")
+            return
+
+        cfg = read_cfg(path)
+
+        # --- Helpers for notes storage ---
+
+        def _load_notes_list():
+            notes = []
+            if cfg.has_section("notes"):
+                for k, v in cfg.items("notes"):
+                    try:
+                        idx = int(str(k).strip())
+                    except Exception:
+                        continue
+                    notes.append((idx, v))
+            notes.sort(key=lambda t: t[0])
+            return [v for _, v in notes]
+
+        def _save_notes_list(notes_list: list[str]):
+            if not cfg.has_section("notes"):
+                cfg.add_section("notes")
+            else:
+                for k, _v in list(cfg.items("notes")):
+                    cfg.remove_option("notes", k)
+            for i, txt in enumerate(notes_list, start=1):
+                cfg.set("notes", str(i), txt)
+            write_cfg(path, cfg)
+
+        def _parse_page_flag(parts: list[str], default: int = 1) -> tuple[int, list[str]]:
+            """
+            Supports: -p N  and  -page N  and  -page=N
+            Returns (page_number, remaining_tokens)
+            """
+            page = default
+            out: list[str] = []
+            i = 0
+            while i < len(parts):
+                t = str(parts[i]).strip().lower()
+                if t in ("-p", "-page") and i + 1 < len(parts):
+                    try:
+                        page = max(1, int(parts[i + 1]))
+                        i += 1
+                    except Exception:
+                        pass
+                elif t.startswith("-page="):
+                    try:
+                        page = max(1, int(t.split("=", 1)[1]))
+                    except Exception:
+                        pass
+                else:
+                    out.append(parts[i])
+                i += 1
+            return page, out
+
+        raw = [str(a) for a in args if str(a).strip()]
+        if not raw:
+            # Default: list notes (page 1)
+            mode = "list"
+            tail = []
+        else:
+            head = str(raw[0]).lower()
+
+            if head in {"list", "ls", "show", "view"}:
+                mode = "list"
+                tail = raw[1:]
+            elif head in {"remove", "rm", "del", "delete"}:
+                mode = "remove"
+                tail = raw[1:]
+            elif re.fullmatch(r"\d+", head):
+                # !notes 3 -> view that note
+                mode = "single"
+                tail = raw
+            elif head in {"add", "+"}:
+                mode = "add"
+                tail = raw[1:]
+            else:
+                # If it doesn't look like a subcommand or number,
+                # treat it as `add <text>` for convenience.
+                mode = "add"
+                tail = raw
+
+        notes = _load_notes_list()
+
+        # --- Mode: list (with pagination) ---
+        if mode == "list":
+            page, tail2 = _parse_page_flag(tail, default=1)
+            if tail2:
+                # Optionally: allow a number alone to mean "page"
+                if len(tail2) == 1 and str(tail2[0]).isdigit():
+                    page = max(1, int(tail2[0]))
+                else:
+                    # Extra junk, just ignore or mention usage
+                    pass
+
+            if not notes:
+                emb = nextcord.Embed(
+                    title=f"📓 {char_name} — Notes",
+                    description="*(No notes yet.)*\nUse `!notes add <text>` to add one.",
+                    color=random.randint(0x000000, 0xFFFFFF)
+                )
+                await ctx.send(embed=emb)
+                return
+
+            PAGE_SIZE = 8
+            total = len(notes)
+            pages = max(1, math.ceil(total / PAGE_SIZE))
+            page = max(1, min(page, pages))
+
+            start = (page - 1) * PAGE_SIZE
+            chunk = notes[start:start + PAGE_SIZE]
+
+            lines = []
+            for i, text in enumerate(chunk, start=start + 1):
+                # Show a short preview in the list
+                preview = textwrap.shorten(str(text).strip(), width=120, placeholder="…")
+                lines.append(f"`{i:02}` {preview}")
+
+            desc = "\n".join(lines) if lines else "*(No notes on this page.)*"
+            emb = nextcord.Embed(
+                title=f"📓 {char_name} — Notes",
+                description=desc,
+                color=random.randint(0x000000, 0xFFFFFF)
+            )
+            emb.set_footer(text=f"Page {page}/{pages} • {total} note{'s' if total != 1 else ''}. "
+                                f"Use `!notes -p N` to change page.")
+            await ctx.send(embed=emb)
+            return
+
+        # --- Mode: add ---
+        if mode == "add":
+            text = " ".join(tail).strip()
+            if not text:
+                await ctx.send("❌ Nothing to add. Use `!notes add <text>`.")
+                return
+
+            notes.append(text)
+            _save_notes_list(notes)
+            idx = len(notes)
+
+            preview = textwrap.shorten(text, width=200, placeholder="…")
+            emb = nextcord.Embed(
+                title=f"📝 Note #{idx} added for {char_name}",
+                description=preview,
+                color=random.randint(0x000000, 0xFFFFFF)
+            )
+            await ctx.send(embed=emb)
+            return
+
+        # --- Mode: view single note ---
+        if mode == "single":
+            if not notes:
+                await ctx.send("❌ No notes yet for this character.")
+                return
+            try:
+                idx = int(str(tail[0]))
+            except Exception:
+                await ctx.send("❌ Bad note number. Example: `!notes 2`.")
+                return
+
+            if idx < 1 or idx > len(notes):
+                await ctx.send(f"❌ Note #{idx} does not exist. "
+                               f"(This character currently has {len(notes)} note(s).)")
+                return
+
+            text = str(notes[idx - 1]).strip() or "(empty note)"
+            # Use a code block to make longer notes readable
+            emb = nextcord.Embed(
+                title=f"📓 {char_name} — Note #{idx}",
+                description=f"```text\n{text[:4000]}\n```",
+                color=random.randint(0x000000, 0xFFFFFF)
+            )
+            await ctx.send(embed=emb)
+            return
+
+        # --- Mode: remove ---
+        if mode == "remove":
+            if not notes:
+                await ctx.send("❌ No notes to remove for this character.")
+                return
+            if not tail:
+                await ctx.send("Usage: `!notes remove <number>` — e.g. `!notes remove 1`")
+                return
+            try:
+                idx = int(str(tail[0]))
+            except Exception:
+                await ctx.send("❌ Bad note number. Example: `!notes remove 2`.")
+                return
+
+            if idx < 1 or idx > len(notes):
+                await ctx.send(f"❌ Note #{idx} does not exist. "
+                               f"(This character currently has {len(notes)} note(s).)")
+                return
+
+            removed = notes.pop(idx - 1)
+            _save_notes_list(notes)
+            preview = textwrap.shorten(str(removed).strip(), width=200, placeholder="…")
+
+            emb = nextcord.Embed(
+                title=f"🧽 Removed note #{idx} for {char_name}",
+                description=preview or "(empty note)",
+                color=random.randint(0x000000, 0xFFFFFF)
+            )
+            emb.set_footer(text=f"{len(notes)} note{'s' if len(notes) != 1 else ''} remaining.")
+            await ctx.send(embed=emb)
+            return
 
 
 def setup(bot):
