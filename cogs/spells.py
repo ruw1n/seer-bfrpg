@@ -5326,12 +5326,25 @@ class SpellsCog(commands.Cog, name="Spells"):
                 msg += " Did you mean: " + ", ".join(f"`{s}`" for s in sugg)
             await ctx.send(msg)
             return
+            
 
-        if not weapon_casting and profile["book_based"]:
+        has_break = False
+        try:
+            bcfg = _load_battles()
+            chan_id = str(ctx.channel.id)
+            if bcfg and bcfg.has_section(chan_id):
+                s_me = _resolve_effect_slot(bcfg, chan_id, char_name)
+                has_break = bcfg.getint(chan_id, f"{s_me}.x_break", fallback=0) > 0
+        except Exception:
+            has_break = False
+
+
+        if not weapon_casting and profile["book_based"] and not has_break:
             book = _read_per_level_list(cfg, "spellbook")
             if canon not in set(book.get(lvl, [])):
                 await ctx.send(f"❌ You don’t have **{canon}** (L{lvl}) in your spellbook.")
                 return
+
 
         if not weapon_casting:
             totals = _slots_for_class_level(self._class_cp, profile["slots_class"], level)
