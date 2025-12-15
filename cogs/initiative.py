@@ -2344,6 +2344,29 @@ def _exploration_next(cfg, chan_id: str) -> tuple[str, bool]:
     next_i = (i + 1) % len(ordered)
     return (ordered[next_i], next_i == 0)
 
+def _exploration_prev(cfg, chan_id: str) -> tuple[str, bool]:
+    """
+    Returns (prev_name, wraps_to_bottom).
+    Uses current initiative order. Rewinds from cfg[turn_e] if present,
+    otherwise starts at the bottom without counting it as a wrap.
+    """
+    names, scores = _parse_combatants(cfg, chan_id)
+    if not names:
+        return ("", False)
+
+    ordered = _sorted_names(names, scores, cfg, chan_id)
+    if not ordered:
+        return ("", False)
+
+    cur_e = (cfg.get(chan_id, "turn_e", fallback="") or "").strip()
+    if not cur_e or cur_e not in ordered:
+        return (ordered[-1], False)
+
+    i = ordered.index(cur_e)
+    prev_i = (i - 1) % len(ordered)
+    return (ordered[prev_i], i == 0)
+
+
 MONSTER_DIRS = ["monsters", "."]
 SAVE_KEYS = ("poi", "wand", "para", "breath", "spell")
 
@@ -2551,18 +2574,31 @@ def _format_tracker_block(cfg, chan_id: str):
     entries   = _sorted_entries(cfg, chan_id)
     round_no  = cfg.getint(chan_id, "round", fallback=0)
     turn_name = cfg.get(chan_id, "turn", fallback="")
+    turn_c = (cfg.get(chan_id, "turn",   fallback="") or "").strip()    # combat cursor
+    turn_e = (cfg.get(chan_id, "turn_e", fallback="") or "").strip()    # exploration cursor
 
+    # Mode-aware cursor choice
+    battle = _get_battle_mode(cfg, chan_id)  # True=battle, False=exploration
+    active_turn   = turn_c if battle else turn_e
+    inactive_turn = turn_e if battle else turn_c
+
+    # Fallback: if active cursor is empty, at least mark *something*
+    if not active_turn:
+        active_turn, inactive_turn = inactive_turn, ""
+                
+    # Compute header “current init” based on the *active* cursor
     current_init = "-"
-    if entries and turn_name:
+    if entries and active_turn:
         for e in entries:
-            if e["name"] == turn_name:
+            if e["name"] == active_turn:
                 current_init = e.get("init", e.get("score", "-"))
                 break
 
-    header = f"Initiative: {current_init} (round {round_no})"
+    mode_tag = "COMBAT" if battle else "EXPLORATION"
+    header = f"Initiative: {current_init} (round {round_no}) [{mode_tag}]"
     if not entries:
         return header + "\n(no combatants yet)"
-
+        
     def _find_file_ci(nm: str) -> str | None:
         """Find '<name>.coe' case-insensitively."""
         base = (nm or "").replace(" ", "_").lower()
@@ -2584,7 +2620,13 @@ def _format_tracker_block(cfg, chan_id: str):
         if cfg.has_option(chan_id, f"{slot}.acpen"):
             disp = f"{disp} (–2 AC)"
 
-        prefix = "> " if name == turn_name else "  "
+        # NEW: markers
+        if name == active_turn:
+            prefix = "> "
+        elif inactive_turn and name == inactive_turn:
+            prefix = "· "          # optional: show the other mode’s cursor
+        else:
+            prefix = "  "
 
         path = _find_file_ci(disp) or _find_file_ci(name)
 
@@ -6158,7 +6200,7 @@ class Initiative(commands.Cog):
             stat_line += tail
 
             mention = f"<@{owner}>" if owner and str(owner).isdigit() else ""
-            header = f"**Initiative {ini_score} (round {rn})**: {who} {mention}".strip()
+            header = f"⚔️ **Initiative {ini_score} (round {rn})**: {who} {mention}".strip()
             body   = f"```ini\n{stat_line}\n```"
             return header, body
 
@@ -6308,6 +6350,12 @@ class Initiative(commands.Cog):
         if not names:
             await ctx.send("No combatants yet.")
             return
+
+        # Mirror !n behavior: in exploration mode, rewind exploration cursor instead.
+        if not _get_battle_mode(cfg, chan_id):
+            await self.exploration_back(ctx)
+            return
+
 
         dm_id = cfg.get(chan_id, "DM", fallback="")
         ordered = _sorted_names(names, scores, cfg, chan_id)
@@ -6695,17 +6743,21 @@ class Initiative(commands.Cog):
           !mon <name> [count] [flags...]
 
         Flags (orderless; -x or -x both OK):
-          -nolair              -> don’t queue lair hoards (A..O)
-          -noind               -> don’t roll individual treasure (P..V)
-          -noloot              -> no treasure handling at all (implies both of the above)
-          -1hp                 -> spawn with 1 HP (keeps full max HP)
-          -owner <char|@user|id> -> assign monster ownership to that PC’s player or Discord user
+          -nolair                 -> don’t queue lair hoards (A..O)
+          -noind                  -> don’t roll individual treasure (P..V)
+          -noloot                 -> no treasure handling at all (implies both of the above)
+          -1hp                    -> spawn with 1 HP (keeps full max HP)
+          -owner <char|@user|id>  -> assign monster ownership to that PC’s player or Discord user
+          -name <base>            -> base name for monsters (e.g. Bok, raider)
+                                     • count = 1: uses <base> (or <base>2, <base>3... if needed)
+                                     • count > 1: uses <base>1, <base>2, ... skipping any that already exist
         """
 
-        # Parse args: [count], flags, and optional "-owner X"
+        # Parse args: [count], flags, optional "-owner X", and optional "-name BASE"
         count = None
         raw_flags: list[str] = []
         owner_spec: str | None = None
+        name_base: str | None = None
 
         args_list = list(args)
         i = 0
@@ -6717,6 +6769,10 @@ class Initiative(commands.Cog):
             elif tl in ("-owner", "--owner", "-o"):
                 if i + 1 < len(args_list):
                     owner_spec = str(args_list[i + 1]).strip()
+                    i += 1
+            elif tl in ("-name", "--name"):
+                if i + 1 < len(args_list):
+                    name_base = str(args_list[i + 1]).strip()
                     i += 1
             else:
                 raw_flags.append(t)
@@ -6864,11 +6920,37 @@ class Initiative(commands.Cog):
         tpl_type = str(tpl.get("type", "")).strip().lower()
         is_undead_tpl = ("undead" in tpl_type)
 
+        # For sequential custom naming when count > 1
+        next_named_suffix = 1
+
         for _ in range(count):
-            i = 1
-            while f"{prefix}{i}" in existing:
-                i += 1
-            mon = f"{prefix}{i}"
+            # Determine monster name (`mon`)
+            if name_base:
+                base = name_base
+                # Single spawn: try base as-is, then base2, base3...
+                if count == 1:
+                    candidate = base
+                    if candidate in existing:
+                        j = 2
+                        while f"{base}{j}" in existing:
+                            j += 1
+                        candidate = f"{base}{j}"
+                    mon = candidate
+                else:
+                    # Multiple spawns: base1, base2, ..., skipping any that already exist
+                    while True:
+                        candidate = f"{base}{next_named_suffix}"
+                        next_named_suffix += 1
+                        if candidate not in existing:
+                            mon = candidate
+                            break
+            else:
+                # Original behavior: prefix (e.g. GO, OR) + first available number
+                i = 1
+                while f"{prefix}{i}" in existing:
+                    i += 1
+                mon = f"{prefix}{i}"
+
             existing.add(mon)
 
             def _roll_hp_from_hd(hd_val: float, hpmod: int) -> int:
@@ -7738,12 +7820,12 @@ class Initiative(commands.Cog):
           !remove GO3
           !remove go1 go2
           !remove go*                 (prefix wildcard)
-          !remove go1 -delete        (also delete monster file)
+          !remove go1 -delete         (also delete monster file)
           !remove go1 go2 -d          (same)
 
         Notes:
-          - If you remove the current *turn* holder, turn advances to the top of the
-            remaining order (round number unchanged).
+          - If you remove the current *turn* holder, turn advances to the next
+            remaining combatant in initiative order (round number unchanged).
           - -delete / -d will delete .coe files only for Monsters.
         """
         import re, os
@@ -7765,6 +7847,7 @@ class Initiative(commands.Cog):
 
         tokens = [t for t in re.split(r"\s+", args.strip()) if t]
 
+        # (Keeping your existing semantics for delete flag)
         want_delete = True
         raw_names   = [t for t in tokens if t.lower() not in ("-d", "-delete", "-del")]
 
@@ -7781,7 +7864,7 @@ class Initiative(commands.Cog):
 
         def _expand_token(tok: str) -> list[str]:
             q = tok.strip().lower()
-            out = []
+            out: list[str] = []
             if q.endswith("*"):
                 pref = q[:-1]
                 for n in names:
@@ -7793,7 +7876,7 @@ class Initiative(commands.Cog):
                     out.append(found)
             return out
 
-        to_remove = []
+        to_remove: list[str] = []
         seen = set()
         for tok in raw_names:
             hits = _expand_token(tok)
@@ -7808,6 +7891,24 @@ class Initiative(commands.Cog):
             await ctx.send("Nothing matched: " + ", ".join(f"`{m}`" for m in missing))
             return
 
+        # Figure out who should get the turn AFTER removal, if we're removing the current turn holder.
+        next_turn = None
+        if cur_turn and cur_turn in to_remove:
+            ordered_before = _sorted_names(names, scores, cfg, chan_id)
+            if len(ordered_before) > 1:
+                try:
+                    idx = ordered_before.index(cur_turn)
+                except ValueError:
+                    idx = -1
+                if idx != -1:
+                    # Walk forward through the order until we find someone not being removed
+                    for offset in range(1, len(ordered_before)):
+                        cand = ordered_before[(idx + offset) % len(ordered_before)]
+                        if cand not in to_remove:
+                            next_turn = cand
+                            break
+
+        # Actually remove them from initiative + options
         for key in to_remove:
             if key not in names:
                 continue
@@ -7840,10 +7941,15 @@ class Initiative(commands.Cog):
 
         _write_combatants(cfg, chan_id, names, scores)
 
+        # If we removed whoever had the turn, move it to the NEXT remaining in order (like !damage).
         if cur_turn in removed:
             if names:
-                ordered = _sorted_names(names, scores, cfg, chan_id)
-                cfg.set(chan_id, "turn", ordered[0] if ordered else "")
+                if next_turn and next_turn in names:
+                    cfg.set(chan_id, "turn", next_turn)
+                else:
+                    # Fallback: top of remaining order
+                    ordered_after = _sorted_names(names, scores, cfg, chan_id)
+                    cfg.set(chan_id, "turn", ordered_after[0] if ordered_after else "")
             else:
                 cfg.set(chan_id, "turn", "")
 
@@ -7859,30 +7965,20 @@ class Initiative(commands.Cog):
             parts.append("Not found: " + ", ".join(f"`{m}`" for m in missing))
         await ctx.send("🧽 " + ("; ".join(parts) if parts else "No changes."))
 
-    def _eq_get_weapons(self, cfg) -> list[str]:
-            """Return equipped weapons in order (weapon1..weaponN), compacted."""
-            names: list[str] = []
-            try:
-                cnt = getint_compat(cfg, "eq", "weapon", fallback=None)
-            except Exception:
-                cnt = None
+        # Announce whose turn it is now, mirroring !damage’s behavior
+        try:
+            if cur_turn in removed and names:
+                turn_name = (cfg.get(chan_id, "turn", fallback="") or "").strip()
+                if turn_name:
+                    round_no = cfg.getint(chan_id, "round", fallback=0)
+                    ini_score = scores.get(turn_name, 0)
+                    await ctx.send(
+                        f"🎯 It is now **{turn_name}**'s turn "
+                        f"(initiative {ini_score}, round {round_no})."
+                    )
+        except Exception:
+            pass
 
-            if cnt and cnt > 0:
-                for i in range(1, cnt + 1):
-                    w = get_compat(cfg, "eq", f"weapon{i}", fallback="").strip()
-                    if w:
-                        names.append(w)
-            else:
-
-                if cfg.has_section("eq"):
-                    pairs = []
-                    for k, v in cfg.items("eq"):
-                        m = re.fullmatch(r"weapon(\d+)", k, flags=re.I)
-                        if m and v.strip():
-                            pairs.append((int(m.group(1)), v.strip()))
-                    names = [v for _, v in sorted(pairs)]
-
-            return names
 
     @commands.command(name="magicweapon")
     async def magicweapon(self, ctx, *weapon_words):
@@ -9028,7 +9124,106 @@ class Initiative(commands.Cog):
             allowed_mentions=nextcord.AllowedMentions(users=True, roles=False, everyone=False),
         )
 
-       
+           
+
+    
+
+    async def exploration_back(self, ctx):
+        """
+        Exploration-only: move the exploration cursor (turn_e) back by one PC.
+        Monsters are skipped; only PCs get pings.
+
+        Note: This rewinds *who is up* in exploration order, but it does NOT rewind
+        the exploration clock or undo any per-turn effects that may have been applied
+        when time advanced.
+        """
+        cfg = _load_battles()
+        chan_id = _section_id(ctx.channel)
+        if not cfg.has_section(chan_id):
+            await ctx.send("❌ No initiative running here. Use `!init` first.")
+            return
+
+        names, _ = _parse_combatants(cfg, chan_id)
+        if not names:
+            await ctx.send("ℹ️ No combatants yet.")
+            return
+
+        # Permission parity with combat rewind: DM or current exploration actor owner.
+        dm_id = cfg.get(chan_id, "DM", fallback="")
+        cur_e = (cfg.get(chan_id, "turn_e", fallback="") or "").strip()
+        if cur_e:
+            try:
+                _, _, _, owner = _char_snapshot(cur_e)
+            except Exception:
+                owner = ""
+            if str(ctx.author.id) != str(dm_id) and str(ctx.author.id) != str(owner):
+                await ctx.send("❌ Only the DM or the current exploration character's owner can rewind the exploration turn.")
+                return
+
+        wraps_any = False
+        prev_name = None
+
+        # Step back through the order up to once per combatant, skipping monsters
+        for _ in range(len(names)):
+            candidate, wraps = _exploration_prev(cfg, chan_id)
+            if not candidate:
+                await ctx.send("ℹ️ No one to ping.")
+                return
+
+            wraps_any = wraps_any or wraps
+
+            cfg.set(chan_id, "turn_e", candidate)
+            _save_battles(cfg)
+
+            try:
+                is_mon = _is_monster(candidate)
+            except Exception:
+                is_mon = False
+
+            if not is_mon:
+                prev_name = candidate
+                break
+
+        if not prev_name:
+            await ctx.send("ℹ️ No player characters in the exploration order to act (all monsters).")
+            return
+
+        # Auto-activate for the PC we landed on
+        try:
+            await self._auto_activate_for_turn(ctx, prev_name)
+        except Exception:
+            pass
+
+        # Build the normal exploration embed, but mark it as a rewind + include mode
+        emb = self._exploration_embed(cfg, chan_id, prev_name)
+        try:
+            if emb.title:
+                emb.title = emb.title.replace("🧭", "⏪ 🧭", 1)
+            else:
+                emb.title = f"⏪ 🧭 Exploration Turn: {prev_name}"
+        except Exception:
+            pass
+        try:
+            foot = "Mode: Exploration"
+            if wraps_any:
+                foot += " • wrapped to bottom"
+            emb.set_footer(text=foot)
+        except Exception:
+            pass
+
+        mention = _owner_mention(prev_name, cfg, chan_id)
+        bits = []
+        if mention:
+            bits.append(mention)
+        bits.append("⏪ **Rewound exploration turn.**")
+        content = "\n".join(bits) if bits else None
+
+        await ctx.send(
+            content=content,
+            embed=emb,
+            allowed_mentions=nextcord.AllowedMentions(users=True, roles=False, everyone=False),
+        )
+
 
 
     @commands.command(name="treset")
