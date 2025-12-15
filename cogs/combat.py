@@ -12471,11 +12471,60 @@ class Combat(commands.Cog):
         if not cfg.has_section("eq"):
             cfg.add_section("eq")
 
-        carried_now = set()
-        if cfg.has_section("eq"):
+        def _compact_carry_slots():
+            """Collapse duplicate carry slots (by normalized name) using the max qty per item."""
+            if not cfg.has_section("eq"):
+                return
+            slots = []
             for opt, val in cfg.items("eq"):
                 if opt.startswith("carry") and not opt.endswith("_qty"):
-                    carried_now.add((val or "").strip().lower())
+                    try:
+                        idx = int(opt[5:])
+                    except Exception:
+                        idx = 999999
+                    nm = (val or "").strip()
+                    if not nm:
+                        continue
+                    try:
+                        q = int(cfg.get("eq", f"{opt}_qty", fallback="1"))
+                    except Exception:
+                        q = 1
+                    slots.append((idx, nm, max(1, q)))
+
+            if not slots:
+                return
+
+            slots.sort(key=lambda x: x[0])
+            merged = {}
+            order = []
+            for _idx, nm, q in slots:
+                key = normalize_name(nm)
+                if not key:
+                    continue
+                if key not in merged:
+                    merged[key] = (nm, q)
+                    order.append(key)
+                else:
+                    prev_nm, prev_q = merged[key]
+                    merged[key] = (prev_nm, max(prev_q, q))
+
+            for opt, _ in list(cfg.items("eq")):
+                if opt.startswith("carry"):
+                    cfg.remove_option("eq", opt)
+
+            for i, key in enumerate(order, start=1):
+                nm, q = merged[key]
+                cfg.set("eq", f"carry{i}", nm)
+                cfg.set("eq", f"carry{i}_qty", str(max(1, int(q))))
+
+        # Repair any existing duplicate carry slots before we add more.
+        _compact_carry_slots()
+
+        # Use normalized names so "holywater" and "holy water" don't become duplicates.
+        carried_now: set[str] = set()
+        for opt, val in cfg.items("eq"):
+            if opt.startswith("carry") and not opt.endswith("_qty"):
+                carried_now.add(normalize_name((val or "").strip()))
 
         def _normalize_item(it):
             """_item_lookup/find_item sometimes return a list of matches. Pick a usable dict."""
@@ -12494,23 +12543,38 @@ class Combat(commands.Cog):
             return canon, it
 
         def _inv_has_qty(canon: str):
+            """Return (has_item, qty) from [item], tolerant of spacing/punctuation differences."""
             has_it = False
             inv_qty = 1
             try:
                 if cfg.has_section("item"):
-                    key = canon.lower()
-                    raw_cnt = cfg.get("item", key, fallback=None)
+                    want_key = canon.lower()
+                    raw_cnt = cfg.get("item", want_key, fallback=None)
+
+                    # Fallback: find a key whose normalized name matches (handles spaces vs no spaces).
+                    if raw_cnt is None:
+                        want_norm = normalize_name(canon)
+                        for k, v in cfg.items("item"):
+                            if k.lower() == "storage":
+                                continue
+                            if normalize_name(k) == want_norm:
+                                raw_cnt = v
+                                break
+
                     if raw_cnt is not None:
                         try:
-                            inv_qty = max(1, int(str(raw_cnt).strip()))
-                            has_it = inv_qty > 0
+                            cur = int(str(raw_cnt).strip())
                         except Exception:
-                            has_it = True
-                            inv_qty = 1
+                            cur = 1
+                        has_it = cur > 0
+                        inv_qty = cur if cur > 0 else 0
+
                     if not has_it:
                         storage = cfg.get("item", "storage", fallback="")
-                        inv = {s.strip().lower() for s in storage.split() if s.strip()}
-                        has_it = key in inv
+                        want_norm = normalize_name(canon)
+                        inv = {normalize_name(s.strip()) for s in storage.split() if s.strip()}
+                        has_it = bool(want_norm) and (want_norm in inv)
+                        inv_qty = 1
             except Exception:
                 pass
             return has_it, inv_qty
@@ -12534,12 +12598,23 @@ class Combat(commands.Cog):
             except Exception:
                 return False
 
+        def _find_carry_slot(canon_name: str) -> str | None:
+            """Return the first carry slot key (e.g. 'carry3') matching canon_name, else None."""
+            want = normalize_name(canon_name)
+            if not want or not cfg.has_section("eq"):
+                return None
+            for opt, val in cfg.items("eq"):
+                if opt.startswith("carry") and not opt.endswith("_qty"):
+                    if normalize_name((val or "").strip()) == want:
+                        return opt
+            return None
+
         specs = []   # (canon, itemdict, typed_qty)
         errors = []
 
         # ---- carry all ----
         if argline.lower() == "all":
-            inv_items = []
+            inv_items: list[tuple[str, int]] = []
             if cfg.has_section("item"):
                 for k, v in cfg.items("item"):
                     if k.lower() == "storage":
@@ -12558,15 +12633,24 @@ class Combat(commands.Cog):
                     if s:
                         inv_items.append((s, 1))
 
+            # Dedupe by normalized canonical name (prevents double-carry + double-weight).
+            best: dict[str, tuple[str, dict, int]] = {}
             for raw, q in inv_items:
                 canon, it = _resolve(raw)
                 if not canon or not it:
                     continue
-                if canon.lower() in carried_now:
+                norm = normalize_name(canon)
+                if not norm:
+                    continue
+                if norm in carried_now:
                     continue
                 if _is_equipable(it):
                     continue
-                specs.append((canon, it, q))
+                prev = best.get(norm)
+                if (prev is None) or (q > prev[2]):
+                    best[norm] = (canon, it, q)
+
+            specs.extend(best.values())
 
         # ---- multi-parse ----
         else:
@@ -12585,7 +12669,7 @@ class Combat(commands.Cog):
                         break
 
                 if not found:
-                    errors.append(f"❌ Unknown item **{tokens[i]}**.")
+                    errors.append(f"⚠️ Unknown item near: **{' '.join(tokens[i:i+2])}**")
                     i += 1
                     continue
 
@@ -12617,6 +12701,18 @@ class Combat(commands.Cog):
                 qty = max(1, int(qty))
             except Exception:
                 qty = 1
+
+            # If already carried, update that slot's qty instead of creating a duplicate slot.
+            existing = _find_carry_slot(canon)
+            if existing:
+                try:
+                    curq = int(cfg.get("eq", f"{existing}_qty", fallback="1"))
+                except Exception:
+                    curq = 1
+                qty = max(curq, qty)
+                cfg.set("eq", f"{existing}_qty", str(qty))
+                added.append((canon, qty, existing))
+                continue
 
             slot_used = self._eq_add_carry(cfg, canon)
             cfg.set("eq", f"{slot_used}_qty", str(qty))
@@ -12652,7 +12748,7 @@ class Combat(commands.Cog):
         new_total  = new_eq_w + new_coin_w
 
         STR  = getint_compat(cfg, "stats", "str", fallback=10)
-        race = get_compat(cfg, "info", "race", fallback="Human")
+        race = (get_compat(cfg, "info", "race", fallback="Human") or "Human").strip()
         light_lim, heavy_lim = self._weight_thresholds(race, STR)
 
         if new_total <= light_lim:   load_txt = "light load"
