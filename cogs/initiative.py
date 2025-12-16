@@ -5435,6 +5435,12 @@ class Initiative(commands.Cog):
         detail = "(`!n` = combat rounds)" if new else "(`!n` = exploration turns)"
         await ctx.send(f"{mode} mode for this channel {detail}.")
 
+        try:
+            await self._update_tracker_message(ctx, cfg, chan_id)
+        except Exception:
+            pass
+
+
 
     @commands.command(name="join")
     async def join_initiative(self, ctx, *, name: str | None = None):
@@ -6212,8 +6218,11 @@ class Initiative(commands.Cog):
             await self._auto_activate_for_turn(ctx, top)
 
             changed = self._tick_start_of_turn(cfg, chan_id, top)
-            if changed:
+            try:
                 await self._update_tracker_message(ctx, cfg, chan_id)
+            except Exception:
+                pass
+
 
             await _maybe_dm_monster_attacks(self, ctx, cfg, chan_id, top)
 
@@ -9076,6 +9085,12 @@ class Initiative(commands.Cog):
             except Exception:
                 pass
 
+        try:
+            await self._update_tracker_message(ctx, cfg, chan_id)
+        except Exception:
+            pass
+
+
         # Auto-activate for the PC we landed on
         try:
             await self._auto_activate_for_turn(ctx, next_name)
@@ -10314,6 +10329,302 @@ class Initiative(commands.Cog):
         im_stats = _split(get_compat(t_cfg, "stats", "immune",  fallback=""))
         im_base  = _split(get_compat(t_cfg, "base",  "immune",  fallback=""))
         return "poison" in (im_stats | im_base)
+
+
+
+    @commands.command(name="stocking")
+    async def stocking(self, ctx, *, args: str = ""):
+        """
+        Open a holiday stocking (once per year per character).
+
+        Usage:
+          !stocking
+          !stocking -cash          # if you roll the gilded scroll, take 1000gp instead of the scroll
+          !stocking <char name> -force    # GM/DM: give to someone else, bypass yearly lock
+        """
+        import datetime, re, random
+
+        # --- GM/DM check (same pattern you use elsewhere) ---
+        is_gm = getattr(ctx.author.guild_permissions, "manage_guild", False)
+        try:
+            bcfg = _load_battles()
+            chan_id = _section_id(ctx.channel)
+            if bcfg and bcfg.has_section(chan_id):
+                dm_id = bcfg.get(chan_id, "DM", fallback="")
+                if str(ctx.author.id) == str(dm_id):
+                    is_gm = True
+        except Exception:
+            pass
+
+        # --- parse args ---
+        toks = [t for t in (args or "").split() if t.strip()]
+        flags = {t.lower() for t in toks if t.startswith("-")}
+        force = ("-force" in flags)
+        cash  = ("-cash" in flags) or ("-sell" in flags)
+        target_in = " ".join([t for t in toks if not t.startswith("-")]).strip()
+
+        # --- resolve character ---
+        if target_in:
+            if not is_gm:
+                await ctx.send("❌ Only the GM/DM can open a stocking for another character.")
+                return
+            try:
+                char_disp, path = _resolve_char_ci_local(target_in)
+            except Exception:
+                char_disp = target_in
+                path = f"{target_in.replace(' ', '_')}.coe"
+        else:
+            char_disp = get_active(ctx.author.id)
+            if not char_disp:
+                await ctx.send("❌ No active character. Use `!char <name>` first.")
+                return
+            try:
+                char_disp, path = _resolve_char_ci_local(char_disp)
+            except Exception:
+                path = f"{char_disp.replace(' ', '_')}.coe"
+
+        if not os.path.exists(path):
+            await ctx.send(f"❌ Character file not found: `{path}`")
+            return
+
+        cfg = read_cfg(path)
+
+        # --- once-per-year lock (stored on the character) ---
+        year = datetime.datetime.utcnow().year
+        lock_key = f"stocking_{year}"
+        if not cfg.has_section("event"):
+            cfg.add_section("event")
+        already = (get_compat(cfg, "event", lock_key, fallback="") or "").strip()
+        if already and not force:
+            await ctx.send(f"🎄 **{char_disp}** already opened a stocking for **{year}**. (GM can use `-force`.)")
+            return
+
+        # --- get Combat cog for canonical item lookups + weight/move recompute ---
+        combat = None
+        try:
+            combat = ctx.bot.get_cog("Combat")
+        except Exception:
+            combat = None
+
+        # --- helpers: coins + inventory ---
+        def _ensure_section(sec: str):
+            if not cfg.has_section(sec):
+                cfg.add_section(sec)
+
+        def _get_cur_coin(k: str) -> int:
+            try:
+                return int(str(get_compat(cfg, "cur", k, fallback="0")).strip() or "0")
+            except Exception:
+                return 0
+
+        def _set_coin_weight_cache():
+            # keep your cached coin_weight roughly consistent even if Combat cog missing
+            pp = _get_cur_coin("pp")
+            gp = _get_cur_coin("gp")
+            ep = _get_cur_coin("ep")
+            sp = _get_cur_coin("sp")
+            cp = _get_cur_coin("cp")
+            cw = (pp + gp + ep + sp + cp) * 0.02
+            _ensure_section("eq")
+            cfg.set("eq", "coin_weight", f"{cw:.2f}")
+            return cw
+
+        def _inv_storage_tokens():
+            raw = get_compat(cfg, "item", "storage", fallback="") or ""
+            return [t for t in raw.split() if t.strip()]
+
+        def _inv_set_storage(tokens):
+            _ensure_section("item")
+            cfg.set("item", "storage", " ".join(tokens))
+
+        def _inv_add_stack(token: str, qty: int = 1):
+            # storage tokens can’t contain spaces (split()); use a safe token
+            token = (token or "").strip()
+            if not token:
+                return
+            token = re.sub(r"\s+", "", token)
+
+            _ensure_section("item")
+            tokens = _inv_storage_tokens()
+            lc_map = {t.lower(): t for t in tokens}
+            if token.lower() not in lc_map:
+                tokens.append(token)
+                _inv_set_storage(tokens)
+
+            key = token.lower()
+            try:
+                cur = int(str(cfg.get("item", key, fallback="0")).strip() or "0")
+            except Exception:
+                cur = 0
+            cfg.set("item", key, str(cur + max(1, int(qty))))
+
+        def _inv_add_item(name: str, qty: int = 1) -> list[str]:
+            """
+            Adds an item to inventory:
+            - if Combat cog knows it and it has charges, create instance canon@id (qty times)
+            - else stack it under [item].<token>=count and ensure token in [item].storage
+            Returns display-ish tokens added for reporting.
+            """
+            name = (name or "").strip()
+            if not name:
+                return []
+            added_tokens = []
+
+            canon, it = (None, None)
+            if combat:
+                try:
+                    canon, it = combat._item_lookup(name)
+                except Exception:
+                    canon, it = (None, None)
+
+            # If it’s a known charged item: make instances
+            if combat and canon and it:
+                try:
+                    if combat._item_has_charges(canon, it):
+                        for _ in range(max(1, int(qty))):
+                            tok = combat._add_charged_item_instance(cfg, path, canon, it)
+                            added_tokens.append(tok or canon)
+                        return added_tokens
+                except Exception:
+                    pass
+
+            # Otherwise: stack token
+            token = canon if canon else name
+            _inv_add_stack(token, qty)
+            if qty > 1:
+                added_tokens.append(f"{re.sub(r'\\s+','',token)}×{qty}")
+            else:
+                added_tokens.append(re.sub(r"\s+","",token))
+            return added_tokens
+
+        def _add_gp(amount: int) -> int:
+            amount = int(amount)
+            _ensure_section("cur")
+            cur_gp = _get_cur_coin("gp")
+            cfg.set("cur", "gp", str(cur_gp + amount))
+            return amount
+
+        # --- roll + award ---
+        roll = _d100()  # your existing helper :contentReference[oaicite:3]{index=3}
+        awarded_gp = 0
+        awarded_items = []
+        extra_note = ""
+
+        # 01-40: 2d10*100 GP
+        if 1 <= roll <= 40:
+            gp = _dice_sum("2d10") * 100
+            awarded_gp += _add_gp(gp)
+
+        # 41-65: Healing potion x2
+        elif 41 <= roll <= 65:
+            # try a couple common names; Combat lookup will canonicalize if it recognizes one
+            for nm in ("HealingPotion", "PotionofHealing", "HealingPotion2", "Healing Potion"):
+                got = _inv_add_item(nm, 2)
+                if got:
+                    awarded_items += got
+                    break
+
+        # 66-80: Random (gilded) scroll; -cash converts to 1000gp
+        elif 66 <= roll <= 80:
+            # mirror your existing scroll-roll idea from magic table code
+            if _d(2) == 1:
+                grp = random.choice(["Magic-User", "Illusionist", "Necromancer", "Spellcrafter"])
+            else:
+                grp = random.choice(["Cleric", "Druid"])
+            spells = []
+            try:
+                spells = self._pick_spells(grp, 1)  # already used elsewhere in initiative loot
+            except Exception:
+                spells = []
+            spell = spells[0] if spells else "UnknownSpell"
+
+            spell_key = re.sub(r"[^A-Za-z0-9]+", "", str(spell))
+            # try to find a “real” scroll item name first; otherwise store a custom token
+            scroll_candidates = [
+                f"Scroll:{spell_key}",
+                f"Scroll{spell_key}",
+                f"SpellScroll:{spell_key}",
+                f"SpellScroll{spell_key}",
+            ]
+
+            if cash:
+                awarded_gp += _add_gp(1000)
+                extra_note = f"💰 Took the **1000gp** buyout instead of the gilded scroll (**{grp}**: *{spell}*)."
+            else:
+                added = []
+                for cand in scroll_candidates:
+                    added = _inv_add_item(cand, 1)
+                    if added:
+                        break
+                if not added:
+                    added = _inv_add_item(f"GildedScroll_{grp}_{spell_key}", 1)
+                awarded_items += added
+                extra_note = f"✨ Gilded scroll is worth **1000gp** to sell (GM-adjudicated) if unusable (**{grp}**: *{spell}*)."
+
+        # 81-90: WinterBlanket and CloakofProtection+1
+        elif 81 <= roll <= 90:
+            awarded_items += _inv_add_item("WinterBlanket", 1)
+            awarded_items += _inv_add_item("CloakofProtection+1", 1)
+
+        # 91-97: Magic item table "Armor" (existing style)
+        elif 91 <= roll <= 97:
+            # simplified-but-compatible armor roll (bonus +1..+3 bias like your table)
+            at = random.choice(["LeatherArmor","ChainMail","PlateMail","Shield"])
+            r = _d100()
+            if r <= 65: bonus = "+1"
+            elif r <= 90: bonus = "+2"
+            else: bonus = "+3"
+            awarded_items += _inv_add_item(f"{at}{bonus}", 1)
+
+        # 98-99: Magic item table "Weapon"
+        elif 98 <= roll <= 99:
+            wt = random.choice([
+                "Dagger","Shortsword","Longsword","BattleAxe","Mace","Warhammer","Spear","Shortbow","Longbow"
+            ])
+            r = _d100()
+            if r <= 65: bonus = "+1"
+            elif r <= 85: bonus = "+2"
+            elif r <= 95: bonus = "+3"
+            elif r <= 99: bonus = "+4"
+            else: bonus = "+5"
+            awarded_items += _inv_add_item(f"{wt}{bonus}", 1)
+
+        # 100: Rare Voucher
+        else:
+            awarded_items += _inv_add_item("RareVoucher", 1)
+            extra_note = "🎟️ **Rare Voucher**: redeem with a GM from the curated list."
+
+        # --- recompute weight/move if possible ---
+        _set_coin_weight_cache()
+        if combat:
+            try:
+                combat._recompute_eq_weight(cfg)
+                combat._recompute_move(cfg)
+                _set_coin_weight_cache()
+            except Exception:
+                pass
+
+        # mark claimed + save
+        cfg.set("event", lock_key, datetime.datetime.utcnow().strftime("%Y-%m-%d"))
+        write_cfg(path, cfg)
+
+        # --- output ---
+        e = nextcord.Embed(
+            title="🎁 Stocking!",
+            description=f"**{char_disp}** opens a stocking…\n🎲 d100 → **{roll:02d}**",
+            color=random.randint(0, 0xFFFFFF),
+        )
+        if awarded_gp:
+            e.add_field(name="Coins", value=f"+ **{awarded_gp} gp**", inline=False)
+        if awarded_items:
+            e.add_field(name="Items added to inventory", value="\n".join(f"• {x}" for x in awarded_items[:12]), inline=False)
+            if len(awarded_items) > 12:
+                e.add_field(name="(more)", value=f"+{len(awarded_items)-12} more…", inline=False)
+        if extra_note:
+            e.add_field(name="Note", value=extra_note, inline=False)
+
+        await ctx.send(embed=e)
+
 
 def setup(bot):
     bot.add_cog(Initiative(bot))
