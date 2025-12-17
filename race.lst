@@ -143,7 +143,7 @@ skills=Swim Bite
 openlock=-10
 removetrap=-10
 pickpocket=-10
-desc=A lizard man is uaully 6' to 7' feet tall with green, gray, or brown scales. Its tail is used for balance and is 3' to 4' long. Adult males can weigh from 200 to 250 pounds and are always very strong. Lizardmen are largely indifferent to other races, being primarily interested in their own survival. If aroused, however, they are fearsome warriors, using simple but sound tactics.//Lizard men generally prefer professions associated with nature or survival. Lizardmen have trouble relating to most other races.//Lizardmen are excellent swimmers and can hold their breath for an extended period of time (up to a full turn, or 60 rounds). Lizardmen can bite for 1d4 pounds + Strength modifier in damage, but must forgo any weapon attacks that round. A lizardman fighter can specialize in their own bite.
+desc=A lizard man is uaully 6' to 7' feet tall with green, gray, or brown scales. Its tail is used for balance and is 3' to 4' long. Adult males can weigh from 200 to 250 pounds and are always very strong. Lizardmen are largely indifferent to other races, being primarily interested in their own survival. If aroused, however, they are fearsome warriors, using simple but sound tactics.//Lizard men generally prefer professions associated with nature or survival. Lizardmen have trouble relating to most other races.//Lizardmen are excellent swimmers and can hold their breath for an extended period of time (up to a full turn, or 60 rounds). Lizardmen can bite for 1d6 + Strength modifier in damage, but must forgo any weapon attacks that round. A lizardman fighter can specialize in their own bite.
 
 [Orc]
 class=Fighter Cleric Druid Thief Barbarian Paladin Scout
@@ -175,7 +175,7 @@ climb=-10
 desc=Dwarves are a short, stocky race; both male and female Dwarves stand around four feet tall and typically weigh around 120 pounds. Their long hair and thick bears are dark brown, gray or black. They take great pride in their beards, sometimes braiding or forking them. They have a fair to ruddy complexion. Dwarves have stout frames and a strong, muscular build. They are rugged and resilient, with the capacity to endure great hardships. Dwarves are typically practical, stubborn and courageous. They can also be introspective, suspicious and possessive. They have a lifespan of three to four centuries.//All Dwarves have Darkvision with a 60' range, and are able to detect slanting passages, stonework traps, shifting walls and new construction on a roll of 1-2 on 1d6; a search must be performed before this roll may be made.//Due to their stocky, powerful builds, Dwarves are able to use Medium weapons one-handed (Battleaxe, Shortbow, Light Crossbow, Longsword/Scimitar, Mace, Club/Cudgel/Walking Staff, Spear) and Large weapons in two hands, but Large weapons more than four feet in length are prohibited (Greatsword, Polearm, Longbow).
 
 [Gnome]
-class=Fighter Cleric Druid Magic-User Thief Barbarian Paladin Scout Illusionist Necromancer Spellcrafter Magethief
+class=Fighter Cleric Druid Magic-User Thief Paladin Scout Illusionist Necromancer Spellcrafter Magethief
 conmin=9
 banned=GreatAxe Longbow HeavyXbow Greatsword Maul Quarterstaff Polearm
 strmax=17
@@ -203,7 +203,7 @@ desc=Alert is the racial ability to be surprised less often. Surprise rolls are 
 desc=Frail is a racial "ability" that denotes that your character's race is especially frail, and may not roll higher than a d6 for hit points, regardless of class.
 
 [Large]
-desc=Large characters have higher carry weight thresholds, as well as increased hit die values (which determine HP).
+desc=Large characters have increased hit die values (which determine HP), as well as +1 on the roll when opening stuck doors or performing other feats of Strength.
 
 [Aim]
 desc=Aim is the halfling racial ability which gives them greater accuracy, gaining a +1 to all attack rolls with ranged weapons.
