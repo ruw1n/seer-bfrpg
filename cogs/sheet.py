@@ -1156,7 +1156,7 @@ class SheetCog(commands.Cog):
 
         safe_base = _safe_char_basename(char_name)  # this is what the filename uses
 
-        desc = f"_Saved as **{safe_base}**_"
+        desc = f"*Saved as **{safe_base}***"
         if safe_base != char_name:
             desc += f"\nDisplay name: **{char_name}**"
 
@@ -5010,10 +5010,10 @@ Zundrin"""
         await ctx.send(embed=embed)
 
 
-    @commands.command(name="notes")
+    @commands.command(name="notes", aliases=["note", "not"])
     async def character_notes(self, ctx, *args):
         """
-        Personal notes for your active character.
+        Personal notes for your active character. Also: !note, !not
 
         Usage:
           !notes                      -> list notes (page 1)
