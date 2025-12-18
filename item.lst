@@ -18282,6 +18282,15 @@ size=M
 type=bludgeoning
 desc=A crowbar is a bar of iron that curves at one end in a kind of a hook shape. The end itself is flattened with a narrow split on the tip to help pull nails out of a board. The other end is flattened without a split to help pry open one piece of wood from another or force open a jammed or locked door, or heavy objects such a stone coffin lid. When forcing open a stuck door, a crowbar gives a -2 (a bonus of 2) on a Strength ability check. Can also be used as a weapon in a pinch.
 
+[Shovel]
+price=2
+weight=5
+dmg=1d6
+stat=str
+size=M
+type=bludgeoning
+desc=Nice for digging. Can also be used as a weapon in a pinch.
+
 [Pickaxe]
 price=6
 weight=4
@@ -18296,6 +18305,389 @@ price=6
 weight=5
 desc=Bedrolls are thinly-padded sleeping bags which include a pillow and can be rolled up and carried on one's back. Necessary for a good night's sleep.
 type=gear
+
+[FireGrate]
+price=3
+weight=5
+type=gear
+desc=A fire grate elevates logs for better airflow, enhancing fire efficiency and providing consistent warmth. Nice for outdoor cooking.
+
+[Fishhook]
+price=1
+weight=0
+type=gear
+desc=A fishhook is a hook used to catch fish, either by piercing and embedding onto the inside of the fish mouth, or by impaling and snagging the external fish body. Fish hooks are normally attached to a line, and should be purchased with String.
+
+[Teapot]
+price=3
+weight=2
+type=gear
+desc=A teapot is a vessel used for steeping tea leaves or a herbal mix in boiling or near-boiling water and serving the resulting infusion called tea. Teapots usually have an opening with a lid at their top, where the dry tea and hot water are added, a handle for holding by hand, and a spout through which the tea is served.
+
+[CharcoalSticks]
+price=1
+weight=0
+type=gear
+desc=Consists of pieces of carbonized wood, which can be used like chalk (making black markings), or may be added to tinder.
+
+[SilverFlask]
+price=20
+weight=1
+type=food
+desc=Useful for carrying spirits with you on your journey. A pirate's best friend.
+
+[Hammock]
+price=5
+weight=5
+type=gear
+desc=A hammock is a swinging couch or bed, usually made from netting or canvas about six feet long and three feet wide, suspended by clews or cords at the ends. Can give a good night's sleep as well as a bedroll, but must be anchored.
+
+[CeramicJar]
+price=0.4
+weight=1
+type=gear
+desc=Includes a lid or stopper and has a volume of 8 to 16 oz. Good for wet or dry materials, but prone to breakage.
+
+[Spyglass]
+price=1000
+weight=1
+type=gear
+desc=A spyglass is a small telescope for viewing distant objects, fitted with carefully-crafted lenses.
+
+[Bandages]
+price=0.1
+weight=0
+type=gear
+desc=Clean, rolled linens, which when used are enough to prevent blood loss for one character's wounds from one combat encounter.
+
+[Crutches]
+price=1
+weight=4
+type=gear
+desc=Crutches are a support used by an injured person, often in pairs, as an aid to walking, having a vertical shaft that is sometimes forked, a horizontal grip for the hand, and a crosspiece that is positioned under the armpit or a cuff that wraps around the forearm.
+
+[String]
+price=0.2
+weight=1
+type=gear
+desc=Price is per 100ft. Holds up to 30 pounds of weight.
+
+[Beeswax]
+price=0.3
+weight=1
+type=gear
+desc=Beeswax is useful for making impressions, hasty patches, stuffing in ears, etc.
+
+[WoodenStake]
+price=0.02
+weight=2
+type=gear
+desc=A wooden stake is a pointed piece of wood that is driven into the ground, often used for support or as a marker. It can also be used to kill vampires by piercing their hearts.
+
+[Perfume]
+price=5
+weight=2
+type=gear
+desc=Perfume is a mixture of fragrant essential oils or aroma compounds, fixatives and solvents, usually in liquid form, used to give the body an agreeable scent. Can aid in disguise.
+
+[Razor]
+price=1
+weight=0
+type=gear
+desc=A sharp-edged cutting instrument used especially for shaving or cutting hair, especially from the face or legs.
+
+[Soap]
+price=0.5
+weight=1
+type=gear
+desc=Price is per pound.
+
+[AirBladder]
+cost=15
+weight=3
+type=gear
+desc=An Air Bladder is a leather pouch with a tube fitting into the user's mouth. It will hold an extra breath of air, allowing a swimmer to extend their range. The user must overcome the buoyancy the air bladder provides to be able to stay under water.//Along with helping breathe underwater, the air bladder may also be used to help a character float. This allows a character with a light load to float; a heavily-encumbered character will have to drop enough weight in order to float.
+
+[Caltrops]
+price=1
+weight=2
+type=gear
+desc=Caltrops are metal spikes that look like large jacks, shaped so that there is always one sharp point facing up. One bag can be scattered over an area of 5 square feet. If a creature moves through or spends a round fighting in an area scattered with caltrops, there is a 2 in 6 chance it will step on one. Heavy boots reduce the chances of stepping on a caltrop to 1 in 6. Stepping on a caltrop deals 1 point of damage and reduces the character's movement rate by half for 24 hours, or until it receives some form of healing.//If the creature is attempting to move or charge through the caltrops and it steps on one, the pain forces it to stop, unless the creature is mindless or cannot feel pain.
+
+[Crampons]
+price=4
+weight=0
+type=gear
+desc=Crampons are spikes for boots which improve the wearer's chances at climbing and maintaining balance on ice.
+
+[Skates]
+price=10
+weight=2
+type=gear
+desc=Skates are special shoes or boots with wheels attached to the bottom, allowing a person to glide or roll over a surface. Price is per pair.
+
+[SnowSkis]
+price=15
+weight=7
+type=gear
+desc=Skis are runners, attached to the user's feet, designed to glide over snow. Price is per pair.
+
+[Travois]
+price=5
+weight=15
+type=gear
+desc=A travois is a sort of litter designed to be pulled by a person or animal. Anything loaded on the travois (including people) only counts as 1/3 of its weight against carrying capacity. Anyone hauling a travois moves as if heavily encumbered, regardless of how much weight is actually being pulled.
+
+[SmallBell]
+price=1
+weight=0
+type=gear
+desc=A small bell attached to string makes for an excellent substitute for an Alarm spell.
+
+[Bellows]
+price=10
+weight=3
+type=gear
+desc=A bellows is a fire tending tool that is about a foot long with a leather air bag between two wooden handles. When the handles are squeezed together, air will blow out the nozzle of the air bag, increasing the heat of a fire as well as clearing dust or ash.
+
+[Bucket]
+price=0.5
+weight=2
+type=gear
+desc=Up to 5 gallons.
+
+[HeavyChain]
+price=4
+weight=10
+type=gear
+desc=Price is per foot.
+
+[LightChain]
+price=3
+weight=5
+type=gear
+desc=Price is per foot.
+
+[Chisel]
+price=2
+weight=2
+type=gear
+desc=A metal tool with a sharp beveled edge, used to cut and shape stone, wood, or metal.
+
+[FishingNet]
+price=4
+weight=1
+type=gear
+desc=Price is per 10 square feet.
+
+[Hourglass]
+price=25
+weight=3
+type=gear
+desc=An instrument for measuring time, consisting of two glass chambers connected by a narrow neck and containing a quantity of sand, mercury, or other flowing substance that trickles from the upper chamber to the lower in a fixed amount of time. This hourlgass is for one hour.
+
+[BagofMarbles]
+price=8
+weight=1
+type=gear
+desc=Use your imagination.
+
+[SewingNeedle]
+price=0.5
+weight=0
+type=gear
+desc=Nice for maintaining torn clothing.
+
+[Paint]
+price=2
+weight=4
+type=gear
+desc=Price is per gallon. Comes in whatever color you like.
+
+[Pliers]
+price=1
+weight=1
+type=gear
+desc=A kind of small pinches with long jaws, used for blending or cutting metal rods or wire, for handling small objects such as the parts of a watch, etc.
+
+[CollapsingPole]
+price=50
+weight=15
+type=gear
+desc=A collapsing pole is ahandy invention consisting of ten 1-foot wood sections, and two metal end caps. Each piece is threaded so that the pieces can be combined to make a pole of any needed length. Collapsing poles from the same maker may be combined for longer reach.
+
+[Scissors]
+price=0.5
+weight=1
+type=gear
+desc=A cutting instrument resembling shears, but smaller, consisting of two cutting blades with handles, movable on a pin in the center, by which they are held together.
+
+[Flour]
+price=0.03
+weight=1
+type=gear
+desc=Sold per 1lb bag.
+
+[Salt]
+price=0.5
+weight=1
+type=gear
+desc=Sold per 1lb bag.
+
+[BlackPepper]
+price=10
+weight=1
+type=gear
+desc=Sold per 1lb bag.
+
+[TravelAltar]
+price=40
+weight=15
+type=gear
+desc=Includes a portable altar and all the basic ceremonial tools for a given faith in a sturdy wooden altar case. A useful tool for itinerant priests.
+
+[Incense]
+price=1
+weight=0
+type=gear
+desc=Incense is usually sold as hardened wooden sticks coated with fragrant gums, resins, wood powders, herbs, and spices. It is often burned for its smoke and aroma during religious ceremonies as an offering to the dead or to gods. Price is per stick.
+
+[Censer]
+price=1
+weight=3
+type=gear
+desc=A censer is a vented pot that can be filled with burning charcoal and incense. It is often swung from a length of chain during religious ceremonies.
+
+[PrayerBook]
+price=25
+weight=1
+type=gear
+desc=Standard texts containing prayers, scriptures, and myths of a given religion. They are for personal use and group ceremonial use. A prayer book is not essential for Clerics to cast their spells.
+
+[ClimbingTools]
+price=20
+weight=4
+type=tool
+desc=Climbing tools are specialized climbing gear, such as high grip gloves, palm spikes, crampons, etc. to assist in wall climbing. Note that it is difficult if not impossible to wield weapons or move silently with these equipped.
+
+[DisguiseKit]
+price=20
+weight=5
+type=tool
+desc=A disguise kit is a simple kit for altering one's appearance which includes makeup, hair dye, and a few wigs and/or fake beards. Clothing and prosthetics such as fake noses are not included.
+
+[GlassCutter]
+price=5
+weight=0
+type=gear
+desc=A glass cutter is a small device with a diamond-encrusted wheel used to score (not actually cut) glass, which will then break following the scored line. These are used to break window panes, protective cases such as for jewelry, and so on.
+
+[Acid]
+price=10
+weight=1
+type=gear
+desc=Acid can also burn out a lock or clasp, or be used in a variety of other manners. Unlike oil and holy water, a flask of acid is too unreliable to be used as a grenade-like missile, but a carefully-crafted manner of deploying the acid may deal 2d4 points of acid damage to a target, plus 1d3 damage to targets within 5ft, at the GM's discretion.
+
+[Magnets]
+price=0.5
+weight=1
+type=gear
+desc=Magnets are objects that are surrounded by a magnetic field and that has the property of attracting iron or steel. Price is per 1 square inch.
+
+[Prism]
+price=10
+weight=0
+type=gear
+desc=A prism is a crystal form consisting of three or more similar faces parallel to a single axis.
+
+[ChessSet]
+price=5
+weight=3
+type=gear
+desc=A chess set covers similarly-pieced board games, such as Checkers and Backgammon.
+
+[PlayingCards]
+price=5
+weight=0
+type=gear
+desc=Useful for playing card games.
+
+[TarotCards]
+price=50
+weight=0
+type=gear
+desc=Tarot cards do not actually aid in divination, though they might give one the appearance of a diviner.
+
+[Dice]
+price=0.1
+weight=0
+type=gear
+desc=Essential for playing chinchirorin (`!chin`).
+
+[BrassInstrument]
+price=80
+weight=8
+type=gear
+desc=Common brass instruments include the trumpet, trombone, tuba, horn, and saxophone.
+
+[PercussionInstrument]
+price=50
+weight=15
+type=gear
+desc=Common percussion instruments include the drums, cymbals, xylophones, maracas, tambourines, and gongs.
+
+[WindInstrument]
+price=30
+weight=2
+type=gear
+desc=Common wind instruments include flutes, clarinets, oboes and bassoons.
+
+[StringInstrument]
+price=75
+weight=12
+type=gear
+desc=Common string instruments include the lute, lyre, harp, violin, cello, and guitar.
+
+[Toy]
+price=2
+weight=1
+type=gear
+desc=A finely-crafted doll or other figurine.
+
+[DraftHorse]
+price=120
+weight=0
+carry=700
+type=beast
+desc=Draft horses are large horses bred to be working animals doing hard tasks such as plowing and other farm labor. There are a number of breeds, with varying characteristics, but all share common traits of strength, patience, and a docile temperament. A light load for a draft horse is up to 350 pounds; a heavy load, up to 700 pounds. Draft horses are not suited to take into battle. A draft horse can move at a rate of 60 ft. per round.
+
+[WarHorse]
+price=200
+weight=0
+carry=700
+type=beast
+desc=War horses are large, powerful horses which are bred both for their size, strength and combat ability, and also to tolerate the sounds and stresses of battle. They are able to attack while the rider is mounted due to their training. A light load for a warhorse is up to 350 pounds; a heavy load, up to 700 pounds. A war horse can move at a rate of 60 ft. per round, has 13 AC, and attacks with 2 hooves. If you want a barding, consider armor cost × 4. Custom warhorses need to be created by GM. Armor may slow move speed.
+
+[RidingHorse]
+price=75
+weight=0
+carry=500
+type=beast
+desc=Riding horses are smaller horses bred and trained for riding. They cannot effectively fight while the rider is mounted. A light load for a riding horse is up to 250 pounds; a heavy load, up to 500 pounds. A riding horse can move at a rate of 80 ft. per round and has 13 AC. If you want a barding, consider armor cost × 4. Custom riding horses need to be created by GM. Armor may slow move speed.
+
+[Pony]
+price=40
+weight=0
+carry=550
+type=beast
+desc=A pony is a variety of small horse. Compared to a larger horse, a pony may have a thicker coat, mane and tail, with proportionally shorter legs, a wider barrel, heavier bone, a thicker neck and a shorter, broader head. Ponies are ideal mounts for small-sized races. A light load for a pony is up to 275 pounds; a heavy load, up to 550 pounds. A pony is not suited to take into battle. A pony can move at a rate of 40 ft. per round and has 13 AC.
+
+[WarPony]
+price=80
+weight=0
+carry=550
+type=beast
+desc=Ponies can be trained for war, though they cannot fight while a rider is mounted unlike war horses. Ponies are ideal mounts for small-sized races. A light load for a pony is up to 275 pounds; a heavy load, up to 550 pounds. A war pony can move at a rate of 40 ft. per round and has 13 AC. If you want a barding, consider armor cost × 4. Custom riding need to be created by GM. Armor may slow move speed.
 
 [Clairaudience]
 type=potion
