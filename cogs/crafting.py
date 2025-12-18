@@ -340,7 +340,8 @@ class Crafting(commands.Cog):
     !craft start <item> [-doses N] [-safe] [-y]
     !craft status
     !craft cancel <project_id>
-    !craft resolve <project_id>                # GM-only: performs the secret roll & finishes on success
+    !craft resolve                             # resolve ALL ready projects for yourself
+    !craft resolve <project_id>                # GM-only: perform the roll & finish any project by id
     """
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -993,6 +994,7 @@ class Crafting(commands.Cog):
                 "• `!craft status`\n"
                 "• `!craft due <project_id> <finish-note>`\n"
                 "• `!craft cancel <project_id>`\n"
+                "• `!craft resolve` (resolve all ready for you)\n"
                 "• `!craft resolve <project_id>` (GM-only)\n"
             )
             return
@@ -1597,124 +1599,255 @@ class Crafting(commands.Cog):
             return
 
         if sub == "resolve":
+            # Player-facing convenience:
+            #   • `!craft resolve`            -> resolve ALL *ready* projects for yourself (no GM needed)
+            #   • `!craft resolve <project>`  -> GM-only (can resolve anyone’s project by id)
+            is_gm = getattr(ctx.author.guild_permissions, "manage_guild", False)
 
-            if not getattr(ctx.author.guild_permissions, "manage_guild", False):
-                await ctx.send("❌ Only the GM (Manage Server) can resolve crafting.")
-                return
-            if not args:
-                await ctx.send("Usage: `!craft resolve <project_id>`")
-                return
-            pid = args[0]
+            def _is_ready(proj: dict) -> bool:
+                try:
+                    started_ts = int(proj.get("started_ts") or 0)
+                    days = int(proj.get("days") or 0)
+                except Exception:
+                    started_ts, days = 0, 0
+                eta_ts = started_ts + max(0, days) * 86400
+                return int(time.time()) >= eta_ts
 
-            found = None
-            for fn in os.listdir(CRAFT_DATA_DIR):
-                if not fn.endswith(".json"): continue
-                fp = os.path.join(CRAFT_DATA_DIR, fn)
-                data = _load_json(fp)
-                if pid in data:
-                    found = (fp, data); break
-            if not found:
-                await ctx.send("❌ Project not found.")
-                return
-            fp, data = found
-            p = data[pid]
+            def _ensure_recipe(item_key: str) -> dict:
+                rec = self.recipes.get(item_key) if self.recipes else None
+                if rec:
+                    return rec or {}
+                dyn = (
+                    self._build_dynamic_weapon_or_armor_recipe(item_key)
+                    or self._build_dynamic_staff_recipe(item_key)
+                    or self._build_dynamic_scroll_recipe(item_key)
+                )
+                if dyn is not None:
+                    try:
+                        self.recipes[item_key] = dyn
+                    except Exception:
+                        pass
+                    return dyn or {}
+                return {}
 
+            async def _resolve_one(pid: str, proj: dict, *, show_roll: bool, actor_uid: str = "") -> tuple[bool, str]:
+                """
+                Returns (consumed, summary_line)
+                consumed=False means "didn't resolve (kept project)"
+                """
+                # Owner-safety: if this project points at a character file owned by someone else, skip (unless GM).
+                if actor_uid and (not is_gm):
+                    try:
+                        cfg_chk = read_cfg(proj.get("char_file", ""))
+                        owner_id = (get_compat(cfg_chk, "info", "owner_id", fallback="") or "").strip()
+                        if owner_id and owner_id != str(actor_uid):
+                            return (False, f"⏭️ `{pid}` • {proj.get('item','?')} — skipped (character not owned by you).")
+                    except Exception:
+                        pass
 
-            roll = random.randint(1,100)
-            success = (roll <= int(p["final_chance"]))
-            await ctx.send(
-                f"🎲 Craft resolve `{pid}` • {p['item']} • chance {p['final_chance']}% • **roll {roll}** → "
-                + ("**SUCCESS**" if success else "**FAIL**")
-            )
+                roll = random.randint(1, 100)
+                chance = int(proj.get("final_chance", 0) or 0)
+                success = (roll <= chance)
 
-            if success:
-                if p["type"] == "spell_scroll":
-                    rec = self.recipes.get(p["item"], {}) or {}
-                    effects = rec.get("effects", []) or []
-                    spells = [e.get("spell") for e in effects if e.get("spell")] or [p["item"]]
+                roll_txt = f" • roll {roll}" if show_roll else ""
+                head = f"`{pid}` • {proj.get('item','?')} • chance {chance}%{roll_txt} → " + ("✅ SUCCESS" if success else "❌ FAIL")
 
-                    stored = (p.get("scroll_class") or "").strip()
-                    rec_cls_raw = ((effects[0].get("class") if effects else "") or "").strip()
+                if not success:
+                    return (True, head)
 
+                # SUCCESS: grant the result
+                try:
+                    ptype = (proj.get("type") or "").strip().lower()
+                    item_key = proj.get("item", "")
+                    char_file = proj.get("char_file", "")
+                    owner_char = proj.get("owner_char", "character")
+                    qty = int(proj.get("doses", 1) or 1)
 
-                    if stored and stored.lower() not in {"arcane","divine"}:
-                        scroll_class = self._canon_class_name(stored)
+                    if ptype == "spell_scroll":
+                        rec = _ensure_recipe(item_key)
+                        effects = rec.get("effects", []) or []
+                        spells = [e.get("spell") for e in effects if e.get("spell")] or [item_key]
 
+                        stored = (proj.get("scroll_class") or "").strip()
+                        rec_cls_raw = ((effects[0].get("class") if effects else "") or "").strip()
 
-                    elif rec_cls_raw and rec_cls_raw.lower() not in {"arcane","divine"}:
-                        scroll_class = self._canon_class_name(rec_cls_raw)
+                        if stored and stored.lower() not in {"arcane", "divine"}:
+                            scroll_class = self._canon_class_name(stored)
+                        elif rec_cls_raw and rec_cls_raw.lower() not in {"arcane", "divine"}:
+                            scroll_class = self._canon_class_name(rec_cls_raw)
+                        else:
+                            scroll_class, _L = self._pick_scroll_class_for_spell(
+                                spells[0], read_cfg(char_file), override=(stored or None)
+                            )
 
-
-                    else:
-                        scroll_class, _L = self._pick_scroll_class_for_spell(
-                            spells[0], read_cfg(p["char_file"]), override=(stored or None)
+                        token = self._create_spell_scroll_instance(
+                            char_file, scroll_class, spells, label=f"Crafted {item_key}", carry=False
                         )
+                        return (True, head + f" • added **{token}** to **{owner_char}** ({', '.join(spells)}; class: {scroll_class})")
 
+                    # Non-scrolls
+                    item_token = self._result_item_token(item_key)
+                    looks_charged = str(item_token).lower().startswith(("wandof", "staffof"))
 
-                    token = self._create_spell_scroll_instance(
-                        p["char_file"], scroll_class, spells, label=f"Crafted {p['item']}", carry=False
-                    )
-                    await ctx.send(
-                        f"✅ Added **{token}** to **{p['owner_char']}** containing: {', '.join(spells)} *(class: {scroll_class})*."
-                    )
-
-
-                else:
-                    qty = int(p.get("doses", 1))
-                    item_token = self._result_item_token(p["item"])
-
-                    spells_cog = self.bot.get_cog("Spells")
-                    looks_charged = item_token.lower().startswith(("wandof", "staffof"))
-
-
-                    rec = self.recipes.get(p["item"], {}) or {}
+                    rec = _ensure_recipe(item_key)
                     recipe_charges_max = None
                     try:
                         recipe_charges_max = int((rec.get("charges") or {}).get("max") or 0) or None
                     except Exception:
                         recipe_charges_max = None
 
+                    spells_cog = self.bot.get_cog("Spells")
                     if spells_cog:
                         canon, it = spells_cog._item_lookup(item_token)
                         is_charged = spells_cog._item_has_charges(canon, it) or looks_charged
 
                         if is_charged:
-                            cfg2 = read_cfg(p["char_file"])
+                            cfg2 = read_cfg(char_file)
                             made = []
-                            for _ in range(qty):
-                                tok = spells_cog._add_charged_item_instance(cfg2, p["char_file"], canon, it)
-
+                            for _ in range(max(1, qty)):
+                                tok = spells_cog._add_charged_item_instance(cfg2, char_file, canon, it)
                                 if recipe_charges_max is not None:
                                     ch_key = spells_cog._charges_key(tok, it)
-                                    spells_cog._set_item_charges(cfg2, p["char_file"], ch_key, recipe_charges_max, recipe_charges_max)
+                                    spells_cog._set_item_charges(cfg2, char_file, ch_key, recipe_charges_max, recipe_charges_max)
                                 made.append(tok)
-                            await ctx.send(
-                                f"✅ Added **{len(made)}× {canon}** to **{p['owner_char']}** (per-item charges tracked)."
-                            )
+                            return (True, head + f" • added **{len(made)}× {canon}** to **{owner_char}** (charges tracked)")
                         else:
-                            _add_inventory_items(p["char_file"], canon or item_token, qty)
-                            await ctx.send(f"✅ Added **{qty}× {canon or item_token}** to **{p['owner_char']}**’s inventory.")
+                            _add_inventory_items(char_file, canon or item_token, max(1, qty))
+                            return (True, head + f" • added **{max(1, qty)}× {canon or item_token}** to **{owner_char}**")
+
+                    # No Spells cog fallback
+                    if looks_charged:
+                        made = []
+                        for _ in range(max(1, qty)):
+                            tok = self._add_charged_instance_local(char_file, item_token, charges_max=recipe_charges_max)
+                            made.append(tok)
+                        return (True, head + f" • added **{len(made)}× {item_token}** to **{owner_char}** (charges tracked)")
                     else:
+                        _add_inventory_items(char_file, item_token, max(1, qty))
+                        return (True, head + f" • added **{max(1, qty)}× {item_token}** to **{owner_char}**")
 
-                        if looks_charged:
-                            made = []
-                            for _ in range(qty):
-                                tok = self._add_charged_instance_local(
-                                    p["char_file"],
-                                    item_token,
-                                    charges_max=recipe_charges_max
-                                )
-                                made.append(tok)
-                            await ctx.send(
-                                f"✅ Added **{len(made)}× {item_token}** to **{p['owner_char']}** (per-item charges tracked)."
-                            )
-                        else:
-                            _add_inventory_items(p["char_file"], item_token, qty)
-                            await ctx.send(f"✅ Added **{qty}× {item_token}** to **{p['owner_char']}**’s inventory.")
+                except Exception as e:
+                    # Keep the project so it can be re-tried after fixing data.
+                    return (False, head + f" • ⚠️ error granting item: `{type(e).__name__}: {e}`")
 
+            # --- GM path: resolve a specific project id from any user file ---
+            if is_gm and args:
+                pid = args[0]
 
-            del data[pid]
-            _save_json(fp, data)
+                if not os.path.isdir(CRAFT_DATA_DIR):
+                    await ctx.send("❌ No crafting data directory found.")
+                    return
+
+                found = None
+                for fn in os.listdir(CRAFT_DATA_DIR):
+                    if not fn.endswith(".json"):
+                        continue
+                    fp = os.path.join(CRAFT_DATA_DIR, fn)
+                    data = _load_json(fp)
+                    if pid in data:
+                        found = (fp, data)
+                        break
+                if not found:
+                    await ctx.send("❌ Project not found.")
+                    return
+
+                fp, data = found
+                proj = data.get(pid) or {}
+
+                consumed, line = await _resolve_one(pid, proj, show_roll=True, actor_uid=str(ctx.author.id))
+                await ctx.send(line)
+
+                if consumed:
+                    # Only delete if the attempt actually ran (success/fail); keep if we hit an item-grant error.
+                    try:
+                        del data[pid]
+                        _save_json(fp, data)
+                    except Exception:
+                        pass
+                return
+
+            # --- Player path: resolve all READY projects for yourself (or one pid in your file) ---
+            ufile = os.path.join(CRAFT_DATA_DIR, f"{ctx.author.id}.json")
+            projects = _load_json(ufile) if os.path.exists(ufile) else {}
+            if not projects:
+                await ctx.send("No active crafting projects.")
+                return
+
+            # If they provided a PID and they're not a GM, resolve just that one (if it exists & is ready).
+            want_pid = None
+            if args:
+                tok = str(args[0]).strip()
+                if tok and tok.lower() not in {"all", "ready"}:
+                    want_pid = tok
+
+            if want_pid:
+                if want_pid not in projects:
+                    await ctx.send("❌ Unknown project id.")
+                    return
+                proj = projects[want_pid]
+                if not _is_ready(proj):
+                    when_str, rel = _format_eta(proj.get("started_ts", 0), int(proj.get("days", 0)))
+                    await ctx.send(f"⏳ Project `{want_pid}` isn’t ready yet. Ready ~ **{when_str}** ({rel}).")
+                    return
+
+                consumed, line = await _resolve_one(want_pid, proj, show_roll=False, actor_uid=str(ctx.author.id))
+                await ctx.send(line)
+                if consumed:
+                    try:
+                        del projects[want_pid]
+                        _save_json(ufile, projects)
+                    except Exception:
+                        pass
+                return
+
+            # Bulk: all ready projects
+            ready_ids = [pid for pid, p in projects.items() if _is_ready(p)]
+            if not ready_ids:
+                # Show the soonest ETA to reduce confusion.
+                soon = None
+                for pid, p in projects.items():
+                    try:
+                        started_ts = int(p.get("started_ts") or 0)
+                        days = int(p.get("days") or 0)
+                        eta_ts = started_ts + max(0, days) * 86400
+                    except Exception:
+                        continue
+                    if soon is None or eta_ts < soon[0]:
+                        soon = (eta_ts, pid, p)
+                if soon:
+                    _eta_ts, pid, p = soon
+                    when_str, rel = _format_eta(p.get("started_ts", 0), int(p.get("days", 0)))
+                    await ctx.send(f"⏳ No ready crafting jobs yet. Next up: `{pid}` • {p.get('item','?')} → ready ~ **{when_str}** ({rel}).")
+                else:
+                    await ctx.send("⏳ No ready crafting jobs yet.")
+                return
+
+            # Oldest-first feels most natural (and matches the id timestamps).
+            ready_ids.sort(key=lambda x: int(str(x)) if str(x).isdigit() else str(x))
+
+            results = []
+            consumed_ids = []
+            for pid in ready_ids:
+                proj = projects.get(pid) or {}
+                consumed, line = await _resolve_one(pid, proj, show_roll=False, actor_uid=str(ctx.author.id))
+                results.append(line)
+                if consumed:
+                    consumed_ids.append(pid)
+
+            # Save once (faster) after we’ve processed everything.
+            for pid in consumed_ids:
+                try:
+                    del projects[pid]
+                except Exception:
+                    pass
+            _save_json(ufile, projects)
+
+            embed = self._embed_lines(
+                "🧪 Crafting results",
+                f"Resolved **{len(consumed_ids)}** ready project(s) for {ctx.author.mention}.",
+                results
+            )
+            await ctx.send(embed=embed)
             return
 
         if sub == "due":
