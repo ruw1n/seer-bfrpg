@@ -123,7 +123,7 @@ removetrap=5
 desc=Hobgoblins are the larger cousins of goblins, being about the same size as humans. Their hair colors range from dark reddish-brown to dark gray, and their skin tones are usually red or orange. A hobgoblin's eyes are yellowish or dark brown. Hobgoblins keep their weapons keenly polished and in good repair.//Hobgoblins are cruel and calculating warriors, always looking to exploit those weaker than themselves. They have a strong grasp of strategy and tactics and are capable of carrying out sophisticated battle plans. Under the leadership of a skilled strategist or tactician, their discipline can prove a deciding factor. Hobgoblins hate Elves and attack them first in preference over other opponents. Hobgoblin deities reinforce this militaristic outlook, and their Clerics are able to favor additional weapons as a result, such as the Spear, BattleAxe and Longsword.//While not as mechanically-minded as normal goblins, a hobgoblin is still very alert, noticing secret doors as well as an Elf. Like most dark-dwelling races, a hobgoblin has Darkvision out to 60'.
 
 [Kobold]
-class=Fighter Cleric Druid Magic-User Thief Barbarian Paladin Scout Illusionist Necromancer Spellcrafter
+class=Fighter Barbarian Paladin Cleric Druid Magic-User Thief Scout Illusionist Necromancer Spellcrafter
 banned=GreatAxe Longbow HeavyXbow Greatsword Maul Quarterstaff Polearm
 dexmin=11
 strmax=15
@@ -183,6 +183,46 @@ skills=Frail Small SeeInvisible
 poi=4
 breath=3
 desc=Gnomes are small and stocky, moreso than halflings but not as much as dwarves; both male and female gnomes stand around three and a half feet tall and typically weigh around 90 pounds. Their hair and beards may be blond, brown, black, or sometimes red. They have a fair to ruddy complexion. The most noticeable features about a gnome from the standpoint of other races is their pointed ears and noses. They are renowned for their rapidly-changing moods, sometimes gruff and contrary, sometimes whimsical and humorous. They have a lifespan between two and three centuries long.//Gnomes are frail like elves, unable to roll higher than d6 for hit dice regardless of class. They are also small like halflings, unable to wield large weapons and needing to wield medium weapons in two hands. With respect to encumbrance, gnomes are equivalent to halflings.//Gnomes have the ability to see invisible creatures and objects within 30 feet. Such creatures and objects appear as strange magical glows in the shape of the creature or object. A Thief hiding in shadows, an invisible sprite, or a character wearing an elven cloak may all be detected in this way.
+
+[Kenku]
+class=Fighter Druid Thief Scout Magic-User Illusionist Necromancer Spellcrafter
+chamin=11
+dexmin=11
+conmax=15
+skills=QuickWit Frail Hopper Mimicry
+poi=4
+openlock=5
+removetrap=5
+movesilently=-10
+listen=15
+desc=Kenku are a race of disheveled, corvid-like people who hatch from eggs like birds do. They are taller than dwarves, but not taller than a human. They typically come in dark colors, with beaks they can use for loud caws, and sharp talon'd feet that click when they move. Kenku dwell in nests or aeries that are often built near human cities until they reach adulthood, when they set off on their own with bands of like-minded kenkus. They often dwell in human cities, running criminal enterprises and confidence schemes.//A Kenku's wings are disheveled and unusable for flight, though still allowing them to leap great heights with ease, easily clearing 15ft gaps. Their disheveled nature leads their body to being far more frail than other races, with their hitdie size only going up to a d6.//The most noticeable ability of a Kenku is their adept mimicry, allowing them to effortlessly mimic the sounds and voices of other creatures. This ability only copies sounds and voices, and doesn't prevent a creature from figuring out it's a mimicry through other means. Being adept at their own forms of deception, as well as their temperament against that which is holy, Kenku are often paranoid of other creatures they're unfamiliar with, giving them a bonus to their initiative rolls.
+
+[Hopper]
+desc=Hopper is the kenku's racial ability that lets it jump higher than normal races. While it doesn't allow for full flight, your disheveled wings do allow you to make 15ft jumps with ease. Wind and other environmental factors may change the distance you can clear with your wings, and how you may use them (Up to GM discretion).
+
+[Mimicry]
+desc=Mimicry is the kenku's racial ability that lets them copy the sounds and voices of other creatures effortlessly. This does not prevent a creature from distinguishing it's a mimicry of their voice through what you say, or seeing that you're the one speaking in the voice.
+
+[Tabaxi]
+class=Fighter Barbarian Paladin Cleric Druid Thief Ranger Scout Magic-User Illusionist Necromancer Spellcrafter
+wismax=16
+intmax=16
+dexmin=9
+strmax=17
+skills=Darkvision Catfall
+pickpockets=5
+movesilently=20
+climbwalls=10
+hideinshadows=5
+listen=-10
+tracking=5
+wand=2
+breath=2
+desc=Tabaxi are a race of cat-like humanoids. There are many rumors regarding their mysterious origin, but in truth they are members of an ancient and reclusive culture commonly found only in the jungles of Hepmonaland. Standing at around five feet tall and weighing around 110 pounds, short fur covers their bodies and they have a non-prehensile tail. The color and pattern of their fur can be that of any domesticated or wild cat. Tabaxi wear clothing, and adventuring tabaxi typically prefer lighter armor. They are quick and graceful, and have excellent eyesight, giving them Darkvision out to 60 feet. They are fiercely curious and sometimes have trouble controlling that impulse. Their average lifespan is about 80 years.//Their feline nature gives them soft paws to silence their movements, and sharp retractable claws that are excellent for clinging to ledges. Their claws are not long enough to cause grievous wounds, and as such may not be used as a natural weapon. Tabaxi can fall up to 20 feet without taking any damage, and any additional fall damage beyond that is halved. Due to their quick nature, tabaxi have improved saves against magic wands and dragon breath.
+
+[Catfall]
+desc=Catfall is the tabaxi's natural ability to land on their feet, just like a cat. The first 20 feet of fall damage from any fall are ignored, and any additional fall damage beyond that is halved.
+
 
 [QuickLearner]
 desc=QuickLearner is the racial ability that gives you more experience earned. For humans, it is 10 percent, and for half-elves, half-orcs and half-ogres, it is 5 percent.
