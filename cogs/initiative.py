@@ -5500,6 +5500,123 @@ class Initiative(commands.Cog):
 
         await ctx.send(f"📝 **{join_name}** joins initiative: 1d6 = {d6}{mod_txt} → **{total}**")
 
+    @commands.command(name="shuffle", aliases=["reshuffle", "shf"])
+    async def shuffle_initiative(self, ctx):
+        """
+        DM-only: Re-roll initiative for everyone currently in the list (keeping the same
+        bonuses they'd get from !join / !mon), reorder the initiative list, and refresh
+        the pinned tracker.
+        Usage:
+          !shuffle
+        """
+        cfg = _load_battles()
+        chan_id = _section_id(ctx.channel)
+
+        if not cfg.has_section(chan_id):
+            await ctx.send("❌ No initiative running here. Use `!init` first.")
+            return
+
+        dm_id = cfg.get(chan_id, "DM", fallback="")
+        if str(ctx.author.id) != str(dm_id):
+            await ctx.send("❌ Only the DM can use `!shuffle` in this battle.")
+            return
+
+        names, scores = _parse_combatants(cfg, chan_id)
+        if not names:
+            await ctx.send("No combatants yet.")
+            return
+
+        def _fmt_pm(n: int) -> str:
+            return f"+{n}" if n >= 0 else str(n)
+
+        # Ensure everyone has a join tiebreaker (used by your tracker sort)
+        seq = cfg.getint(chan_id, "join_seq", fallback=0)
+        for nm in names:
+            s = _slot(nm)
+            if not cfg.has_option(chan_id, f"{s}.join"):
+                seq += 1
+                cfg.set(chan_id, f"{s}.join", str(seq))
+        cfg.set(chan_id, "join_seq", str(seq))
+
+        roll_lines = []
+
+        for nm in names:
+            d6 = random.randint(1, 6)
+            s = _slot(nm)
+
+            if _is_monster(nm):
+                # Monsters: same concept as !mon (1d6 + template init bonus)
+                _coe, _ini, mtype = _monster_source_files(nm)
+                tpl = _load_monster_template(mtype) if mtype else None
+                init_bonus = _parse_init_bonus_from_tpl(tpl) if tpl else 0
+
+                total = d6 + init_bonus
+                scores[nm] = total
+
+                # Tracker sort uses dex as secondary; monsters default to 0 in your system
+                cfg.set(chan_id, f"{s}.dex", "0")
+
+                shown = f"1d6 = {d6}"
+                if init_bonus:
+                    shown += f" {_fmt_pm(init_bonus)}"
+                shown += f" → {total}"
+                roll_lines.append(f"{nm}: {shown}")
+                continue
+
+            # PCs / non-monsters: same as !join (1d6 + DEX mod + Halfling +1)
+            dex_mod = _dex_mod_from_char(nm)
+
+            is_halfling = False
+            coe = f"{nm.replace(' ', '_')}.coe"
+            if os.path.exists(coe):
+                try:
+                    c = read_cfg(coe)
+                    race_raw = get_compat(c, "info", "race", fallback="")
+                    is_halfling = (race_raw.strip().lower() == "halfling")
+                except Exception:
+                    is_halfling = False
+
+            total = d6 + dex_mod + (1 if is_halfling else 0)
+            scores[nm] = total
+            cfg.set(chan_id, f"{s}.dex", str(dex_mod))
+
+            shown = f"1d6 = {d6}"
+            if dex_mod:
+                shown += f" {_fmt_pm(dex_mod)}"
+            if is_halfling:
+                shown += " +1 (Halfling)"
+            shown += f" → {total}"
+            roll_lines.append(f"{nm}: {shown}")
+
+        # Write new scores
+        _write_combatants(cfg, chan_id, names, scores)
+
+        # Reorder stored list to match tracker’s sorting rules (init desc, dex desc, join asc)
+        ordered = [e["name"] for e in _sorted_entries(cfg, chan_id)]
+        _write_combatants(cfg, chan_id, ordered, scores)
+
+        # Reset BOTH cursors so the next !n / !t starts at the top of the new order
+        cfg.set(chan_id, "turn", "")
+        cfg.set(chan_id, "turn_e", "")
+
+        _save_battles(cfg)
+
+        try:
+            await self._update_tracker_message(ctx, cfg, chan_id)
+        except Exception:
+            pass
+
+        # Keep output readable
+        if len(roll_lines) <= 12:
+            await ctx.send("🔀 **Initiative shuffled.**\n```text\n" + "\n".join(roll_lines) + "\n```")
+        else:
+            top = ordered[0] if ordered else "—"
+            await ctx.send(
+                f"🔀 **Initiative shuffled** for {len(ordered)} combatants. "
+                f"Top of order: **{top}**. (`!list` to view)"
+            )
+
+
     @commands.command(name="list")
     async def show_initiative(self, ctx):
         """Repost the current pinned initiative block to the channel."""
@@ -6213,7 +6330,11 @@ class Initiative(commands.Cog):
         if round_num == 0 or not cur:
             top = ordered[0]
             cfg.set(chan_id, "turn", top)
-            cfg.set(chan_id, "round", "1")
+
+            # Preserve the current round if we're mid-fight and only the cursor was cleared.
+            new_round = round_num if round_num > 0 else 1
+            cfg.set(chan_id, "round", str(new_round))
+
             _save_battles(cfg)
             await self._auto_activate_for_turn(ctx, top)
 
@@ -6223,12 +6344,12 @@ class Initiative(commands.Cog):
             except Exception:
                 pass
 
-
             await _maybe_dm_monster_attacks(self, ctx, cfg, chan_id, top)
 
-            header, body = _announce(top, 1)
+            header, body = _announce(top, new_round)
             await ctx.send(f"{header}\n{body}")
             return
+
 
         _, _, _, owner = _char_snapshot(cur)
         if str(ctx.author.id) != str(dm_id) and str(ctx.author.id) != str(owner):
@@ -7974,19 +8095,31 @@ class Initiative(commands.Cog):
             parts.append("Not found: " + ", ".join(f"`{m}`" for m in missing))
         await ctx.send("🧽 " + ("; ".join(parts) if parts else "No changes."))
 
-        # Announce whose turn it is now, mirroring !damage’s behavior
+        # Announce whose turn it is now, mirroring !damage’s behavior (but ping owner like !n)
         try:
             if cur_turn in removed and names:
                 turn_name = (cfg.get(chan_id, "turn", fallback="") or "").strip()
                 if turn_name:
                     round_no = cfg.getint(chan_id, "round", fallback=0)
                     ini_score = scores.get(turn_name, 0)
+
+                    # Ping the owner (robust: handles legacy [info] owner, display overrides, CI filenames)
+                    try:
+                        mention = _owner_mention(turn_name, cfg, chan_id)
+                    except Exception:
+                        mention = ""
+
+                    prefix = f"{mention} " if mention else ""
+
+
                     await ctx.send(
-                        f"🎯 It is now **{turn_name}**'s turn "
-                        f"(initiative {ini_score}, round {round_no})."
+                        f"{prefix}🎯 It is now **{turn_name}**'s turn "
+                        f"(initiative {ini_score}, round {round_no}).",
+                        allowed_mentions=nextcord.AllowedMentions(users=True, roles=False, everyone=False),
                     )
         except Exception:
             pass
+
 
 
     @commands.command(name="magicweapon")
@@ -8088,7 +8221,7 @@ class Initiative(commands.Cog):
 
     @commands.command(name="races")
     async def list_races(self,ctx):
-        await ctx.send(f"**Races**: Human, Elf, Half-Elf, Half-Ogre, Half-Orc, Halfling, Bugbear, Caveman, Gnoll, Goblin, Hobgoblin, Kobold, Lizardman, Orc, Dwarf, Gnome")
+        await ctx.send(f"**Races**: Human, Elf, Half-Elf, Half-Ogre, Half-Orc, Halfling, Bugbear, Caveman, Gnoll, Goblin, Hobgoblin, Kobold, Lizardman, Orc, Dwarf, Gnome, Kenku, Tabaxi")
 
     @commands.command(name="loh")
     async def lay_on_hands(self, ctx, *args):
@@ -10343,6 +10476,10 @@ class Initiative(commands.Cog):
           !stocking <char name> -force    # GM/DM: give to someone else, bypass yearly lock
         """
         import datetime, re, random
+        try:
+            from zoneinfo import ZoneInfo
+        except Exception:
+            ZoneInfo = None
 
         # --- GM/DM check (same pattern you use elsewhere) ---
         is_gm = getattr(ctx.author.guild_permissions, "manage_guild", False)
@@ -10389,8 +10526,28 @@ class Initiative(commands.Cog):
 
         cfg = read_cfg(path)
 
+        # --- December-only gate (Central Time) ---
+        # Use message timestamp when available so it's consistent with Discord.
+        try:
+            now_utc = ctx.message.created_at
+            if now_utc.tzinfo is None:
+                now_utc = now_utc.replace(tzinfo=datetime.timezone.utc)
+        except Exception:
+            now_utc = datetime.datetime.now(datetime.timezone.utc)
+
+        if ZoneInfo:
+            now_ct = now_utc.astimezone(ZoneInfo("America/Chicago"))
+        else:
+            # fallback: UTC (only if zoneinfo unavailable)
+            now_ct = now_utc
+
+        if now_ct.month != 12 and not (is_gm and force):
+            await ctx.send("🎄 `!stocking` can only be used in **December** (America/Chicago).")
+            return
+
         # --- once-per-year lock (stored on the character) ---
-        year = datetime.datetime.utcnow().year
+        year = now_ct.year
+
         lock_key = f"stocking_{year}"
         if not cfg.has_section("event"):
             cfg.add_section("event")
@@ -10517,12 +10674,12 @@ class Initiative(commands.Cog):
 
         # 41-65: Healing potion x2
         elif 41 <= roll <= 65:
-            # try a couple common names; Combat lookup will canonicalize if it recognizes one
-            for nm in ("HealingPotion", "PotionofHealing", "HealingPotion2", "Healing Potion"):
-                got = _inv_add_item(nm, 2)
-                if got:
-                    awarded_items += got
-                    break
+            got = _inv_add_item("Healing", 2)
+            if got:
+                awarded_items += got
+            else:
+                await ctx.send("⚠️ Could not auto-add Healing potion; check item name in item.lst.")
+
 
         # 66-80: Random (gilded) scroll; -cash converts to 1000gp
         elif 66 <= roll <= 80:
@@ -10605,7 +10762,8 @@ class Initiative(commands.Cog):
                 pass
 
         # mark claimed + save
-        cfg.set("event", lock_key, datetime.datetime.utcnow().strftime("%Y-%m-%d"))
+        cfg.set("event", lock_key, now_ct.strftime("%Y-%m-%d"))
+
         write_cfg(path, cfg)
 
         # --- output ---
