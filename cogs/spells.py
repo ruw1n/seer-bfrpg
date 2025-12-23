@@ -1091,8 +1091,7 @@ def _stoneskin_absorb(self, bcfg, chan_id, target_pretty: str, incoming: int):
 
 WAND_COLOR = 0x3498DB
 
-_TOKEN_RE = re.compile(r"[A-Za-z]+[0-9]+|[A-Za-z]+|[0-9]+", re.ASCII)
-
+_TOKEN_RE = re.compile(r"--?[A-Za-z]+|[A-Za-z]+[0-9]+|[A-Za-z]+|[0-9]+", re.ASCII)
 def _extract_targetish_tokens(rest_raw: str) -> list[str]:
     """From the raw tail, keep alnum clusters in order: 'le1', 'gn9', 'wo5', etc."""
     if not rest_raw:
@@ -1139,6 +1138,8 @@ def _sanitize_target_tokens(seq):
             continue
         s = re.sub(r"[^A-Za-z0-9]+", "", s)
         if not s:
+            continue
+        if s.isdigit():
             continue
         k = s.lower()
         if k not in seen:
@@ -1867,8 +1868,9 @@ class SpellsCog(commands.Cog, name="Spells"):
                     if not nm:
                         continue
 
-                    table[nm] = min(L, table.get(nm, L))
-            self.spell_levels[cls] = table
+                    k = self._norm(nm)
+                    table[k] = min(L, table.get(k, L))
+            self.spell_levels[self._norm(cls)] = table
 
 
         combat_src = next((c for c in bot.cogs.values() if hasattr(c, "classes")), None)
@@ -2198,14 +2200,43 @@ class SpellsCog(commands.Cog, name="Spells"):
     def _norm(self, s: str) -> str:
         return re.sub(r"[^a-z0-9]+", "", str(s).lower())
 
-    def _scroll_id_from_token(self, token: str) -> str | None:
+    def _scroll_id_from_token(self, token: str | None) -> str | None:
+        """
+        Extract a numeric SpellScroll id from common user inputs.
 
-        if "@" in token:
-            base, sid = token.split("@", 1)
-            if self._norm(base) in {"spellscroll", "scrollspell", "spellscrolls"} and sid.strip():
-                return sid.strip()
+        Accepts:
+          • 11
+          • @11 / #11
+          • SpellScroll@11 / spellscr@11 / scroll@11
+          • SpellScroll@11:Fireball  (anything after ':' is ignored)
+
+        Returns the id as a string of digits, or None.
+        """
+        if token is None:
+            return None
+        s = str(token).strip()
+        if not s:
+            return None
+
+        # drop common wrappers and trailing annotations
+        s = s.strip()
+        s = s.split(":", 1)[0].strip()
+
+        # allow @11 or #11
+        if s.startswith("@") or s.startswith("#"):
+            s = s[1:].strip()
+
+        # allow SpellScroll@11 (case-insensitive)
+        if "@" in s:
+            try:
+                s = s.split("@", 1)[1].strip()
+            except Exception:
+                return None
+
+        # final: must be digits
+        if s.isdigit():
+            return s
         return None
-
     def _item_lookup_strip_instance(self, name: str):
         """Like _item_lookup, but ignores '@<id>' suffix for DB lookups and returns (canon, item, sid)."""
         base = name.split("@", 1)[0]
@@ -2299,7 +2330,7 @@ class SpellsCog(commands.Cog, name="Spells"):
 
         lvl = getint_compat(cfg, "cur", "level", fallback=1)
         if self._is_arcane_class(clsname):
-            return min(7, max(1, int(lvl) // 2))
+            return min(7, max(1, (int(lvl) + 1) // 2))
         return min(7, max(1, (int(lvl) + 1) // 2))
 
     def _find_spell_level(self, scroll_class: str, spell_name: str) -> int | None:
@@ -2314,18 +2345,42 @@ class SpellsCog(commands.Cog, name="Spells"):
         except Exception:
             return None
 
-    def _pc_knows_spell(self, caster_cfg, caster_class: str, spell_name: str) -> bool | None:
+    def _pc_knows_spell(self, caster_cfg, caster_class: str, spell_name: str) -> bool:
         """
-        Return True/False if you can determine (e.g., from spellbook), else None (unknown).
+        Best-effort check whether an arcane caster *knows* a spell (for scroll failure chance).
+        Returns False if unknown or cannot be determined.
         """
+        sn = self._norm(spell_name)
+
+        # Preferred: per-level spellbook list (used by !cast)
+        try:
+            if "_read_per_level_list" in globals():
+                book = _read_per_level_list(caster_cfg, "spellbook")
+                if isinstance(book, dict):
+                    have = set()
+                    for _lv, arr in book.items():
+                        if not arr:
+                            continue
+                        for s in arr:
+                            if s is None:
+                                continue
+                            have.add(self._norm(str(s)))
+                    if have:
+                        return sn in have
+        except Exception:
+            pass
+
+        # Fallback: legacy [book] spells
         try:
             book = get_compat(caster_cfg, "book", "spells", fallback="")
             if book:
                 have = {self._norm(s) for s in book.split()}
-                return self._norm(spell_name) in have
+                return sn in have
         except Exception:
             pass
-        return None
+
+        # If unknown, apply penalty (safe default)
+        return False
 
     def _pick_carried_scroll_with_spell(self, cfg, want_cls: str, want_spell: str, require_readmagic: bool, carried_only=True) -> tuple[str, dict] | None:
         """
@@ -2456,7 +2511,15 @@ class SpellsCog(commands.Cog, name="Spells"):
 
     def _find_spell_level(self, list_class: str, spell_name_in: str) -> tuple[int | None, str | None]:
         """Return (level, canonical_name) for a spell on a given class list, or (None, None) if not found."""
-        cls_map = self._spells_by_class.get(list_class, {})
+        cls_map = self._spells_by_class.get(list_class, None)
+        if not cls_map:
+            try:
+                needle_cls = _norm(list_class)
+                if not hasattr(self, "_spells_by_class_norm"):
+                    self._spells_by_class_norm = { _norm(k): v for k, v in self._spells_by_class.items() }
+                cls_map = self._spells_by_class_norm.get(needle_cls, {}) or {}
+            except Exception:
+                cls_map = {}
         needle = _norm(spell_name_in)
         for lvl, names in cls_map.items():
             for n in names:
@@ -5009,7 +5072,14 @@ class SpellsCog(commands.Cog, name="Spells"):
 
     def _parse_cast_expr(self, expr: str):
         """
-        Returns (spell_name, targets:list[str], ignore_slots:bool, rest_raw:str)
+        Returns (spell_name, targets:list[str], ignore_slots:bool, rest_raw:str, targets_field:str)
+
+        Flags handled here (consumed, not passed as targets):
+          -i / -ignore / -ignoreslots
+          -w / -wand / -weapon  (treated same as -i: free casting / item casting)
+          -sc / -scroll / -scrolls  (scroll mode, also free casting)
+          -t / -target <...>  (explicit targets)
+          -s / -sid / -scrollid <id>  (scroll selector; only consumed if next token is a scroll id)
         """
         s = (expr or "").strip()
         spell = ""
@@ -5023,29 +5093,48 @@ class SpellsCog(commands.Cog, name="Spells"):
             rest  = ""
 
         tokens = [t for t in rest.split() if t]
-        targets = []
-        ignore = False
 
+        ignore = False
+        targets: list[str] = []
         i = 0
         while i < len(tokens):
             tk = tokens[i].lower()
-            if tk in ("-i", "-ignore", "-ignoreslots"):
+
+            # ignore slot / free cast flags
+            if tk in ("-i", "-ignore", "-ignoreslots", "-w", "-wand", "-weapon"):
                 ignore = True
-                i += 1; continue
-            if tk in ("-t", "-target"):
                 i += 1
-                while i < len(tokens) and not tokens[i].startswith("-"):
-                    targets.append(tokens[i]); i += 1
                 continue
 
-            targets.append(tokens[i]); i += 1
+            # scroll mode flags also imply ignore-slots
+            if tk in ("-sc", "-scroll", "-scrolls"):
+                ignore = True
+                i += 1
+                continue
+
+            # explicit target list
+            if tk in ("-s", "-sid", "-scrollid", "-scroll"):
+                # Scroll-id selector. Always consume so it never becomes a target token.
+                # (Validation/parsing of the id happens later in the scroll handler.)
+                ignore = True
+                if i + 1 < len(tokens) and not str(tokens[i + 1]).startswith("-"):
+                    i += 2
+                else:
+                    i += 1
+                continue
+
+            # normal positional args (targets / spell args)
+            targets.append(tokens[i])
+            i += 1
 
         def _pretty_target_name(raw: str) -> str:
             disp, _ = self._resolve_char_ci(raw)
-            return (disp or (raw[:1].upper()+raw[1:]))
+            return (disp or (raw[:1].upper() + raw[1:]))
 
         targets_field = ", ".join(_pretty_target_name(t) for t in targets) or "—"
         return spell, targets, ignore, rest, targets_field
+
+
 
     @staticmethod
     def _dec_timer(cfg_b, chan_id: str, slot: str, key: str, remove_fields: tuple[str, ...] = ()):
@@ -5217,14 +5306,28 @@ class SpellsCog(commands.Cog, name="Spells"):
     @commands.command(name="cast")
     async def cast_spell(self, ctx, *, expr: str):
         """
-        Cast a spell and (optionally) trigger a spell-specific alias.
+        Cast a spell.
+
+        Usage:
+          !cast <SpellName> [targets...]
+
+        Flags:
+          -i                 Ignore spell slots (free cast)
+          -s [id]            Cast from a carried Spell Scroll (SpellScroll@id). No slots.
+                             If multiple matching scrolls, pass id from `!scrolls`.
+                             Scroll is consumed even if it fizzles.
+          -w                 Cast only if an equipped item/weapon/wand can cast it. No slots.
+                             Errors if no matching equipped item power is found.
+
         Examples:
-          !cast fireball go1 go2 go3
-          !cast curelightwounds Testman
-          !cast "magic missile" goblin
-          !cast curelightwounds -t testman
-          !cast fireball go1 -i  # ignore slot (scroll, GM freebie)
+          !cast Fireball
+          !cast CureLightWounds bob
+          !cast Fireball -s
+          !cast Fireball -s 5
+          !cast Light -w
         """
+
+
         char_name = get_active(ctx.author.id)
         if not char_name:
             await ctx.send("❌ No active character. Use `!char <name>` first.")
@@ -5281,17 +5384,79 @@ class SpellsCog(commands.Cog, name="Spells"):
         except Exception:
             pass
 
+        import shlex
+
         spell_name_in, targets, ignore_slots, rest_raw, targets_field = self._parse_cast_expr(expr)
+
+        # Parse raw expr so we can detect flags that _parse_cast_expr strips
+        try:
+            raw_toks = shlex.split(expr or "")
+        except Exception:
+            raw_toks = (expr or "").split()
+
+        tail = raw_toks[1:] if len(raw_toks) > 1 else []
+        scroll_flag = any((t or "").lower() in ("-s", "-sid", "-scrollid", "-scroll", "-sc", "-scrolls") for t in tail)
+        weapon_force = any((t or "").lower() in ("-w", "-weapon", "-wand", "-weap", "-wpn") for t in tail)
+
+        # Fix: alias_guess must exist before weapon grant search
         alias_guess = _norm_alias(spell_name_in)
 
-        if not spell_name_in:
-            await ctx.send("❌ Usage: `!cast <SpellName> [targets/flags...]`")
-            return
+        scroll_cast_level = None
+        scroll_list_class = None
 
+        # --- SpellScroll preflight ---
+        if scroll_flag:
+            sid = None
+            for i, t in enumerate(tail):
+                if (t or "").lower() in ("-s", "-sid", "-scrollid", "-scroll"):
+                    if i + 1 < len(tail):
+                        sid = self._scroll_id_from_token(tail[i + 1])
+                        break
+
+            pre = await self._precast_spellscroll(ctx, cfg, char_name, spell_name_in, sid)
+            if pre is False:
+                return
+
+            scroll_cast_level = int(pre["effective_level"])
+            scroll_list_class = pre["list_class"]
+            ignore_slots = True  # do NOT spend slots on scroll cast
+
+
+        # ---- flags from rest_raw ----
+        rtoks = []
+        try:
+            rtoks = shlex.split(rest_raw or "")
+        except Exception:
+            rtoks = (rest_raw or "").split()
+
+        scroll_flag = any((t or "").lower() in ("-sc", "-scroll", "-scrolls", "-s") for t in rtoks)
+        weapon_force = any((t or "").lower() in ("-w", "-weapon", "-wpn", "-weap") for t in rtoks)
+
+        # Detect scroll id selector if present
+        sid = None
+        for j, t in enumerate(rtoks):
+            if (t or "").lower() in ("-s", "-scroll", "-sc", "-scrolls") and j + 1 < len(rtoks):
+                try:
+                    sid_try = self._scroll_id_from_token(rtoks[j + 1])
+                except Exception:
+                    sid_try = None
+                if sid_try:
+                    sid = sid_try
+                    break
+
+        from_scroll = False
+        scroll_list_class = None
+
+        
         info_class = get_compat(cfg, "info", "class", fallback="")
         profile = self._caster_profile(info_class, ctx.channel)
 
         weapon_grant, weapon_meta = _find_weapon_grant_for_spell(self, cfg, alias_guess)
+        if weapon_force:
+            if not weapon_grant or not weapon_meta:
+                await ctx.send(f"❌ `-w` was given, but you don’t have an equipped item that can cast **{spell_name_in}**.")
+                return
+
         weapon_casting = bool(weapon_grant and weapon_meta and not weapon_grant.get("exhausted"))
 
         if weapon_grant and weapon_grant.get("exhausted"):
@@ -5308,7 +5473,8 @@ class SpellsCog(commands.Cog, name="Spells"):
         if resolved_prepared:
             spell_name_in = resolved_prepared
 
-        list_class = weapon_meta.get("list_class", "Magic-User") if weapon_casting else profile["list_class"]
+        list_class = weapon_meta.get("list_class", "Magic-User") if weapon_casting else (scroll_list_class or profile["list_class"])
+
 
         spell_name_in = self._spell_alias_map().get(self._norm(spell_name_in), spell_name_in)
 
@@ -5339,7 +5505,7 @@ class SpellsCog(commands.Cog, name="Spells"):
             has_break = False
 
 
-        if not weapon_casting and profile["book_based"] and not has_break:
+        if not weapon_casting and profile["book_based"] and not has_break and not ignore_slots:
             book = _read_per_level_list(cfg, "spellbook")
             if canon not in set(book.get(lvl, [])):
                 await ctx.send(f"❌ You don’t have **{canon}** (L{lvl}) in your spellbook.")
@@ -5735,7 +5901,9 @@ class SpellsCog(commands.Cog, name="Spells"):
         suppress_auto_timer = False
         if handler:
             try:
-                result = handler(ctx, cfg, char_name, level, targets)
+                cast_level = scroll_cast_level if scroll_cast_level is not None else level
+                result = handler(ctx, cfg, char_name, cast_level, targets)
+
                 if inspect.isawaitable(result):
                     result = await result
 
@@ -25053,6 +25221,158 @@ class SpellsCog(commands.Cog, name="Spells"):
         return lines
 
 
+    async def _precast_spellscroll(
+        self,
+        ctx,
+        caster_cfg,
+        caster_name: str,
+        spell_name: str,
+        sid_override: str | None,
+    ):
+        """
+        SpellScroll preflight for !cast -s/-scroll.
+
+        - Finds a carried SpellScroll that matches spell + class
+        - Enforces read magic for arcane scrolls
+        - Computes failure chance per BFRPG
+        - Rolls failure and consumes the spell regardless
+        - Sends the scroll embed
+        - Returns dict on success, False on failure (already messaged)
+        """
+
+        import random
+        import nextcord
+
+        reader_class = (get_compat(caster_cfg, "info", "class", fallback="") or "").strip()
+        reader_equiv = self._scroll_class_equiv(reader_class, ctx.channel)
+        is_arc_reader = self._is_arcane_class(reader_equiv)
+
+        # ---- find scroll record (carried) ----
+        chosen_token = None
+        rec = None
+
+        if sid_override:
+            # NO carry check: just treat the token as the scroll id token
+            chosen_token = f"SpellScroll@{sid_override}"
+
+            rec = self._read_scroll_rec(caster_cfg, sid_override)
+            if not rec:
+                await ctx.send(f"❌ Scroll **@{sid_override}** not found.")
+                return False
+
+            # must contain unspent spell
+            want_spell = self._norm(spell_name)
+            ok_contains = any(
+                self._norm(sp) == want_spell and int(used) == 0
+                for sp, used in zip(rec.get("spells", []), rec.get("spent", []))
+            )
+            if not ok_contains:
+                await ctx.send(f"❌ Scroll **@{sid_override}** does not contain an unused **{spell_name}**.")
+                return False
+
+        else:
+            # ALSO no carry check when auto-selecting:
+            picked = self._pick_carried_scroll_with_spell(
+                caster_cfg,
+                want_cls=reader_equiv,
+                want_spell=spell_name,
+                require_readmagic=True,
+                carried_only=False,   # <-- change from True to False
+            )
+            if not picked:
+                await ctx.send("❌ No SpellScroll contains that spell (or it isn’t deciphered).")
+                return False
+            chosen_token, rec = picked
+            sid_override = self._scroll_id_from_token(chosen_token)
+
+            sid_override = self._scroll_id_from_token(chosen_token)
+
+        scroll_cls = rec.get("class", "?")
+        scroll_list_class = self._scroll_class_equiv(scroll_cls, ctx.channel)
+
+        # ---- enforce Read Magic (arcane only) ----
+        if self._is_arcane_class(scroll_list_class) and not rec.get("readmagic"):
+            await ctx.send(f"❌ Arcane scroll @{sid_override} isn’t deciphered. Use `!readmagic {sid_override}` first.")
+            return False
+
+        # ---- compute spell level + failure chance ----
+        lvl = None
+        try:
+            lvl_raw = self._find_spell_level(scroll_list_class, spell_name)
+            lvl = self._as_int(lvl_raw)
+        except Exception:
+            lvl = None
+
+        max_lvl = self._max_spell_level_for_class(caster_cfg, reader_equiv)
+
+        fail = 0
+        if is_arc_reader:
+            knows = False
+            try:
+                knows = bool(self._pc_knows_spell(caster_cfg, reader_class, spell_name))
+            except Exception:
+                knows = False
+            if not knows:
+                fail += 10
+
+        if lvl is not None and max_lvl is not None and lvl > max_lvl:
+            fail += 10 * (lvl - max_lvl)
+
+        roll = random.randint(1, 100)
+        ok = (roll > fail)  # fails on ≤ fail
+
+        # minimum effective caster level for scroll scaling (classic 2*L-1)
+        eff_level = int(getint_compat(caster_cfg, "cur", "level", fallback=1))
+        if isinstance(lvl, int) and lvl > 0:
+            eff_level = max(eff_level, (2 * lvl) - 1)
+
+        # ---- consume spell regardless (wasted on failure) ----
+        self._mark_scroll_spell_spent_and_cleanup(caster_cfg, chosen_token, spell_name)
+        try:
+            _disp, _path = self._resolve_char_ci(caster_name)
+            if _path:
+                write_cfg(_path, caster_cfg)
+        except Exception:
+            pass
+
+        # ---- embed ----
+        embed = nextcord.Embed(
+            title=f"📜 Spell Scroll — {scroll_cls}",
+            description=f"**{caster_name}** attempts **{spell_name}** from **{chosen_token}**.",
+            color=(0x55CC77 if ok else 0xCC5555),
+        )
+        embed.add_field(
+            name="Failure chance",
+            value=f"**{fail}%** (roll **{roll}**; fails on ≤ **{fail}**)",
+            inline=True,
+        )
+        if lvl is not None:
+            embed.add_field(
+                name="Spell level",
+                value=f"**{lvl}** (your max: **{max_lvl if max_lvl is not None else '?'}**)",
+                inline=True,
+            )
+
+        # crumble notice
+        if not self._read_scroll_rec(caster_cfg, sid_override or ""):
+            embed.add_field(
+                name="Scroll",
+                value="All inscribed spells have been used. The scroll crumbles to dust.",
+                inline=False,
+            )
+
+        await ctx.send(embed=embed)
+
+        if not ok:
+            return False
+
+        return {
+            "effective_level": eff_level,
+            "list_class": scroll_list_class,
+            "sid": sid_override,
+        }
+
+
     def _prepared_spells_for(self, cfg) -> list[tuple[int, str]]:
         """
         Return [(level, spell_name), ...] from the [prepared] section,
@@ -25325,8 +25645,17 @@ class SpellsCog(commands.Cog, name="Spells"):
             Returns (carried?, slot_key_like_'carry1', qty_int)
             If no explicit qty is present for that slot, treat as 1.
             """
-            nm_l = canon_name.lower()
-            for i in range(1, 9):
+            nm_l = (canon_name or "").strip().lower()  # <-- FIX: define nm_l
+
+            max_slots = getint_compat(_cfg, "eq", "carry", fallback=0)
+            try:
+                max_slots = int(max_slots)
+            except Exception:
+                max_slots = 0
+            if max_slots <= 0:
+                max_slots = 32  # safe fallback
+
+            for i in range(1, max_slots + 1):
                 slot = f"carry{i}"
                 slot_qty = f"carry{i}_qty"
                 val = (get_compat(_cfg, "eq", slot, fallback="") or "").strip()
@@ -25341,7 +25670,10 @@ class SpellsCog(commands.Cog, name="Spells"):
                     except Exception:
                         qty = 1
                     return True, slot, max(1, qty)
+
             return False, None, 0
+
+
 
         def _dec_carry(_cfg, slot: str, current_qty: int) -> None:
             """Decrease the qty in a carry slot; clear the slot if it hits 0."""
@@ -25985,28 +26317,6 @@ class SpellsCog(commands.Cog, name="Spells"):
                 pass
 
 
-        def _is_carried(_cfg, canon_name: str):
-            nm_l = canon_name.lower()
-            for i in range(1, 8+1):
-                slot = f"carry{i}"
-                slot_qty = f"carry{i}_qty"
-                val = (get_compat(_cfg, "eq", slot, fallback="") or "").strip()
-                if val and val.lower() == nm_l:
-                    q_raw = (get_compat(_cfg, "eq", slot_qty, fallback="") or "").strip()
-                    try: qty = int(q_raw) if q_raw else 1
-                    except Exception: qty = 1
-                    return True, slot, max(1, qty)
-            return False, None, 0
-
-        def _dec_carry(_cfg, slot: str, current_qty: int):
-            if not _cfg.has_section("eq"):
-                _cfg.add_section("eq")
-            if current_qty <= 1:
-                _cfg.set("eq", slot, "")
-                try: _cfg.remove_option("eq", f"{slot}_qty")
-                except Exception: pass
-            else:
-                _cfg.set("eq", f"{slot}_qty", str(current_qty - 1))
 
         def _storage_remove(_cfg, canon_name: str):
             try:
@@ -26063,9 +26373,8 @@ class SpellsCog(commands.Cog, name="Spells"):
                 _cfg.set("item", "storage", " ".join(storage))
 
 
-            carried, slot, qty = _is_carried(_cfg, canon_name)
-            if carried:
-                _dec_carry(_cfg, slot, qty)
+            self._consume_carried_item(_cfg, canon_name, qty=1)
+
 
 
             try:
@@ -26591,221 +26900,269 @@ class SpellsCog(commands.Cog, name="Spells"):
         write_cfg(path, cfg)
         await ctx.send(f"✅ Scroll **@{sid}** marked as Read Magic deciphered.")
 
-    async def _read_spell_from_scroll(self, ctx, caster_cfg, caster_name: str, toks: list[str]) -> bool | None:
+
+    async def _read_spell_from_scroll(
+        self,
+        ctx,
+        caster_cfg,
+        caster_name: str,
+        toks: list[str],
+        precast_only: bool = False,
+    ) -> bool | dict | None:
         """
-        Handles: !read <SpellName> [-s <id>] [args...]
+        SpellScroll handler.
+
+        When precast_only=False (default):
+          - behaves like before: resolves the spell via _cast_spell_by_name and embeds a Result.
+
+        When precast_only=True:
+          - shows ONLY the scroll precheck embed (fail chance/roll/etc)
+          - consumes the scroll spell (and scroll if empty)
+          - returns a dict with:
+              {"ok": bool, "effective_level": int, "spell_level": int|None}
+
         Returns:
-          True  -> spell handled (success)
-          False -> handled with user-visible error/info
-          None  -> didn't handle (let caller fall back)
+          None  -> not a SpellScroll case (caller should fall back)
+          False -> handled with an error message
+          True  -> handled fully (non-precast mode)
+          dict  -> handled (precast_only mode)
         """
         if not toks:
             return False
-        spell_name = toks[0]
 
-        if self._norm(spell_name) in {
-            "elementalprotectionscroll","lycanthropeprotectionscroll","undeadprotectionscroll","magicprotectionscroll","cursedscroll"
+        spell_name = toks[0]
+        snorm = self._norm(spell_name)
+
+        # if this looks like one of the GM/manual scrolls handled by !read, let caller fall back
+        if snorm in {
+            "elementalprotectionscroll", "lycanthropeprotectionscroll",
+            "undeadprotectionscroll", "magicprotectionscroll", "cursedscroll"
         }:
             return None
 
-
+        # parse optional sid override
         sid_override = None
         for i, t in enumerate(toks):
-            if t.lower() in {"-s","-scroll"} and i+1 < len(toks):
-                sid_override = toks[i+1]
-                break
+            if i + 1 >= len(toks):
+                continue
+            tl = (t or "").lower()
+            if tl in {"-s", "-sid", "-scrollid", "-scroll"}:
+                try:
+                    sid_try = self._scroll_id_from_token(toks[i + 1])
+                except Exception:
+                    sid_try = None
+                if sid_try:
+                    sid_override = sid_try
+                    break
 
-        reader_class = self._class_name(caster_cfg)
-        reader_equiv = self._scroll_class_equiv(reader_class, ctx.channel)
-        is_arc_reader = self._is_arcane_class(reader_equiv)
-
-
-        def _to_spells_list(v):
-
-            if isinstance(v, (list, tuple)):
-                return [str(x).strip() for x in v if str(x).strip()]
-            s = str(v or "").strip()
-            if not s:
-                return []
-
-            parts = re.split(r"[|,]", s)
-            return [p.strip() for p in parts if p.strip()]
-
-        def _to_spent_list(v, n):
-
-            if isinstance(v, (list, tuple)):
-                out = []
-                for x in v:
-                    try: out.append(int(x))
-                    except Exception: out.append(0)
-            else:
-                s = str(v or "").strip()
-                out = []
-                if s:
-                    for chunk in s.split(","):
-                        chunk = chunk.strip()
-                        out.append(int(chunk) if chunk.isdigit() else 0)
-
-            if len(out) < n:
-                out.extend([0] * (n - len(out)))
-            elif len(out) > n:
-                out = out[:n]
-            return out
-
-        def _class_key(x):
-
-            canon = self._scroll_class_equiv(str(x or ""), ctx.channel)
-            return re.sub(r"[^a-z0-9]+", "", canon.lower())
+        # IMPORTANT: if -s was provided but this is NOT the precast-only call,
+        # do NOT handle it here (precast already handled/consumed it).
+        if sid_override and not precast_only:
+            return None
 
 
-        chosen_token, rec = None, None
-        if sid_override and sid_override.isdigit():
+        # identify reader/caster class
+        reader_class = (get_compat(caster_cfg, "info", "class", fallback="") or "").strip()
+
+        # choose scroll token + rec
+        chosen_token = None
+        rec = None
+
+        if sid_override:
+            chosen_token = f"SpellScroll@{sid_override}"
+
             rec = self._read_scroll_rec(caster_cfg, sid_override)
             if not rec:
-                await ctx.send(f"❌ No scroll @**{sid_override}**.")
+                await ctx.send(f"❌ Scroll **@{sid_override}** not found.")
+                return False
+
+            # must contain an unspent copy of spell
+            found = False
+            for s, used in zip(rec.get("spells", []), rec.get("spent", [])):
+                if int(used) == 0 and self._norm(s) == snorm:
+                    found = True
+                    break
+            if not found:
+                await ctx.send(f"❌ Scroll **@{sid_override}** does not contain an unused **{spell_name}**.")
                 return False
 
 
-            if self._norm(self._scroll_class_equiv(rec.get("class",""), ctx.channel)) != self._norm(reader_equiv):
-                await ctx.send(f"❌ This scroll is for **{rec['class']}**, not **{reader_class}**.")
-                return False
-
-
-            need_readmagic = self._is_arcane_class(self._scroll_class_equiv(rec.get("class",""), ctx.channel))
-            if need_readmagic and not rec.get("readmagic"):
-                await ctx.send(f"❌ Arcane scroll @**{sid_override}** isn’t deciphered. Use `!readmagic {sid_override}` first.")
-                return False
-
-            if not any(self._norm(s) == self._norm(spell_name) and not u
-                       for s, u in zip(rec["spells"], rec["spent"])):
-                await ctx.send(f"❌ Scroll @**{sid_override}** has no unspent **{spell_name}**.")
-                return False
         else:
+            picked = self._pick_carried_scroll_with_spell(
+                caster_cfg,
+                want_cls=reader_class,
+                want_spell=spell_name,
+                ctx=ctx,
+                require_readmagic=False,   # we check below so we can error nicely
+                carried_only=False
+            )
+            if not picked:
+                return None
+            chosen_token, rec = picked
 
-            want_cls = self._norm(reader_equiv)
-            want_spell = self._norm(spell_name)
-            candidates = []
-            try:
-                for sect in caster_cfg.sections():
-                    if not sect.startswith("scroll:"):
-                        continue
-                    sid = sect.split(":", 1)[1]
+        # Arcane decipher check (Read Magic)
+        is_arcane_scroll = self._is_arcane_class(rec.get("class", ""))
+        if is_arcane_scroll and not rec.get("readmagic"):
+            sid_now = self._scroll_id_from_token(chosen_token) or rec.get("sid")
+            await ctx.send(f"❌ Arcane scroll **@{sid_now}** isn’t deciphered. Use `!readmagic {sid_now}` first.")
+            return False
 
-                    rec_full = self._read_scroll_rec(caster_cfg, sid) or {}
-                    cls_raw  = rec_full.get("class", "") or ""
-                    spells   = _to_spells_list(rec_full.get("spells", []))
-                    spent    = _to_spent_list(rec_full.get("spent", []), len(spells))
-                    rm_flag  = int(str(rec_full.get("readmagic", 0) or 0))
-
-
-                    if _class_key(cls_raw) != _class_key(reader_equiv):
-                        continue
-
-
-                    need_rm = self._is_arcane_class(self._scroll_class_equiv(cls_raw, ctx.channel))
-                    if need_rm and not rm_flag:
-                        continue
-
-
-                    want_spell = self._norm(spell_name)
-                    if any(self._norm(sp) == want_spell and int(u) == 0 for sp, u in zip(spells, spent)):
-                        token = f"SpellScroll@{sid}"
-                        candidates.append((token, {
-                            "id": sid,
-                            "class": cls_raw,
-                            "spells": spells,
-                            "spent": spent,
-                            "readmagic": rm_flag,
-                        }))
-
-            except Exception:
-                pass
-
-            if not candidates:
-                await ctx.send(f"❌ No owned **Spell Scroll** for **{reader_equiv}** with unspent **{spell_name}**.")
-                return False
-
-
-
-            if len(candidates) > 1:
-
-                lines = []
-                for tok, r in candidates[:10]:
-                    left = sum(1 for s,u in zip(r["spells"], r["spent"]) if not u)
-                    lines.append(f"• `{tok}` — {', '.join(r['spells'])} (unspent: {left})")
-                more = "…" if len(candidates) > 10 else ""
-                await ctx.send("Found multiple matching scrolls. Use `-s <id>` to pick one:\n" + "\n".join(lines) + more)
-                return False
-
-            chosen_token, rec = candidates[0]
-
-
-        fail = 0
-        if is_arc_reader:
-            knows = self._pc_knows_spell(caster_cfg, reader_class, spell_name)
-            if knows is False:
-                fail += 10
-
-        lvl_raw = self._find_spell_level(rec["class"], spell_name)
+        # Determine spell level from scroll's spell list class
+        scroll_list_class = self._scroll_class_equiv(rec.get("class", ""), ctx.channel) or rec.get("class", "")
+        lvl_raw = self._find_spell_level(scroll_list_class, spell_name)
         max_raw = self._max_spell_level_for_class(caster_cfg, reader_class)
 
         lvl = self._as_int(lvl_raw)
         max_lvl = self._as_int(max_raw)
 
+        # Failure chance per BFRPG
+        fail = 0
+        if is_arcane_scroll:
+            knows = False
+            try:
+                knows = bool(self._pc_knows_spell(caster_cfg, reader_class, spell_name))
+            except Exception:
+                knows = False
+            if not knows:
+                fail += 10
+
         if lvl is not None and max_lvl is not None and lvl > max_lvl:
             fail += 10 * (lvl - max_lvl)
 
         roll = random.randint(1, 100)
-        ok = (roll > fail)
+        ok = (roll > fail)  # fails on <= fail
 
+        # effective level = at least minimum to cast that spell level (2*lvl - 1)
+        try:
+            eff_level = int(getint_compat(caster_cfg, "cur", "level", fallback=1))
+        except Exception:
+            eff_level = 1
+        if isinstance(lvl, int) and lvl > 0:
+            eff_level = max(eff_level, (2 * lvl) - 1)
 
-        title = f"📜 Spell Scroll — {rec['class']}"
+        # Consume the scroll spell regardless of success (wasted on failure)
+        self._mark_scroll_spell_spent_and_cleanup(caster_cfg, chosen_token, spell_name)
+        try:
+            _disp, _path = self._resolve_char_ci(caster_name)
+            if _path:
+                write_cfg(_path, caster_cfg)
+        except Exception:
+            pass
+
+        # Build the scroll precheck embed
+        title = f"📜 Spell Scroll — {rec.get('class','') or 'unknown'}"
         desc  = f"{caster_name} attempts **{spell_name}** from **{chosen_token}**."
-        embed = nextcord.Embed(title=title, description=desc, color=(0x55CC77 if ok else 0xCC5555))
-        embed.add_field(name="Failure chance", value=f"**{fail}%** (roll **{roll}**)", inline=True)
+        embed = nextcord.Embed(
+            title=title,
+            description=desc,
+            color=(0x55CC77 if ok else 0xCC5555)
+        )
+        embed.add_field(
+            name="Failure chance",
+            value=f"**{fail}%** (roll **{roll}**; fails on ≤ **{fail}**)",
+            inline=True
+        )
         if lvl is not None:
-            embed.add_field(name="Spell level", value=f"**{lvl}** (your max: **{max_lvl if max_lvl is not None else '?'}**)", inline=True)
+            embed.add_field(
+                name="Spell level",
+                value=f"**{lvl}** (your max: **{max_lvl if max_lvl is not None else '?'}**)",
+                inline=True
+            )
 
-        if ok:
-
-            self._mark_scroll_spell_spent_and_cleanup(caster_cfg, chosen_token, spell_name)
-
-
-            try:
-                _disp, _path = self._resolve_char_ci(caster_name)
-                if _path:
-                    write_cfg(_path, caster_cfg)
-            except Exception:
-                pass
-
-
-            spell_args = []
-
-            i = 1
-            while i < len(toks):
-                if toks[i].lower() in {"-s","-scroll"} and i+1 < len(toks):
-                    i += 2
-                else:
-                    spell_args.append(toks[i]); i += 1
-            try:
-                if hasattr(self, "_cast_spell_by_name"):
-                    out = await self._cast_spell_by_name(ctx, caster_cfg, caster_name, spell_name, spell_args, from_scroll=True)
-                    if isinstance(out, str) and out.strip():
-                        embed.add_field(name="Result", value=(out[:900] + ("…" if len(out) > 900 else "")), inline=False)
-                else:
-                    embed.add_field(name="Result", value="✅ **Spell takes effect.**", inline=False)
-            except Exception:
-                embed.add_field(name="Result", value="✅ **Spell takes effect.**", inline=False)
+        # For precast_only: do NOT resolve spell here
+        if precast_only:
+            embed.add_field(
+                name="Outcome",
+                value=("✅ Success — proceeding to cast…" if ok else "❌ Failure — the spell fizzles."),
+                inline=False
+            )
         else:
-            embed.add_field(name="Result", value="❌ **Scroll sputters and fails** — spell **not** expended.", inline=False)
+            # legacy behavior: show a Result line (optional)
+            if ok:
+                embed.add_field(name="Result", value="✅ **Spell takes effect.**", inline=False)
+            else:
+                embed.add_field(name="Result", value="❌ **Scroll sputters and fails.**", inline=False)
 
-
+        # Scroll crumble info
         sid_now = self._scroll_id_from_token(chosen_token)
-        if not self._read_scroll_rec(caster_cfg, sid_now or ""):
-            embed.add_field(name="Scroll", value="All inscribed spells have been used. The scroll crumbles to dust.", inline=False)
+        if sid_now and not self._read_scroll_rec(caster_cfg, sid_now):
+            embed.add_field(
+                name="Scroll",
+                value="All inscribed spells have been used. The scroll crumbles to dust.",
+                inline=False
+            )
 
         await ctx.send(embed=embed)
+
+        if precast_only:
+            return {"ok": ok, "effective_level": eff_level, "spell_level": lvl}
+
         return True
+
+
+    async def _cast_spell_by_name(
+        self,
+        ctx,
+        bcfg,
+        caster_name: str,
+        spell_name: str,
+        spell_args: list[str],
+        *,
+        caster_cfg=None,
+        
+        effective_level: int | None = None,
+        from_scroll: bool = False,
+    ) -> str:
+        """
+        Minimal internal spell dispatcher used by scroll casting.
+        Uses self._spell_handlers (same handlers as normal casting).
+        Note: handlers expect the **battle cfg** (from `_load_battles()`), not the caster .coe cfg.
+        Returns a string suitable for embedding in the scroll result.
+        """
+        import inspect
+
+        # Normalize spell name through alias map (same as !cast)
+        try:
+            spell_name = self._spell_alias_map().get(self._norm(spell_name), spell_name)
+        except Exception:
+            pass
+
+        key = _norm_alias(spell_name)
+        fn = getattr(self, "_spell_handlers", {}).get(key)
+        if not fn:
+            # fallbacks
+            fn = getattr(self, "_spell_handlers", {}).get(self._norm(spell_name))
+        if not fn:
+            return f"⚠️ No automated handler found for **{spell_name}**."
+
+        # Determine caster level for effect scaling
+        if effective_level is None:
+            try:
+                effective_level = int(getint_compat(caster_cfg, "cur", "level", fallback=1))
+            except Exception:
+                effective_level = 1
+
+        try:
+            out = fn(ctx, bcfg, caster_name, int(effective_level), list(spell_args or []))
+
+            if inspect.isawaitable(out):
+                out = await out
+        except Exception as e:
+            return f"❌ Error while casting **{spell_name}**: `{type(e).__name__}: {e}`"
+
+        # Normalize possible handler output types
+        try:
+            if "_normalize_effect_output" in globals():
+                main, _notes = _normalize_effect_output(out)
+                return main or ""
+        except Exception:
+            pass
+
+        if out is None:
+            return ""
+        if isinstance(out, (list, tuple)):
+            return "\n".join(str(x) for x in out if x is not None)
+        return str(out)
 
     def _as_int(self, v):
         """Best-effort int coercion. Accepts tuples/lists like (5, ...) and returns 5."""
@@ -26823,16 +27180,43 @@ class SpellsCog(commands.Cog, name="Spells"):
         except Exception:
             return None
 
-    def _scroll_id_from_token(self, token: str) -> str | None:
-        """Return the numeric id from 'SpellScroll@5', '@5', or '5'."""
-        if not token:
+    def _scroll_id_from_token(self, token: str | None) -> str | None:
+        """
+        Extract a numeric SpellScroll id from common user inputs.
+
+        Accepts:
+          • 11
+          • @11 / #11
+          • SpellScroll@11 / spellscr@11 / scroll@11
+          • SpellScroll@11:Fireball  (anything after ':' is ignored)
+
+        Returns the id as a string of digits, or None.
+        """
+        if token is None:
             return None
         s = str(token).strip()
-        if '@' in s:
-            part = s.rsplit('@', 1)[-1].strip()
-            return part if part.isdigit() else None
-        return s if s.isdigit() else None
+        if not s:
+            return None
 
+        # drop common wrappers and trailing annotations
+        s = s.strip()
+        s = s.split(":", 1)[0].strip()
+
+        # allow @11 or #11
+        if s.startswith("@") or s.startswith("#"):
+            s = s[1:].strip()
+
+        # allow SpellScroll@11 (case-insensitive)
+        if "@" in s:
+            try:
+                s = s.split("@", 1)[1].strip()
+            except Exception:
+                return None
+
+        # final: must be digits
+        if s.isdigit():
+            return s
+        return None
     def _mark_scroll_spell_spent_and_cleanup(
         self,
         cfg,
