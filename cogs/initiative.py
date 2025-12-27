@@ -74,6 +74,46 @@ _SAVE_KEY_CANON = {
     "spell": "spell", "spells": "spell"
 }
 
+_SNOWFLAKE_RE = re.compile(r"^\d{15,25}$")
+
+def _all_pc_owner_mentions(cfg, chan_id: str, names: list[str] | None = None) -> str:
+    """
+    Returns: "<@id1> <@id2> ..." for all UNIQUE owners of NON-monster combatants in initiative.
+    If none, returns "".
+    """
+    if names is None:
+        try:
+            names, _ = _parse_combatants(cfg, chan_id)
+        except Exception:
+            names = []
+
+    seen: set[str] = set()
+    out: list[str] = []
+
+    for nm in names or []:
+        try:
+            if _is_monster(nm):
+                continue
+        except Exception:
+            # if we can't classify it, treat as PC-ish (worst case you ping an extra person)
+            pass
+
+        try:
+            _hp, _mhp, _ac, owner = _char_snapshot(nm)
+        except Exception:
+            owner = ""
+
+        owner_s = str(owner or "").strip()
+        if not owner_s or not _SNOWFLAKE_RE.match(owner_s):
+            continue
+
+        if owner_s not in seen:
+            seen.add(owner_s)
+            out.append(f"<@{owner_s}>")
+
+    return " ".join(out)
+
+
 def _canon_vs(v: str) -> str:
     k = (str(v) or "").lower().replace(" ", "")
     return _SAVE_KEY_CANON.get(k, k)
@@ -220,6 +260,18 @@ def _get_saveas_from_cfg(t_cfg) -> Optional[str]:
 def _norm_spell_key(name: str) -> str:
     """Lowercase + strip non-alnum to match 'protectionfromevil' style keys."""
     return re.sub(r"[^a-z0-9]+", "", (name or "").lower())
+
+def _uid_to_name(ctx, uid: str) -> str:
+    """Best-effort display name for a Discord user id (no pings)."""
+    try:
+        if ctx.guild:
+            m = ctx.guild.get_member(int(uid))
+            if m:
+                return m.display_name
+    except Exception:
+        pass
+    return f"User {uid}"
+
 
 def _get_first_spells_section(cfg) -> str | None:
     """
@@ -1212,6 +1264,66 @@ def _perm_codes_for_slot(cfg, chan_id: str, slot: str) -> set[str]:
 def _d(n): return random.randint(1, n)
 def _d100(): return random.randint(1, 100)
 
+# --- Group initiative: per-channel "done list" (per-player) -------------------
+# Stored in the battle cfg under <chan_id>.g_done as a JSON map:
+#   {"123456789012345678": 1730000000, ...}  (value is a timestamp, optional)
+
+def _group_done_map(cfg, chan_id: str) -> dict:
+    try:
+        m = _get_map(cfg, chan_id, "g_done")
+        return m if isinstance(m, dict) else {}
+    except Exception:
+        return {}
+
+def _group_done_set(cfg, chan_id: str) -> set[str]:
+    m = _group_done_map(cfg, chan_id)
+    out: set[str] = set()
+    for k in (m or {}).keys():
+        ks = str(k).strip()
+        if ks.isdigit():
+            out.add(ks)
+    return out
+
+def _group_done_clear(cfg, chan_id: str) -> None:
+    # keep the key present but empty (nice for debugging)
+    try:
+        _set_map(cfg, chan_id, "g_done", {})
+    except Exception:
+        # fallback
+        if cfg.has_option(chan_id, "g_done"):
+            cfg.remove_option(chan_id, "g_done")
+        cfg.set(chan_id, "g_done", "{}")
+
+def _party_owner_ids_from_initiative(cfg, chan_id: str) -> list[str]:
+    """
+    Returns unique Discord user IDs for all *PC owners* currently in initiative.
+    Monsters are excluded.
+    """
+    try:
+        names, _ = _parse_combatants(cfg, chan_id)
+    except Exception:
+        names = []
+
+    ids: set[str] = set()
+    for nm in names:
+        try:
+            if _is_monster(nm):
+                continue
+        except Exception:
+            pass
+
+        try:
+            _hp, _mhp, _ac, owner = _char_snapshot(nm)
+        except Exception:
+            owner = ""
+
+        owner_s = str(owner or "").strip()
+        if owner_s.isdigit():
+            ids.add(owner_s)
+
+    return sorted(ids)
+
+
 def _dice_sum(spec: str) -> int:
     """
     Supports: 'XdY', 'XdYxK' or 'KxXdY' (multipliers), and plain ints.
@@ -1410,6 +1522,17 @@ def _pick_percent(table):
                 return val
     last = table[-1]
     return last[-1] if isinstance(last, (tuple, list)) else last
+
+def _is_dm_for_channel(ctx, cfg, chan_id: str) -> bool:
+    """True if author is DM for this channel OR has manage_guild."""
+    try:
+        if getattr(ctx.author.guild_permissions, "manage_guild", False):
+            return True
+    except Exception:
+        pass
+    dm_id = (cfg.get(chan_id, "DM", fallback="") or "").strip()
+    return dm_id and str(ctx.author.id) == str(dm_id)
+
 
 _JEWELRY_TYPES = [
     (1,6,"Anklet"), (7,12,"Belt"), (13,14,"Bowl"), (15,21,"Bracelet"),
@@ -2566,6 +2689,53 @@ def _sorted_entries(cfg, chan_id: str):
     out.sort(key=lambda e: (-e["init"], -e["dex"], e["join"]))
     return out
 
+
+
+def _hr_enabled(cfg, chan_id: str, key: str, default: bool = False) -> bool:
+    """
+    Reads {chan_id}:hr section (your existing house-rule storage pattern).
+    """
+    sec = f"{chan_id}:hr"
+    if not cfg or not cfg.has_section(sec):
+        return default
+    try:
+        return cfg.getint(sec, key, fallback=(1 if default else 0)) > 0
+    except Exception:
+        v = (cfg.get(sec, key, fallback="") or "").strip().lower()
+        if v in ("1", "true", "yes", "on"):
+            return True
+        if v in ("0", "false", "no", "off"):
+            return False
+        return default
+
+
+def _group_init_enabled(cfg, chan_id: str) -> bool:
+    """
+    Enabled if either:
+      - direct override flag exists in battle section (optional), OR
+      - house rule is enabled in {chan_id}:hr
+    """
+    try:
+        if cfg.has_section(chan_id) and cfg.has_option(chan_id, "group_init"):
+            return cfg.getint(chan_id, "group_init", fallback=0) > 0
+    except Exception:
+        pass
+    return _hr_enabled(cfg, chan_id, "group_initiative", default=False)
+
+
+def _g_other(side: str) -> str:
+    return "mon" if side == "pc" else "pc"
+
+
+def _g_clear_state(cfg, chan_id: str) -> None:
+    for k in ("g_side", "g_order", "g_step", "g_pc", "g_mon"):
+        try:
+            if cfg.has_option(chan_id, k):
+                cfg.remove_option(chan_id, k)
+        except Exception:
+            pass
+
+
 def _format_tracker_block(cfg, chan_id: str):
     if not cfg.has_section(chan_id):
         return "Initiative: — (round 0)\n(no combatants yet)"
@@ -2598,6 +2768,16 @@ def _format_tracker_block(cfg, chan_id: str):
     header = f"Initiative: {current_init} (round {round_no}) [{mode_tag}]"
     if not entries:
         return header + "\n(no combatants yet)"
+
+    if _group_init_enabled(cfg, chan_id):
+        side = (cfg.get(chan_id, "g_side", fallback="") or "").strip().lower()
+        pc = cfg.getint(chan_id, "g_pc", fallback=0)
+        mon = cfg.getint(chan_id, "g_mon", fallback=0)
+        if side in ("pc", "mon"):
+            header += f" [GROUP:{'PC' if side=='pc' else 'MON'} {pc}-{mon}]"
+        else:
+            header += " [GROUP]"
+
         
     def _find_file_ci(nm: str) -> str | None:
         """Find '<name>.coe' case-insensitively."""
@@ -5412,7 +5592,7 @@ class Initiative(commands.Cog):
         dm_id = cfg.get(chan_id, "DM", fallback="")
         is_dm = (str(ctx.author.id) == str(dm_id)) or getattr(ctx.author.guild_permissions, "manage_guild", False)
         if not is_dm:
-            await ctx.send("❌ Only the DM (or someone with Manage Server) can change battle mode.")
+            await ctx.send("❌ Only the GM (or someone with Manage Server) can change battle mode.")
             return
 
         current = _get_battle_mode(cfg, chan_id)
@@ -5518,7 +5698,7 @@ class Initiative(commands.Cog):
 
         dm_id = cfg.get(chan_id, "DM", fallback="")
         if str(ctx.author.id) != str(dm_id):
-            await ctx.send("❌ Only the DM can use `!shuffle` in this battle.")
+            await ctx.send("❌ Only the GM can use `!shuffle` in this battle.")
             return
 
         names, scores = _parse_combatants(cfg, chan_id)
@@ -6260,6 +6440,268 @@ class Initiative(commands.Cog):
             f"🔀 Auto-switched <@{owner_id}>'s active character to **{who_norm}** for this turn."
         )
 
+    async def _group_next_phase(self, ctx, cfg, chan_id: str) -> None:
+        import random
+
+        dm_id = (cfg.get(chan_id, "DM", fallback="") or "").strip()
+        is_gm = getattr(ctx.author.guild_permissions, "manage_guild", False) or (str(ctx.author.id) == str(dm_id))
+        if not is_gm:
+            await ctx.send("❌ Only the GM can advance phases with group initiative (`!n`).")
+            return
+
+        names, scores = _parse_combatants(cfg, chan_id)
+        if not names:
+            await ctx.send("No combatants yet.")
+            return
+
+        pcs = [n for n in names if not _is_monster(n)]
+        mons = [n for n in names if _is_monster(n)]
+
+        def _roll_order():
+            # If one side is empty, just keep the other side active.
+            if pcs and not mons:
+                return "pc", random.randint(1, 6), 0
+            if mons and not pcs:
+                return "mon", 0, random.randint(1, 6)
+            if not pcs and not mons:
+                return "pc", 0, 0
+
+            pc = random.randint(1, 6)
+            mon = random.randint(1, 6)
+            while pc == mon:  # ties reroll (no simultaneous)
+                pc = random.randint(1, 6)
+                mon = random.randint(1, 6)
+            return ("pc" if pc > mon else "mon"), pc, mon
+
+        round_num = cfg.getint(chan_id, "round", fallback=1)
+        if round_num <= 0:
+            round_num = 1
+
+        order = (cfg.get(chan_id, "g_order", fallback="") or "").strip().lower()
+        step = cfg.getint(chan_id, "g_step", fallback=-1)
+
+        msg_has_roll = False
+        if order not in ("pc", "mon") or step not in (0, 1):
+            # Start this round (do NOT increment round; your init already set round=1, etc.)
+            order, pc_roll, mon_roll = _roll_order()
+            step = 0
+            side = order
+            cfg.set(chan_id, "g_order", order)
+            cfg.set(chan_id, "g_step", "0")
+            cfg.set(chan_id, "g_side", side)
+            cfg.set(chan_id, "g_pc", str(pc_roll))
+            cfg.set(chan_id, "g_mon", str(mon_roll))
+            msg_has_roll = True
+
+        elif step == 0:
+            # Switch to the other side (same round)
+            side = _g_other(order)
+            cfg.set(chan_id, "g_side", side)
+            cfg.set(chan_id, "g_step", "1")
+            pc_roll = cfg.getint(chan_id, "g_pc", fallback=0)
+            mon_roll = cfg.getint(chan_id, "g_mon", fallback=0)
+
+        else:
+            # End of round -> next round
+            round_num += 1
+            cfg.set(chan_id, "round", str(round_num))
+
+            order, pc_roll, mon_roll = _roll_order()
+            step = 0
+            side = order
+            cfg.set(chan_id, "g_order", order)
+            cfg.set(chan_id, "g_step", "0")
+            cfg.set(chan_id, "g_side", side)
+            cfg.set(chan_id, "g_pc", str(pc_roll))
+            cfg.set(chan_id, "g_mon", str(mon_roll))
+            msg_has_roll = True
+
+        # Optional: set a placeholder cursor for older commands that expect cfg.turn to be non-empty
+        placeholder = ""
+        if side == "pc" and pcs:
+            placeholder = pcs[0]
+        elif side == "mon" and mons:
+            placeholder = mons[0]
+        if placeholder:
+            cfg.set(chan_id, "turn", placeholder)
+
+        _save_battles(cfg)
+
+        # Apply start-of-turn effects to ALL combatants on the active side
+        try:
+            active_list = pcs if side == "pc" else mons
+            for who in list(active_list):
+                await self._process_start_of_turn_effects(ctx, cfg, chan_id, who)
+        except Exception:
+            pass
+
+        try:
+            await self._update_tracker_message(ctx, cfg, chan_id)
+        except Exception:
+            pass
+
+        phase_label = "🧑‍🤝‍🧑 **PLAYER PHASE**" if side == "pc" else "👹 **MONSTER PHASE**"
+
+        # Ping *all* PC owners, but ONLY on player phase
+        pc_pings = ""
+        if side == "pc":
+            try:
+                pc_pings = _all_pc_owner_mentions(cfg, chan_id, names)
+            except Exception:
+                pc_pings = ""
+
+        prefix = (pc_pings + "\n") if pc_pings else ""
+
+        if msg_has_roll and pcs and mons:
+            await ctx.send(
+                prefix +
+                f"🎲 **Group initiative (Round {round_num})**: PCs {pc_roll} vs MON {mon_roll} → {phase_label}\n"
+                f"Use `!n` to switch phases.",
+                allowed_mentions=nextcord.AllowedMentions(users=True, roles=False, everyone=False),
+            )
+        else:
+            await ctx.send(
+                prefix + f"➡️ {phase_label} (Round {round_num})\nUse `!n` to switch phases.",
+                allowed_mentions=nextcord.AllowedMentions(users=True, roles=False, everyone=False),
+            )
+
+
+    @commands.command(name="done")
+    async def done_list(self, ctx, *args):
+        """
+        Group initiative only.
+
+        Player:
+          !done            -> mark yourself "done" for this channel (per-player, not per-character)
+          !done undo       -> remove yourself from the done list
+
+        GM/DM:
+          !done            -> show who is done + who is pending
+          !done clear      -> clear the done list manually
+        """
+        import time
+
+        cfg = _load_battles()
+        chan_id = _section_id(ctx.channel)
+
+        if not cfg.has_section(chan_id):
+            await ctx.send("❌ No initiative running here. Use `!init` first.")
+            return
+
+        if not _group_init_enabled(cfg, chan_id):
+            await ctx.send("❌ `!done` only works during **group initiative**.")
+            return
+
+        # Determine phase context
+        in_combat = _get_battle_mode(cfg, chan_id)
+        side = (cfg.get(chan_id, "g_side", fallback="pc") or "pc").strip().lower()  # "pc" or "mon"
+        is_monster_phase = bool(in_combat and side == "mon")
+
+        is_dm = _is_dm_for_channel(ctx, cfg, chan_id)
+
+        toks = [str(a).strip().lower() for a in args if str(a).strip()]
+        sub = toks[0] if toks else ""
+
+        # Party membership is "owns at least one PC currently in initiative"
+        party_ids = _party_owner_ids_from_initiative(cfg, chan_id)
+        party_set = set(party_ids)
+
+        # ---------------- GM VIEW / CLEAR ----------------
+        if is_dm:
+            if sub in {"clear", "reset", "clr"}:
+                _group_done_clear(cfg, chan_id)
+                _save_battles(cfg)
+                await ctx.send("🧹 Cleared the **done** list for this channel.")
+                return
+
+            # If GM is acting as a player, fall through to PLAYER flow below.
+            # - "!done me" should MARK done
+            # - "!done undo" should UNMARK done
+            if sub in {"me", "self"}:
+                sub = ""   # treat as normal player mark
+            elif sub in {"undo", "undone", "back", "remove", "rm"}:
+                pass       # keep sub as-is so PLAYER flow removes
+            else:
+                # Otherwise: GM wants LIST view (default)
+                done_map = _group_done_map(cfg, chan_id)
+                done_ids_all = [str(k) for k in (done_map or {}).keys() if str(k).strip().isdigit()]
+                done_ids = [uid for uid in done_ids_all if uid in party_set]
+                pending_ids = [uid for uid in party_ids if uid not in set(done_ids)]
+
+                # prune stale ids
+                if set(done_ids_all) != set(done_ids):
+                    new_map = {uid: int(done_map.get(uid, int(time.time()))) for uid in done_ids}
+                    _set_map(cfg, chan_id, "g_done", new_map)
+                    _save_battles(cfg)
+
+                phase_txt = "Exploration" if not in_combat else ("Monster phase" if is_monster_phase else "Player phase")
+                hdr = f"✅ Done status — {phase_txt} • {len(done_ids)}/{len(party_ids)} done"
+
+                if not party_ids:
+                    await ctx.send(hdr + "\n(No PC owners found in initiative.)")
+                    return
+
+                done_line = ", ".join(_uid_to_name(ctx, u) for u in done_ids) if done_ids else "none"
+                pend_line = ", ".join(_uid_to_name(ctx, u) for u in pending_ids) if pending_ids else "none"
+
+                await ctx.send(
+                    f"{hdr}\n"
+                    f"Done: {done_line}\n"
+                    f"Pending: {pend_line}\n"
+                    f"_Players: `!done` / `!done undo` · GM: `!done clear`_"
+                )
+                return
+
+
+
+
+
+        # ---------------- PLAYER MARK / UNDO ----------------
+        # Don’t allow marking during monster phase (keeps it clean)
+        if is_monster_phase:
+            await ctx.send("⛔ It’s currently **monster phase** — `!done` is only for the **player phase**.")
+            return
+
+        uid = str(ctx.author.id)
+        if uid not in party_set:
+            await ctx.send("❌ You don’t appear to own a PC in this channel’s initiative list right now.")
+            return
+
+        done_map = _group_done_map(cfg, chan_id)
+        done_set = _group_done_set(cfg, chan_id)
+
+        if sub in {"undo", "undone", "back", "remove", "rm"}:
+            if uid in done_set:
+                # remove
+                try:
+                    if uid in done_map:
+                        done_map.pop(uid, None)
+                    _set_map(cfg, chan_id, "g_done", done_map)
+                except Exception:
+                    # fallback: rebuild
+                    new_map = {k: v for k, v in (done_map or {}).items() if str(k) != uid}
+                    _set_map(cfg, chan_id, "g_done", new_map)
+
+                _save_battles(cfg)
+                await ctx.send(f"↩️ {ctx.author.mention} marked **NOT done**.")
+            else:
+                await ctx.send(f"ℹ️ {ctx.author.mention} you weren’t marked done.")
+            return
+
+        # default: mark done
+        if uid in done_set:
+            await ctx.send(f"ℹ️ {ctx.author.mention} you’re already marked **done**.")
+            return
+
+        done_map[uid] = int(time.time())
+        _set_map(cfg, chan_id, "g_done", done_map)
+        _save_battles(cfg)
+
+        # quick progress line
+        new_done = _group_done_set(cfg, chan_id)
+        await ctx.send(f"✅ {ctx.author.mention} marked **done**. (**{len(new_done)}/{len(party_ids)}**)")
+
+
 
     @commands.command(name="n")
     async def smart_next(self, ctx):
@@ -6274,6 +6716,28 @@ class Initiative(commands.Cog):
         if not cfg.has_section(chan_id):
             await ctx.send("❌ No initiative running here. Use `!init` first.")
             return
+
+        # --- GROUP INITIATIVE ROUTE ---
+        if _group_init_enabled(cfg, chan_id):
+            # GM-only: lock !n during group initiative (both combat + exploration)
+            if not _is_dm_for_channel(ctx, cfg, chan_id):
+                await ctx.send("❌ Only the GM can advance phases with `!n` during **group initiative**.")
+                return
+
+            # NEW: reset done list whenever the GM advances with !n
+            _group_done_clear(cfg, chan_id)
+            _save_battles(cfg)
+            
+            if _get_battle_mode(cfg, chan_id):
+                await self._group_next_phase(ctx, cfg, chan_id)
+                return
+            else:
+                # In exploration, treat !n like !nt 1 (60 rounds)
+                await self.exploration_turn(ctx, 1)
+                return
+        # --- END GROUP INITIATIVE ROUTE ---
+
+
 
         if _get_battle_mode(cfg, chan_id):
             # Normal combat next-turn behavior
@@ -6353,7 +6817,7 @@ class Initiative(commands.Cog):
 
         _, _, _, owner = _char_snapshot(cur)
         if str(ctx.author.id) != str(dm_id) and str(ctx.author.id) != str(owner):
-            await ctx.send("❌ Only the DM or the current character's owner can advance the turn.")
+            await ctx.send("❌ Only the GM or the current character's owner can advance the turn.")
             return
 
         try:
@@ -6476,6 +6940,11 @@ class Initiative(commands.Cog):
             await ctx.send("No initiative running here.")
             return
 
+        # ✅ DISABLE !p DURING GROUP INITIATIVE (both combat + exploration)
+        if _group_init_enabled(cfg, chan_id):
+            await ctx.send("⛔ `!p` is disabled while **group initiative** is enabled.")
+            return
+
         names, scores = _parse_combatants(cfg, chan_id)
         if not names:
             await ctx.send("No combatants yet.")
@@ -6499,7 +6968,7 @@ class Initiative(commands.Cog):
 
         _, _, _, owner = _char_snapshot(cur)
         if str(ctx.author.id) != str(dm_id) and str(ctx.author.id) != str(owner):
-            await ctx.send("❌ Only the DM or the current character's owner can rewind the turn.")
+            await ctx.send("❌ Only the GM or the current character's owner can rewind the turn.")
             return
 
         try:
@@ -6927,7 +7396,7 @@ class Initiative(commands.Cog):
 
         dm_id = cfg.get(chan_id, "DM", fallback="")
         if str(ctx.author.id) != str(dm_id):
-            await ctx.send("❌ Only the DM can use `!mon` in this battle.")
+            await ctx.send("❌ Only the GM can use `!mon` in this battle.")
             return
 
         # Resolve -owner (optional)
@@ -7414,7 +7883,7 @@ class Initiative(commands.Cog):
 
         dm_id = cfg.get(chan_id, "DM", fallback="")
         if str(ctx.author.id) != str(dm_id):
-            await ctx.send("❌ Only the DM can use `!lair`."); return
+            await ctx.send("❌ Only the GM can use `!lair`."); return
 
         lairs = _get_map(cfg, chan_id, "tre_lair_counts")
 
@@ -7968,7 +8437,7 @@ class Initiative(commands.Cog):
 
         dm_id = cfg.get(chan_id, "DM", fallback="")
         if str(ctx.author.id) != str(dm_id):
-            await ctx.send("❌ Only the DM can use `!remove` in this battle.")
+            await ctx.send("❌ Only the GM can use `!remove` in this battle.")
             return
 
         if not args or not args.strip():
@@ -8436,7 +8905,9 @@ class Initiative(commands.Cog):
         Applies queued BLIND after PARALYZED ends.
         GM-only. Do NOT use during combat round-wraps (that's already accounted for).
         """
-        import random, nextcord
+        import os
+        import random
+        import nextcord
 
         try:
             turns = int(turns)
@@ -8454,6 +8925,20 @@ class Initiative(commands.Cog):
         if not cfg.has_section(chan_id):
             await ctx.send("❌ No initiative running here. Use `!battle` first.")
             return
+
+        # --- GM-only gate (matches docstring) ---
+        dm_id = (cfg.get(chan_id, "DM", fallback="") or "").strip()
+        is_gm = getattr(ctx.author.guild_permissions, "manage_guild", False) or (dm_id and str(ctx.author.id) == str(dm_id))
+        if not is_gm:
+            await ctx.send("❌ Only the GM can advance exploration turns (`!nt`).")
+            return
+
+        # --- NEW: group-init flag for ping-all behavior ---
+        gi_on = False
+        try:
+            gi_on = _group_init_enabled(cfg, chan_id)
+        except Exception:
+            gi_on = False
 
         EFFECTS = [
             ("magwep",    "Magic Weapon",      ("magwep_name","magwep_disp"), "🕯️"),
@@ -8487,10 +8972,8 @@ class Initiative(commands.Cog):
             ("cr", "Chill Ray", (), "❄️"),
             ("gcr", "Greater Chill Ray", (), "🧊"),
             ("stench", "Stench", (), "🤢"),
-
         ]
         EFFECT_KEYS = {k for (k, _, _, _) in EFFECTS}
-
         PERM_FLAG = {"light": "light_perm", "darkness": "darkness_perm", "blind": "blind_perm"}
 
         slots_to_tick = set()
@@ -8522,7 +9005,6 @@ class Initiative(commands.Cog):
 
         # Keep the main 'round' counter aligned with exploration time
         _inc_cfg_int(cfg, chan_id, "round", TOTAL_ROUNDS)
-
         changed = True
 
         for _ in range(turns):
@@ -8549,7 +9031,6 @@ class Initiative(commands.Cog):
                         par_ended_now = True
 
                     if new_left == 0:
-
                         for suf in extra_suffixes:
                             eopt = f"{s}.{suf}"
                             if cfg.has_option(chan_id, eopt):
@@ -8557,11 +9038,12 @@ class Initiative(commands.Cog):
                         expired_by_label.setdefault(show, set()).add(f"{emoji} {pretty}")
 
                     if base_key == "blind" and left > 0 and new_left == 0:
-
                         applied, note_cnf = _apply_queued_confusion_after_blind(cfg, chan_id, slot_label.get(s, s.replace("_", " ")))
                         if applied > 0:
                             changed = True
-                            expired_by_label.setdefault(slot_label.get(s, s.replace("_"," ")), set()).add(f"😵‍💫 Confusion {applied} (from Scintillating Pattern)")
+                            expired_by_label.setdefault(slot_label.get(s, s.replace("_"," ")), set()).add(
+                                f"😵‍💫 Confusion {applied} (from Scintillating Pattern)"
+                            )
 
                 if par_ended_now:
                     applied, src, _by = _apply_queued_blind_after_paralysis(cfg, chan_id, s)
@@ -8570,6 +9052,7 @@ class Initiative(commands.Cog):
                         label_src = "Color Cloud" if src == "colorcloud" else "Color Spray"
                         expired_by_label.setdefault(show, set()).add(f"🙈 Blind {applied} (from {label_src})")
 
+            # tick custom x_ effects
             for s in sorted(slots_to_tick):
                 show = slot_label.get(s, s.replace("_", " "))
                 for opt_key, _val in list(cfg.items(chan_id)):
@@ -8587,18 +9070,16 @@ class Initiative(commands.Cog):
                     try:
                         left = int(val)
                     except ValueError:
-
                         continue
 
-                    if left < 0:
-                        continue
-                    if left <= 0:
+                    if left < 0 or left <= 0:
                         continue
 
                     new_left = max(0, left - ROUNDS_PER_TURN)
                     if new_left != left:
                         cfg.set(chan_id, opt_key, str(new_left))
                         changed = True
+
                     if new_left == 0:
                         label = cfg.get(chan_id, f"{s}.{base_key}_label", fallback=base_key[2:].capitalize())
                         emoji = cfg.get(chan_id, f"{s}.{base_key}_emoji", fallback="⏱️")
@@ -8608,8 +9089,8 @@ class Initiative(commands.Cog):
                                 cfg.remove_option(chan_id, mkey)
                         expired_by_label.setdefault(show, set()).add(f"{emoji} {label}")
 
+            # slow venom (special)
             for s in sorted(slots_to_tick):
-
                 left_r = cfg.getint(chan_id, f"{s}.x_slowvenom", fallback=0)
                 if left_r <= 0:
                     continue
@@ -8634,7 +9115,6 @@ class Initiative(commands.Cog):
                         description="No effect (poison immune/undead).",
                         color=random.randint(0, 0xFFFFFF)
                     ))
-
                     expired_by_label.setdefault(show, set()).add("🧪 SLOW VENOM")
                     changed = True
                     continue
@@ -8647,12 +9127,12 @@ class Initiative(commands.Cog):
                 if rem_r > 0:
                     cfg.set(chan_id, f"{s}.x_slowvenom", str(rem_r))
                 else:
-
                     for suf in ("", "_dice", "_label"):
                         opt = f"{s}.x_slowvenom{suf}"
                         if cfg.has_option(chan_id, opt):
                             cfg.remove_option(chan_id, opt)
                     expired_by_label.setdefault(show, set()).add("🧪 SLOW VENOM")
+
                 _save_battles(cfg)
                 changed = True
 
@@ -8674,14 +9154,17 @@ class Initiative(commands.Cog):
 
                 old = getint_compat(t_cfg, "cur", "hp", fallback=0)
                 new = max(0, old - final)
-                if not t_cfg.has_section("cur"): t_cfg.add_section("cur")
-                t_cfg["cur"]["hp"] = str(new); write_cfg(path, t_cfg)
+                if not t_cfg.has_section("cur"):
+                    t_cfg.add_section("cur")
+                t_cfg["cur"]["hp"] = str(new)
+                write_cfg(path, t_cfg)
 
                 is_mon = (get_compat(t_cfg, "info", "class", fallback="").strip().lower() == "monster")
                 dmg_line = f"{die} [{', '.join(str(r) for r in rolls)}]" + (f" → **{final}** ({note})" if note else f" → **{final}**")
                 if is_mon:
                     mhp = getint_compat(t_cfg, "max", "hp", fallback=old)
-                    before = _life_bar(old, mhp, width=10); after = _life_bar(new, mhp, width=10)
+                    before = _life_bar(old, mhp, width=10)
+                    after  = _life_bar(new, mhp, width=10)
                     hp_line = f"{before} → **{after}**"
                 else:
                     hp_line = f"{old} → **{new}**"
@@ -8698,19 +9181,24 @@ class Initiative(commands.Cog):
 
                 if new <= 0 and is_mon:
                     try:
-                        names, scores = _parse_combatants(cfg, chan_id)
-                        keyname = show if show in names else (_find_ci_name(names, show) or show)
-                        if keyname in names:
-                            names = [n for n in names if n != keyname]
-                            if cfg.has_option(chan_id, keyname): cfg.remove_option(chan_id, keyname)
+                        names2, scores2 = _parse_combatants(cfg, chan_id)
+                        keyname = show if show in names2 else (_find_ci_name(names2, show) or show)
+                        if keyname in names2:
+                            names2 = [n for n in names2 if n != keyname]
+                            if cfg.has_option(chan_id, keyname):
+                                cfg.remove_option(chan_id, keyname)
                             s_dead = _slot(keyname)
                             for suf in (".dex",".join",".disp",".acpen",".oil",
                                         ".x_slowvenom",".x_slowvenom_dice",".x_slowvenom_label"):
                                 opt = f"{s_dead}{suf}"
-                                if cfg.has_option(chan_id, opt): cfg.remove_option(chan_id, opt)
-                            _write_combatants(cfg, chan_id, names, scores); _save_battles(cfg)
-                        try: os.remove(os.path.abspath(path))
-                        except Exception: pass
+                                if cfg.has_option(chan_id, opt):
+                                    cfg.remove_option(chan_id, opt)
+                            _write_combatants(cfg, chan_id, names2, scores2)
+                            _save_battles(cfg)
+                        try:
+                            os.remove(os.path.abspath(path))
+                        except Exception:
+                            pass
                     except Exception:
                         pass
 
@@ -8757,24 +9245,44 @@ class Initiative(commands.Cog):
                      for actor, fx in sorted(expired_by_label.items())]
             embed.add_field(name="Expired effects", value="\n".join(lines), inline=False)
 
-        # Ping the DM as a reminder to move allied monsters
-        dm_id = cfg.get(chan_id, "DM", fallback="")
+        # --- NEW: build ping content (group-init ping-all + DM reminder) ---
+        party_pings = ""
+        if gi_on:
+            try:
+                party_pings = _all_pc_owner_mentions(cfg, chan_id, names)
+            except Exception:
+                party_pings = ""
+
         dm_mention = f"<@{dm_id}>" if dm_id and str(dm_id).isdigit() else ""
-        content = None
+        dm_reminder = ""
         if dm_mention:
             seg = "turn" if turns == 1 else "turns"
-            content = (
-                f"{dm_mention} ⏰ Reminder: move any allied monsters during "
-                f"this exploration turn (monsters are skipped in exploration)."
-            )
-            
+            # avoid double-mention spam
+            if dm_mention in (party_pings or ""):
+                dm_reminder = (
+                    f"⏰ Reminder: move any allied monsters during this exploration {seg} "
+                    f"(monsters are skipped in exploration)."
+                )
+            else:
+                dm_reminder = (
+                    f"{dm_mention} ⏰ Reminder: move any allied monsters during this exploration {seg} "
+                    f"(monsters are skipped in exploration)."
+                )
+
+        content_parts = []
+        if party_pings:
+            content_parts.append(party_pings)
+        if dm_reminder:
+            content_parts.append(dm_reminder)
+
+        content = "\n".join(content_parts) if content_parts else None
+
         await ctx.send(
             content=content,
             embed=embed,
-            allowed_mentions=nextcord.AllowedMentions(
-                users=True, roles=False, everyone=False
-            ),
+            allowed_mentions=nextcord.AllowedMentions(users=True, roles=False, everyone=False),
         )
+
 
     def _get_expl_clock(self, cfg, chan_id: str) -> int:
 
@@ -9305,7 +9813,7 @@ class Initiative(commands.Cog):
             except Exception:
                 owner = ""
             if str(ctx.author.id) != str(dm_id) and str(ctx.author.id) != str(owner):
-                await ctx.send("❌ Only the DM or the current exploration character's owner can rewind the exploration turn.")
+                await ctx.send("❌ Only the GM or the current exploration character's owner can rewind the exploration turn.")
                 return
 
         wraps_any = False
@@ -9607,7 +10115,7 @@ class Initiative(commands.Cog):
 
         dm_id = cfg.get(chan_id, "DM", fallback="")
         if str(ctx.author.id) != str(dm_id):
-            await ctx.send("❌ Only the DM can use !ds here."); return
+            await ctx.send("❌ Only the GM can use !ds here."); return
 
         names, _ = _parse_combatants(cfg, chan_id)
         key  = _find_ci_name(names, who) or who
@@ -10060,7 +10568,7 @@ class Initiative(commands.Cog):
                 else:
                     owner_ok = (owner_id and owner_id == str(ctx.author.id))
         if not owner_ok:
-            await ctx.send("❌ Only the DM or the character’s owner can change statuses.")
+            await ctx.send("❌ Only the GM or the character’s owner can change statuses.")
             return
 
         e = "".join(ch for ch in effect.lower() if ch.isalnum())
