@@ -6443,9 +6443,8 @@ class Initiative(commands.Cog):
     async def _group_next_phase(self, ctx, cfg, chan_id: str) -> None:
         import random
 
-        dm_id = (cfg.get(chan_id, "DM", fallback="") or "").strip()
-        is_gm = getattr(ctx.author.guild_permissions, "manage_guild", False) or (str(ctx.author.id) == str(dm_id))
-        if not is_gm:
+        # GM-only
+        if not _is_dm_for_channel(ctx, cfg, chan_id):
             await ctx.send("❌ Only the GM can advance phases with group initiative (`!n`).")
             return
 
@@ -6454,11 +6453,12 @@ class Initiative(commands.Cog):
             await ctx.send("No combatants yet.")
             return
 
-        pcs = [n for n in names if not _is_monster(n)]
+        # Snapshot side lists (we may refresh later after effects)
+        pcs  = [n for n in names if not _is_monster(n)]
         mons = [n for n in names if _is_monster(n)]
 
         def _roll_order():
-            # If one side is empty, just keep the other side active.
+            # If one side is empty, keep the other side active.
             if pcs and not mons:
                 return "pc", random.randint(1, 6), 0
             if mons and not pcs:
@@ -6478,14 +6478,15 @@ class Initiative(commands.Cog):
             round_num = 1
 
         order = (cfg.get(chan_id, "g_order", fallback="") or "").strip().lower()
-        step = cfg.getint(chan_id, "g_step", fallback=-1)
+        step  = cfg.getint(chan_id, "g_step", fallback=-1)
 
         msg_has_roll = False
+
+        # Start-of-round if state missing/invalid
         if order not in ("pc", "mon") or step not in (0, 1):
-            # Start this round (do NOT increment round; your init already set round=1, etc.)
             order, pc_roll, mon_roll = _roll_order()
-            step = 0
             side = order
+            step = 0
             cfg.set(chan_id, "g_order", order)
             cfg.set(chan_id, "g_step", "0")
             cfg.set(chan_id, "g_side", side)
@@ -6494,7 +6495,7 @@ class Initiative(commands.Cog):
             msg_has_roll = True
 
         elif step == 0:
-            # Switch to the other side (same round)
+            # Switch to the other side, same round
             side = _g_other(order)
             cfg.set(chan_id, "g_side", side)
             cfg.set(chan_id, "g_step", "1")
@@ -6502,13 +6503,13 @@ class Initiative(commands.Cog):
             mon_roll = cfg.getint(chan_id, "g_mon", fallback=0)
 
         else:
-            # End of round -> next round
+            # End-of-round -> next round
             round_num += 1
             cfg.set(chan_id, "round", str(round_num))
 
             order, pc_roll, mon_roll = _roll_order()
-            step = 0
             side = order
+            step = 0
             cfg.set(chan_id, "g_order", order)
             cfg.set(chan_id, "g_step", "0")
             cfg.set(chan_id, "g_side", side)
@@ -6516,22 +6517,101 @@ class Initiative(commands.Cog):
             cfg.set(chan_id, "g_mon", str(mon_roll))
             msg_has_roll = True
 
-        # Optional: set a placeholder cursor for older commands that expect cfg.turn to be non-empty
+        # Placeholder for legacy code paths that expect cfg.turn to be non-empty
         placeholder = ""
         if side == "pc" and pcs:
             placeholder = pcs[0]
         elif side == "mon" and mons:
             placeholder = mons[0]
-        if placeholder:
-            cfg.set(chan_id, "turn", placeholder)
+        cfg.set(chan_id, "turn", placeholder)
 
         _save_battles(cfg)
 
-        # Apply start-of-turn effects to ALL combatants on the active side
+        # -----------------------------
+        # Phase start: tick timers + decision effects for ALL on the active side
+        # -----------------------------
+        active_list = pcs if side == "pc" else mons
+
+        decision_notes: list[str] = []
+        any_changed = False
+
+        for who in list(active_list):
+            # 1) Decrement per-round timers (same call used in individual initiative)
+            try:
+                if self._tick_start_of_turn(cfg, chan_id, who):
+                    any_changed = True
+            except Exception:
+                pass
+
+            # 2) Decision/status effects block (mirrors your individual loop)
+            try:
+                notes = []
+
+                still_par, note_par = _tick_paralyze_on_turn(cfg, chan_id, who)
+                if note_par: notes.append(note_par)
+
+                still_cnf, note_cnf = self._tick_confusion_on_turn(cfg, chan_id, who)
+                if note_cnf: notes.append(note_cnf)
+
+                still_maze, note_maze = self._tick_maze_on_turn(cfg, chan_id, who)
+                if note_maze: notes.append(note_maze)
+
+                _a, note_sh = _tick_status_counter(cfg, chan_id, who, "shield", "Shield")
+                if note_sh: notes.append(note_sh)
+
+                _a, note_fear = _tick_status_counter(cfg, chan_id, who, "fear", "Frightened")
+                if note_fear: notes.append(note_fear)
+
+                _a, note_ps = _tick_status_counter(cfg, chan_id, who, "ps", "Polymorph Self")
+                if note_ps: notes.append(note_ps)
+
+                _a, note_ss = _tick_stoneskin_on_turn(cfg, chan_id, who)
+                if note_ss: notes.append(note_ss)
+
+                _a, note_mi = _tick_mirror_on_turn(cfg, chan_id, who)
+                if note_mi: notes.append(note_mi)
+
+                if notes:
+                    # Prefix with actor for readability in group mode
+                    for n in notes:
+                        decision_notes.append(f"• **{who}**: {n}")
+
+            except Exception:
+                pass
+
+            # queued confusion after blind (same place you do it in individual)
+            try:
+                applied_cnf, note_sp = _apply_queued_confusion_after_blind(cfg, chan_id, who)
+                if note_sp:
+                    decision_notes.append(f"• **{who}**: {note_sp}")
+                if applied_cnf > 0:
+                    any_changed = True
+            except Exception:
+                pass
+
+        if any_changed:
+            try:
+                _save_battles(cfg)
+            except Exception:
+                pass
+
+        # 3) Apply start-of-turn effects that may deal damage / remove creatures
+        for who in list(active_list):
+            try:
+                died = await self._process_start_of_turn_effects(ctx, cfg, chan_id, who)
+            except Exception:
+                died = False
+
+            if not died:
+                try:
+                    await self._process_start_of_turn_web_bridge(ctx, cfg, chan_id, who)
+                except Exception:
+                    pass
+
+        # Refresh cfg/names in case anything died/was removed
         try:
-            active_list = pcs if side == "pc" else mons
-            for who in list(active_list):
-                await self._process_start_of_turn_effects(ctx, cfg, chan_id, who)
+            cfg = _load_battles()
+            names, _scores2 = _parse_combatants(cfg, chan_id)
         except Exception:
             pass
 
@@ -6540,30 +6620,26 @@ class Initiative(commands.Cog):
         except Exception:
             pass
 
+        # Post decision notes (no pings; keep it compact)
+        if decision_notes:
+            text = "\n".join(decision_notes)
+            if len(text) > 1800:
+                text = text[:1800].rstrip() + "\n…"
+            await ctx.send("🧠 **Start-of-phase decision effects:**\n" + text)
+
         phase_label = "🧑‍🤝‍🧑 **PLAYER PHASE**" if side == "pc" else "👹 **MONSTER PHASE**"
 
-        # Ping *all* PC owners, but ONLY on player phase
-        pc_pings = ""
-        if side == "pc":
-            try:
-                pc_pings = _all_pc_owner_mentions(cfg, chan_id, names)
-            except Exception:
-                pc_pings = ""
-
-        prefix = (pc_pings + "\n") if pc_pings else ""
-
+        # Phase announcement (no pings)
         if msg_has_roll and pcs and mons:
             await ctx.send(
-                prefix +
                 f"🎲 **Group initiative (Round {round_num})**: PCs {pc_roll} vs MON {mon_roll} → {phase_label}\n"
-                f"Use `!n` to switch phases.",
-                allowed_mentions=nextcord.AllowedMentions(users=True, roles=False, everyone=False),
+                f"Use `!n` to switch phases."
             )
         else:
             await ctx.send(
-                prefix + f"➡️ {phase_label} (Round {round_num})\nUse `!n` to switch phases.",
-                allowed_mentions=nextcord.AllowedMentions(users=True, roles=False, everyone=False),
+                f"➡️ {phase_label} (Round {round_num})\nUse `!n` to switch phases."
             )
+
 
 
     @commands.command(name="done")
