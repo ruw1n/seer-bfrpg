@@ -6629,16 +6629,29 @@ class Initiative(commands.Cog):
 
         phase_label = "🧑‍🤝‍🧑 **PLAYER PHASE**" if side == "pc" else "👹 **MONSTER PHASE**"
 
-        # Phase announcement (no pings)
+        # Ping *all* PC owners, but ONLY on player phase
+        pc_pings = ""
+        if side == "pc":
+            try:
+                pc_pings = _all_pc_owner_mentions(cfg, chan_id, names)
+            except Exception:
+                pc_pings = ""
+
+        prefix = (pc_pings + "\n") if pc_pings else ""
+
         if msg_has_roll and pcs and mons:
             await ctx.send(
+                prefix +
                 f"🎲 **Group initiative (Round {round_num})**: PCs {pc_roll} vs MON {mon_roll} → {phase_label}\n"
-                f"Use `!n` to switch phases."
+                f"Use `!n` to switch phases.",
+                allowed_mentions=nextcord.AllowedMentions(users=True, roles=False, everyone=False),
             )
         else:
             await ctx.send(
-                f"➡️ {phase_label} (Round {round_num})\nUse `!n` to switch phases."
+                prefix + f"➡️ {phase_label} (Round {round_num})\nUse `!n` to switch phases.",
+                allowed_mentions=nextcord.AllowedMentions(users=True, roles=False, everyone=False),
             )
+
 
 
 
@@ -9003,8 +9016,8 @@ class Initiative(commands.Cog):
             return
 
         ## --- GM-only gate (matches docstring) ---
-        #dm_id = (cfg.get(chan_id, "DM", fallback="") or "").strip()
-        #is_gm = getattr(ctx.author.guild_permissions, "manage_guild", False) or (dm_id and str(ctx.author.id) == str(dm_id))
+        dm_id = (cfg.get(chan_id, "DM", fallback="") or "").strip()
+        is_gm = getattr(ctx.author.guild_permissions, "manage_guild", False) or (dm_id and str(ctx.author.id) == str(dm_id))
         #if not is_gm:
         #    await ctx.send("❌ Only the GM can advance exploration turns (`!nt`).")
         #    return
