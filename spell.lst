@@ -1205,7 +1205,7 @@ mt = 3
 il = 1
 range = 20
 duration = instantaneous
-desc = This spell causes a vivid cone of clashing colors to be projected from the caster's hands, causing living creatures in the area of effect to become blinded or possibly unconscious. The cone has a 5-foot diameter at the base, 20 foot diamter at the end, and is 20 feet long. Each creature within the cone is affected according to its hit dice://- 2 HD or less: The creature is unconscious for 2d4 rounds, then blinded for 1d4 rounds.//- 3 or 4 HD: The creature is blinded for 1d4 rounds.//- 5 or more HD: The creature is blinded for 1 round.//All creatures having more levels or hit dice than the spell caster, or having 6 or more levels or hit dice in any case, are entitled to a save vs. Spells to negate the effect. Sightless creatures are not affected by ColorSpray.
+desc = This spell causes a vivid cone of clashing colors to be projected from the caster's hands, causing living creatures in the area of effect to become blinded or possibly unconscious. The cone has a 5-foot diameter at the base, 20 foot diameter at the end, and is 20 feet long. Each creature within the cone is affected according to its hit dice://- 2 HD or less: The creature is unconscious for 2d4 rounds, then blinded for 1d4 rounds.//- 3 or 4 HD: The creature is blinded for 1d4 rounds.//- 5 or more HD: The creature is blinded for 1 round.//All creatures having more levels or hit dice than the spell caster, or having 6 or more levels or hit dice in any case, are entitled to a save vs. Spells to negate the effect. Sightless creatures are not affected by ColorSpray.
 mt = 1
 
 [DancingLights]
@@ -2602,7 +2602,7 @@ pa = 2
 dru = 6
 range = 60
 duration = 1mlvl
-desc = This spell creates a flow of energy in a direction the caster sets when the spell is cast. All wooden objects are then pushed away in that direction for the duration of the spell. Any wooden object greater than three inches in diamter that is fully anchored in place will resist the spell. Any wooden object three inches in diameter or less that is anchored will shatter, and its pieces will be pushed away. All affected objects are pushed at a speed of 40 feet per round.//Any objects that are carried will push their bearer unless dropped or released. Any spear braced against the spell will shatter. Even magic items with wooden components are pushed away.//Once the spell is cast, the path of the flow of energy is set and the caster does not need to do anything to maintain it.
+desc = This spell creates a flow of energy in a direction the caster sets when the spell is cast. All wooden objects are then pushed away in that direction for the duration of the spell. Any wooden object greater than three inches in diaemter that is fully anchored in place will resist the spell. Any wooden object three inches in diameter or less that is anchored will shatter, and its pieces will be pushed away. All affected objects are pushed at a speed of 40 feet per round.//Any objects that are carried will push their bearer unless dropped or released. Any spear braced against the spell will shatter. Even magic items with wooden components are pushed away.//Once the spell is cast, the path of the flow of energy is set and the caster does not need to do anything to maintain it.
 
 [RestoreHealth]
 cle = 2
