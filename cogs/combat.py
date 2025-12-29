@@ -88,14 +88,16 @@ _PRESET_MAP = {
         "base": False,
         "overrides": {
             "classic_vancian_prep": True,      
-            "magethief_illusionist_list": False,                                           
+            "magethief_illusionist_list": False,  
+            "group_initiative": False,                                         
         },
     },
     "house": {
         "base": True,
         "overrides": {
             "classic_vancian_prep": False,      
-            "magethief_illusionist_list": True,                   
+            "magethief_illusionist_list": True,     
+            "group_initiative": False,              
         },
     },
 }
@@ -1707,6 +1709,33 @@ def _monster_has_harpysong(att_cfg, att_path):
             if any(k in s2 for k in ("harpysong","harpy song","song (charm)","charm song")):
                 return True
 
+    except Exception:
+        pass
+    return False
+
+def _monster_has_deathtouch(att_cfg, att_path):
+    """True if the monster instance/template lists a 'deathtouch' special."""
+    try:
+        s1 = " ".join([
+            (get_compat(att_cfg, "base", "special", fallback="") or ""),
+            (get_compat(att_cfg, "info", "special", fallback="") or "")
+        ]).lower()
+        s1n = re.sub(r"[^a-z0-9]+", "", s1)
+        if "deathtouch" in s1n:
+            return True
+
+        mtype = (get_compat(att_cfg, "info", "monster_type", fallback="")
+                 or get_compat(att_cfg, "info", "type", fallback="")).strip().lower()
+        p = _safe_monster_ini_path(mtype)
+        if p:
+            mcfg = read_cfg(p)
+            s2 = " ".join([
+                (get_compat(mcfg, "base", "special", fallback="") or ""),
+                (get_compat(mcfg, "info", "special", fallback="") or "")
+            ]).lower()
+            s2n = re.sub(r"[^a-z0-9]+", "", s2)
+            if "deathtouch" in s2n:
+                return True
     except Exception:
         pass
     return False
@@ -8048,6 +8077,9 @@ class Combat(commands.Cog):
         want_charge = False
         want_oil = False
         want_flank = False
+        rng_short = False
+        rng_long = False
+        
         splash_targets: list[str] = []
         try:
             names_to_wake = [tgt_name]
@@ -8099,6 +8131,13 @@ class Combat(commands.Cog):
                     want_charge = True; i += 1; continue
                 if tok in ("oil", "flaskoil", "oilflask", "flaskofoil", "flask"):
                     want_oil = True; i += 1; continue
+                if tok in ("short",):
+                    rng_short = True; rng_long = False; i += 1; continue
+                if tok in ("long",):
+                    rng_long = True; rng_short = False; i += 1; continue
+                if tok in ("med", "medium"):
+                    rng_short = False; rng_long = False; i += 1; continue
+    
                 if tok in ("-splash", "-sp", "splash"):
                     i += 1
                     while i < len(tokens):
@@ -8114,6 +8153,10 @@ class Combat(commands.Cog):
         flag_tokens = tokens if tokens else toks 
         want_flank = _has_adv_flag(flag_tokens)
         flank_hit_bonus = 2 if want_flank else 0
+        range_hit_bonus = (1 if rng_short else 0) + (-2 if rng_long else 0)
+        if range_hit_bonus:
+            extra_hit_bonus += range_hit_bonus
+
          
         def _bonuses_panel(include_charge: bool) -> str | None:
             lines = []
@@ -10066,6 +10109,9 @@ class Combat(commands.Cog):
 
         want_charge = False
         want_oil = False
+        rng_short = False
+        rng_long = False
+
         splash_targets: list[str] = []
         try:
             names_to_wake = [tgt_name]
@@ -10117,6 +10163,19 @@ class Combat(commands.Cog):
                 want_charge = True; i += 1; continue
             if tok in ("oil", "flaskoil", "oilflask", "flaskofoil", "flask"):
                 want_oil = True; i += 1; continue
+            if tok in ("short",):
+                rng_short = True; rng_long = False
+                i += 1
+                continue
+            if tok in ("long",):
+                rng_long = True; rng_short = False
+                i += 1
+                continue
+            if tok in ("med", "medium"):
+                rng_short = False; rng_long = False
+                i += 1
+                continue
+    
             if tok in ("-splash", "-sp", "splash"):
                 i += 1
                 while i < len(tokens):
@@ -10130,6 +10189,11 @@ class Combat(commands.Cog):
 
         want_flank = _has_adv_flag(tokens)
         flank_hit_bonus = 2 if want_flank else 0  
+        range_hit_bonus = (1 if rng_short else 0) + (-2 if rng_long else 0)
+        if range_hit_bonus:
+            extra_hit_bonus += range_hit_bonus
+
+
 
         def _bonuses_panel(include_charge: bool) -> str | None:
             lines = []
@@ -11951,38 +12015,39 @@ class Combat(commands.Cog):
         raw_q = (item_name or "").strip()
         raw_q = raw_q.replace(" +", "+").replace("+ ", "+").replace(" -", "-").replace("- ", "-")
 
+        # 1) Try exact/normal lookup first (includes +N/-N in the name)
         canon, item = self._item_lookup(raw_q)
+
+        # 2) If not found and user provided trailing +N/-N, try a canonicalized recomposition
         if canon is None or not item:
-            canon, item = self.find_item(raw_q.strip())
+            try:
+                m_raw = re.search(r'([+-]\d+)\s*$', raw_q.replace(" ", ""))
+                if m_raw:
+                    bonus_raw = m_raw.group(1)
+                    base_raw = raw_q.replace(" ", "")[:m_raw.start()]
 
-        # normalize list-returning lookups
-        if isinstance(item, list):
-            item = item[0] if item else None
+                    base_canon, _base_item = self._item_lookup(base_raw)
+                    constructed = (base_canon or base_raw).strip() + bonus_raw
+                    canon2, item2 = self._item_lookup(constructed)
+                    if canon2 is not None and item2:
+                        canon, item = canon2, item2
+            except Exception:
+                pass
 
-        # If raw has a trailing +N/-N, rebuild canon from base+bonus
-        # so lookup/canon cannot silently flip the sign.
-        try:
-            m_raw = re.search(r'([+-]\d+)\s*$', raw_q.replace(" ", ""))
-            if m_raw:
-                bonus_raw = m_raw.group(1)
-                base_raw = raw_q.replace(" ", "")[:m_raw.start()]
+        # 3) Fuzzy lookup fallback (returns either (canon, itemdict) or (None, [suggestions]))
+        if canon is None or not item:
+            canon, found = self.find_item(raw_q.strip())
+            if isinstance(found, list):
+                if found:
+                    sug = ", ".join(found[:8])
+                    await ctx.send(f"❌ Unknown item **{item_name}**. Did you mean: {sug}?")
+                else:
+                    await ctx.send(f"❌ Unknown item **{item_name}**.")
+                return
+            item = found
 
-                base_canon, base_item = self._item_lookup(base_raw)
-                if base_canon is None or not base_item:
-                    base_canon, base_item = self.find_item(base_raw.strip())
-                if isinstance(base_item, list):
-                    base_item = base_item[0] if base_item else None
-
-                if base_item:
-                    canon = (base_canon or base_raw).strip() + bonus_raw
-                    item = base_item
-        except Exception:
-            pass
-
-        if not item or not canon:
-            await ctx.send(f"❌ Unknown item **{item_name}**.")
-            return
         # ---------------------------------------------------------
+
 
 
         item_type = (self._item_type(item) or "").strip().lower()
@@ -14312,8 +14377,10 @@ class Combat(commands.Cog):
 
     @commands.command(name="sell")
     async def sell(self, ctx, *, item_and_qty: str):
-        """Sell an item back to the shop for half price (keeps gear/coin weights separate)."""
-        
+        """Sell an item back to the shop for half price (keeps gear/coin weights separate).
+
+        Also supports: `!sell all` to sell every inventory item that is NOT equipped or carried.
+        """
 
         char_name = get_active(ctx.author.id)
         if not char_name:
@@ -14321,6 +14388,204 @@ class Combat(commands.Cog):
         path = f"{char_name.replace(' ', '_')}.coe"
         if not os.path.exists(path):
             await ctx.send(f"❌ Character file not found for **{char_name}**."); return
+
+        cfg = read_cfg(path)
+        old_eq_w, old_coin_w, old_total_w = self._weights_snapshot(cfg)
+
+        def _cap_lines(lines: list[str], limit: int = 15) -> tuple[list[str], int]:
+            if len(lines) <= limit:
+                return lines, 0
+            return lines[:limit], (len(lines) - limit)
+
+        def _eq_weapon_slots(cfg):
+            slots = []
+            if cfg.has_section("eq"):
+                for k, v in cfg.items("eq"):
+                    if re.fullmatch(r"weapon\d+", k, flags=re.I):
+                        slots.append((k, (v or "").strip()))
+            slots.sort(key=lambda kv: int(re.search(r"\d+", kv[0]).group()))
+            return slots
+
+        def _where_equipped_or_carried(cname: str) -> str | None:
+            """
+            Return a human-friendly reason if cname is equipped or carried; otherwise None.
+
+            This intentionally checks *all* equipment slots (not just armor/weapons),
+            plus carry slots.
+            """
+            cn = (cname or "").strip().lower()
+            if not cn:
+                return None
+
+            a1 = get_compat(cfg, "eq", "armor1", fallback="").strip().lower()
+            a2 = get_compat(cfg, "eq", "armor2", fallback="").strip().lower()
+            if a1 == cn: return "equipped (armor)"
+            if a2 == cn: return "equipped (shield)"
+
+            for slot, val in _eq_weapon_slots(cfg):
+                if val.lower() == cn:
+                    return f"equipped ({slot})"
+
+            # common accessory slots used by !equip/!unequip
+            for slot in (
+                "hands","gloves",
+                "belt","girdle",
+                "ring","ring1","ring2",
+                "neck","amulet","pendant",
+                "cloak",
+                "boots",
+                "helm","helmet",
+                "other1","other2","other3","other4","other5",
+            ):
+                v = get_compat(cfg, "eq", slot, fallback="").strip().lower()
+                if v == cn:
+                    return f"equipped ({slot})"
+
+            if cfg.has_section("eq"):
+                for k, v in cfg.items("eq"):
+                    if re.fullmatch(r"carry\d+", k, flags=re.I):
+                        if (v or "").strip().lower() == cn:
+                            return f"carried ({k})"
+
+            return None
+
+        raw = (item_and_qty or "").strip()
+        if raw.lower() in {"all", "*"}:
+            if not cfg.has_section("item"):
+                await ctx.send("❌ You don’t have any inventory recorded."); return
+
+            sold_items: list[tuple[str, int, float, float]] = []  # (canon, qty, proceeds_gp, unit_gp)
+            skipped: list[str] = []
+            sold_name_lc: set[str] = set()
+            total_proceeds_cp = 0
+            sold_qty_total = 0
+
+            for k, v in list(cfg.items("item")):
+                if k.lower() == "storage":
+                    continue
+                try:
+                    have = int(str(v).strip() or "0")
+                except Exception:
+                    continue
+                if have <= 0:
+                    continue
+
+                canon = self._canon(k)
+                data = self.items.get(canon, {}) or self.items.get(k, {})
+                if not data:
+                    skipped.append(f"• {canon} ×{have} — not in item list / no price")
+                    continue
+
+                where = _where_equipped_or_carried(canon)
+                if where:
+                    skipped.append(f"• {canon} ×{have} — {where}")
+                    continue
+
+                price_raw = (data.get("price", "") or "").strip()
+                if not price_raw:
+                    skipped.append(f"• {canon} ×{have} — no price")
+                    continue
+                try:
+                    unit_gp = float(price_raw)
+                except Exception:
+                    skipped.append(f"• {canon} ×{have} — bad price `{price_raw}`")
+                    continue
+
+                proceeds_cp = int(round(unit_gp * have * 0.5 * 100))
+                if proceeds_cp <= 0:
+                    skipped.append(f"• {canon} ×{have} — value too small")
+                    continue
+
+                total_proceeds_cp += proceeds_cp
+                sold_qty_total += have
+                sold_name_lc.add(canon.lower())
+                sold_items.append((canon, have, proceeds_cp / 100.0, unit_gp))
+
+                if cfg.has_option("item", k):
+                    cfg.remove_option("item", k)
+
+                lk = canon.lower()
+                if lk != k and cfg.has_option("item", lk):
+                    cfg.remove_option("item", lk)
+
+            if total_proceeds_cp <= 0:
+                msg = "ℹ️ Nothing to sell. (Everything is equipped/carried, has no price, or you have no inventory.)"
+                if skipped:
+                    show, more = _cap_lines(skipped, 15)
+                    msg += "\n\nSkipped:\n" + "\n".join(show)
+                    if more:
+                        msg += f"\n… and {more} more."
+                await ctx.send(msg)
+                return
+
+            # add proceeds to coins
+            pp = getint_compat(cfg, "cur", "pp", fallback=0)
+            gp = getint_compat(cfg, "cur", "gp", fallback=0)
+            ep = getint_compat(cfg, "cur", "ep", fallback=0)
+            sp = getint_compat(cfg, "cur", "sp", fallback=0)
+            cp = getint_compat(cfg, "cur", "cp", fallback=0)
+            new_cp_total = pp*1000 + gp*100 + ep*50 + sp*10 + cp + total_proceeds_cp
+
+            new_pp = new_cp_total // 1000; rem = new_cp_total % 1000
+            new_gp = rem // 100;          rem = rem % 100
+            new_ep = rem // 50;           rem = rem % 50
+            new_sp = rem // 10;           new_cp = rem % 10
+
+            if not cfg.has_section("cur"): cfg.add_section("cur")
+            cfg.set("cur", "pp", str(new_pp))
+            cfg.set("cur", "gp", str(new_gp))
+            cfg.set("cur", "ep", str(new_ep))
+            cfg.set("cur", "sp", str(new_sp))
+            cfg.set("cur", "cp", str(new_cp))
+
+            # update storage list to remove sold names (best-effort, matches existing behavior)
+            if not cfg.has_section("item"): cfg.add_section("item")
+            storage_line = cfg.get("item", "storage", fallback="")
+            toks = [t for t in storage_line.split() if t]
+            if toks:
+                toks = [t for t in toks if t.lower() not in sold_name_lc]
+                cfg.set("item", "storage", " ".join(toks))
+
+            new_coin_w = (new_pp + new_gp + new_ep + new_sp + new_cp) * 0.02
+            if not cfg.has_section("eq"): cfg.add_section("eq")
+            cfg.set("eq", "coin_weight", f"{new_coin_w:.2f}")
+
+            new_eq_w = self._recompute_eq_weight(cfg)
+            new_move = self._recompute_move(cfg)
+
+            write_cfg(path, cfg)
+
+            proceeds_gp_total = total_proceeds_cp / 100.0
+            new_total = new_eq_w + new_coin_w
+
+            sold_lines = [
+                f"• {canon} ×{qty} → +{gp_get:.2f} gp (½ of {unit_gp:g})"
+                for (canon, qty, gp_get, unit_gp) in sold_items
+            ]
+            sold_lines, sold_more = _cap_lines(sold_lines, 15)
+            skipped_lines, skip_more = _cap_lines(skipped, 10)
+
+            msg = (
+                f"🏷️ **{char_name}** sells **all stored items** (not equipped/carried): "
+                f"**{len(sold_items)}** item type(s), **{sold_qty_total}** total → **{proceeds_gp_total:.2f} gp**.\n"
+                f"New coins → pp:{new_pp} gp:{new_gp} ep:{new_ep} sp:{new_sp} cp:{new_cp}\n"
+                f"Total weight: {self._fmt_w(old_total_w)} → **{self._fmt_w(new_total)}**  "
+                f"(gear {self._fmt_w(old_eq_w)} → {self._fmt_w(new_eq_w)}, coins {self._fmt_coin_w(old_coin_w)} → {self._fmt_coin_w(new_coin_w)})  •  "
+                f"Move: **{new_move}**"
+            )
+            if sold_lines:
+                msg += "\n\nSold:\n" + "\n".join(sold_lines)
+                if sold_more:
+                    msg += f"\n… and {sold_more} more."
+            if skipped_lines:
+                msg += "\n\nSkipped:\n" + "\n".join(skipped_lines)
+                if skip_more:
+                    msg += f"\n… and {skip_more} more."
+
+            await ctx.send(msg)
+            return
+
+        # ---- normal single-item sell ----
 
         m = re.fullmatch(r'\s*(?:"([^"]+)"|\'([^\']+)\'|(.+?))(?:\s+(\d+))?\s*', item_and_qty)
         if not m:
@@ -14340,10 +14605,6 @@ class Combat(commands.Cog):
         except Exception:
             await ctx.send(f"❌ Couldn’t parse price for **{canon}**: `{price_raw}`"); return
 
-        cfg = read_cfg(path)
-
-        old_eq_w, old_coin_w, old_total_w = self._weights_snapshot(cfg)
-
         if not cfg.has_section("item"):
             await ctx.send("❌ You don’t have any inventory recorded."); return
         lower_key = canon.lower()
@@ -14356,33 +14617,7 @@ class Combat(commands.Cog):
         if qty > have:
             await ctx.send(f"❌ You only have **{have}× {canon}**."); return
 
-                                           
-        def _eq_weapon_slots(cfg):
-            slots = []
-            if cfg.has_section("eq"):
-                for k, v in cfg.items("eq"):
-                    if re.fullmatch(r"weapon\d+", k, flags=re.I):
-                        slots.append((k, (v or "").strip()))
-            slots.sort(key=lambda kv: int(re.search(r"\d+", kv[0]).group()))
-            return slots
-
-        def _is_equipped_or_carried(cname: str) -> str | None:
-            cn = (cname or "").strip().lower()
-            a1 = get_compat(cfg, "eq", "armor1", fallback="").strip().lower()
-            a2 = get_compat(cfg, "eq", "armor2", fallback="").strip().lower()
-            if a1 == cn: return "equipped (armor1)"
-            if a2 == cn: return "equipped (shield)"
-            for slot, val in _eq_weapon_slots(cfg):
-                if val.lower() == cn:
-                    return f"equipped ({slot})"
-            if cfg.has_section("eq"):
-                for k, v in cfg.items("eq"):
-                    if re.fullmatch(r"carry\d+", k, flags=re.I):
-                        if (v or "").strip().lower() == cn:
-                            return f"carried ({k})"
-            return None
-
-        where = _is_equipped_or_carried(canon)
+        where = _where_equipped_or_carried(canon)
         if where:
             await ctx.send(f"❌ You can’t sell **{canon}** because it’s {where}. Unequip/uncarry it first.")
             return
@@ -14413,7 +14648,6 @@ class Combat(commands.Cog):
         if new_cnt > 0:
             cfg.set("item", lower_key, str(new_cnt))
         else:
-                                                           
             if cfg.has_option("item", lower_key):
                 cfg.remove_option("item", lower_key)
             storage_line = cfg.get("item", "storage", fallback="")
@@ -14425,13 +14659,9 @@ class Combat(commands.Cog):
         if not cfg.has_section("eq"): cfg.add_section("eq")
         cfg.set("eq", "coin_weight", f"{new_coin_w:.2f}")
 
-                                                                                         
         new_eq_w = self._recompute_eq_weight(cfg)
-
-                                               
         new_move = self._recompute_move(cfg)
 
-                 
         write_cfg(path, cfg)
 
         total_get_gp = proceeds_cp / 100.0
@@ -16098,18 +16328,20 @@ class Combat(commands.Cog):
 
         await ctx.send(embed=embed)
 
-
     @commands.command(name="defend")
-    async def defend(self, ctx):
+    async def defend(self, ctx, *, target: str = ""):
         """
         Take the Defend action: +4 AC until the start of your next turn.
 
-        Behavior:
-          • Uses whoever currently has the turn in this initiative.
-          • PCs: only the GM, the owner of the character, or the player with that
-            character active may use !defend.
-          • Monsters: only the GM or the controller (from battle state / .coe) may use !defend.
+        Individual initiative:
+          • `!defend` -> defends whoever currently has the turn (existing behavior)
+
+        Group initiative:
+          • Player phase: `!defend` -> defends your ACTIVE character
+          • Any phase:   `!defend <name>` -> defend that combatant (GM or owner/controller only)
+            Example: `!defend gn1`
         """
+        import os, random, nextcord
 
         # Load battle + current turn
         cfg_b = _load_battles()
@@ -16118,23 +16350,77 @@ class Combat(commands.Cog):
             await ctx.send("❌ No active initiative in this channel.")
             return
 
-        turn_name = (cfg_b.get(chan_id, "turn", fallback="") or "").strip()
-        if not turn_name:
-            await ctx.send("❌ No one has the turn yet. Use `!n` to start the round.")
-            return
-
         names, _scores = _parse_combatants(cfg_b, chan_id)
-        if turn_name not in names:
-            await ctx.send(f"❌ **{turn_name}** is not in the current initiative.")
+        if not names:
+            await ctx.send("❌ No combatants yet.")
             return
 
-        disp_name = turn_name
-        coe = f"{disp_name.replace(' ', '_')}.coe"
-        if not os.path.exists(coe):
+        # Who is GM for this battle?
+        dm_id = (cfg_b.get(chan_id, "DM", fallback="") or "").strip()
+        is_gm = getattr(ctx.author.guild_permissions, "manage_guild", False) or (str(ctx.author.id) == str(dm_id))
+
+        # GROUP INITIATIVE detection (same pattern you’ve been using)
+        try:
+            sec_hr = f"{chan_id}:hr"
+            g_on = (cfg_b.getint(chan_id, "group_init", fallback=0) > 0) or (
+                cfg_b.has_section(sec_hr) and (cfg_b.getint(sec_hr, "group_initiative", fallback=0) > 0)
+            )
+            g_side = (cfg_b.get(chan_id, "g_side", fallback="") or "").strip().lower()  # "pc" / "mon"
+        except Exception:
+            g_on = False
+            g_side = ""
+
+        target = (target or "").strip()
+
+        # --- choose who is defending ---
+        chosen = ""
+
+        if g_on:
+            # Targeted defend is allowed ONLY in group initiative
+            if target:
+                chosen = target
+            else:
+                if g_side == "pc":
+                    chosen = (get_active(ctx.author.id) or "").strip()
+                    if not chosen:
+                        await ctx.send("❌ In group initiative (player phase), set an active character first (`!char <name>`) or use `!defend <name>`.")
+                        return
+                else:
+                    # monster phase + no explicit target: GM can fall back to placeholder cursor
+                    if not is_gm:
+                        await ctx.send("❌ In group initiative (monster phase), use `!defend <monster>` (GM/controller only).")
+                        return
+                    chosen = (cfg_b.get(chan_id, "turn", fallback="") or "").strip()
+                    if not chosen:
+                        await ctx.send("❌ No placeholder turn set; use `!defend <monster>`.")
+                        return
+        else:
+            # Individual initiative: keep old behavior
+            if target:
+                await ctx.send("❌ `!defend <name>` is only available during **group initiative**. (Otherwise use `!defend` with no target.)")
+                return
+            chosen = (cfg_b.get(chan_id, "turn", fallback="") or "").strip()
+            if not chosen:
+                await ctx.send("❌ No one has the turn yet. Use `!n` to start the round.")
+                return
+
+        # Resolve to the exact initiative key (case-insensitive)
+        chosen_key = _find_ci_name(names, chosen) or chosen
+        if chosen_key not in names:
+            await ctx.send(f"❌ **{chosen}** is not in the current initiative.")
+            return
+
+        # Resolve character file
+        try:
+            disp_name, path = _resolve_char_ci(chosen_key)
+        except Exception:
+            disp_name, path = chosen_key, f"{chosen_key.replace(' ', '_')}.coe"
+
+        if not path or not os.path.exists(path):
             await ctx.send(f"❌ Character file not found for **{disp_name}**.")
             return
 
-        t_cfg = read_cfg(coe)
+        t_cfg = read_cfg(path)
 
         # Is this a monster or a PC?
         try:
@@ -16145,45 +16431,40 @@ class Combat(commands.Cog):
 
         is_mon = (cls_lc == "monster") or (race_lc == "monster")
         try:
-            # Fallback to template-based detection if needed
-            is_mon = is_mon or _is_monster_file(coe)
+            is_mon = is_mon or _is_monster_file(path)
         except Exception:
             pass
 
-        # Who is GM for this battle?
-        dm_id = (cfg_b.get(chan_id, "DM", fallback="") or "").strip()
-        is_gm = (str(ctx.author.id) == str(dm_id))
-
-        # Permission check
+        # --- permission check ---
         if is_mon:
-            # Monsters: GM or controller only
-            controller_id = await _controller_id_for_monster(ctx, cfg_b, chan_id, disp_name)
-            is_controller = controller_id and (str(ctx.author.id) == str(controller_id))
+            controller_id = None
+            try:
+                controller_id = await _controller_id_for_monster(ctx, cfg_b, chan_id, disp_name)
+            except Exception:
+                controller_id = None
 
+            is_controller = controller_id and (str(ctx.author.id) == str(controller_id))
             if not (is_gm or is_controller):
-                owner_hint = f" <@{controller_id}>" if controller_id else ""
-                await ctx.send(
-                    f"❌ Only the GM or the controller{owner_hint} can use `!defend` for **{disp_name}**."
-                )
+                await ctx.send(f"❌ Only the GM or the controller can use `!defend` for **{disp_name}**.")
                 return
         else:
-            # PCs: GM, owner_id, or the player whose active character matches
             owner_id = (get_compat(t_cfg, "info", "owner_id", fallback="") or "").strip()
             is_owner = owner_id and (str(ctx.author.id) == str(owner_id))
 
-            active_name = get_active(ctx.author.id)
-            is_active_char = bool(
-                active_name
-                and active_name.strip().lower() == disp_name.strip().lower()
-            )
+            # In targeted form (group init + explicit target), restrict to GM/owner only
+            if g_on and target:
+                if not (is_gm or is_owner):
+                    await ctx.send(f"❌ Only the GM or the owner of **{disp_name}** can use `!defend {disp_name}`.")
+                    return
+            else:
+                # Non-targeted: also allow if it's your active PC
+                active_name = (get_active(ctx.author.id) or "").strip()
+                is_active_char = bool(active_name and active_name.lower() == disp_name.strip().lower())
+                if not (is_gm or is_owner or is_active_char):
+                    await ctx.send(f"❌ Only the GM or the owner of **{disp_name}** may use `!defend` for them.")
+                    return
 
-            if not (is_gm or is_owner or is_active_char):
-                await ctx.send(
-                    f"❌ Only the GM or the owner of **{disp_name}** may use `!defend` for them."
-                )
-                return
-
-        # Apply +4 AC buffer for this turn holder
+        # Apply +4 AC buffer
         try:
             names_keyed, _ = _parse_combatants(cfg_b, chan_id)
             me_key = _find_ci_name(names_keyed, disp_name) or disp_name
@@ -16211,7 +16492,6 @@ class Combat(commands.Cog):
             color=random.randint(0x000000, 0xFFFFFF),
         )
         await ctx.send(embed=embed)
-
 
 
     @commands.command(name="conloss")
@@ -19117,6 +19397,136 @@ class Combat(commands.Cog):
                 pass
 
 
+    @commands.command(name="death", aliases=["deathtouch", "dtouch"])
+    async def death(self, ctx, toucher: str, target: str):
+        """
+        Monster special: Death Touch.
+
+        Mechanics:
+          1) Target saves vs Spells. If the save succeeds, nothing further happens.
+          2) On a failed save, roll 2d6. If the total >= target's *current* HP, the target dies.
+
+        Usage: !death <monster> <target>
+        Example: !death AC1 testman
+        """
+
+        bcfg = _load_battles()
+        chan_id = _section_id(ctx.channel)
+        if not bcfg.has_section(chan_id):
+            await ctx.send("❌ No battle here. Use `!battle` first.")
+            return
+        dm_id = bcfg.get(chan_id, "DM", fallback="")
+        if str(ctx.author.id) != str(dm_id):
+            await ctx.send("❌ Only the GM can use `!death`.")
+            return
+
+        att_name, att_path = _resolve_char_ci(str(toucher))
+        if not att_path:
+            await ctx.send(f"❌ Attacker '{toucher}' not found.")
+            return
+        if not _is_monster_file(att_path):
+            await ctx.send(f"❌ **{att_name}** is not a monster.")
+            return
+
+        acfg = read_cfg(att_path)
+        try:
+            if not _monster_has_deathtouch(acfg, att_path):
+                await ctx.send(f"❌ **{att_name}** doesn’t list `special = deathtouch` (instance or template).")
+                return
+        except Exception:
+            pass
+
+        tgt_disp, tgt_path = _resolve_char_ci(str(target))
+        pretty = tgt_disp or target
+        if not tgt_path:
+            await ctx.send(f"❌ Target '{target}' not found.")
+            return
+        t_cfg = read_cfg(tgt_path)
+
+        cur_hp = getint_compat(t_cfg, "cur", "hp", fallback=0)
+        max_hp = getint_compat(t_cfg, "max", "hp", fallback=cur_hp)
+
+        embed = nextcord.Embed(
+            title="☠️ Death Touch",
+            description=f"**{att_name}** reaches for **{pretty}**…",
+            color=random.randint(0, 0xFFFFFF),
+        )
+
+        if cur_hp <= 0:
+            embed.add_field(name="Target", value=f"{pretty}: already at **0 HP**.", inline=False)
+            await ctx.send(embed=embed)
+            return
+
+        ok, roll, dc, pen = self._roll_save(t_cfg, vs="spell", penalty=0)
+        pen_txt = f" - {pen}" if pen else ""
+        if ok:
+            embed.add_field(name="Save vs Spells", value=f"{roll}{pen_txt} vs {dc} → ✅ **RESISTED**", inline=False)
+            embed.add_field(name="Effect", value="No Death Touch roll is made.", inline=False)
+            await ctx.send(embed=embed)
+            return
+
+        embed.add_field(name="Save vs Spells", value=f"{roll}{pen_txt} vs {dc} → ❌ **FAILED**", inline=False)
+
+        s, rolls, flat = roll_dice("2d6")
+        total = s + flat
+        embed.add_field(
+            name="Death Touch Roll",
+            value=f"2d6 [{', '.join(str(r) for r in rolls)}] = ``{total}`` vs current HP ``{cur_hp}``",
+            inline=False,
+        )
+
+        if total >= cur_hp:
+            if not t_cfg.has_section("cur"):
+                t_cfg.add_section("cur")
+            t_cfg["cur"]["hp"] = "0"
+            write_cfg(tgt_path, t_cfg)
+            embed.add_field(name="Result", value=f"☠️ **{pretty} dies!**", inline=False)
+
+            # If the victim is a monster, remove it from initiative and delete its .coe.
+            if _is_monster_file(tgt_path):
+                try:
+                    bcfg_rm = _load_battles()
+                    if bcfg_rm.has_section(chan_id):
+                        names, scores = _parse_combatants(bcfg_rm, chan_id)
+                        key = _find_ci_name(names, pretty) or pretty
+                        if key in names:
+                            names = [n for n in names if n != key]
+                            if bcfg_rm.has_option(chan_id, key):
+                                bcfg_rm.remove_option(chan_id, key)
+                            slot = _slot(key) if "_slot" in globals() else key.replace(" ", "_")
+                            for suf in (".dex", ".join", ".disp", ".oil", ".acpen", ".holds", ".heldby"):
+                                opt = f"{slot}{suf}"
+                                if bcfg_rm.has_option(chan_id, opt):
+                                    bcfg_rm.remove_option(chan_id, opt)
+                            _write_combatants(bcfg_rm, chan_id, names, scores)
+                            if bcfg_rm.get(chan_id, "turn", fallback="") == key:
+                                ents = _sorted_entries(bcfg_rm, chan_id)
+                                bcfg_rm.set(chan_id, "turn", ents[0]["name"] if ents else "")
+                            _save_battles(bcfg_rm)
+                    try:
+                        os.remove(os.path.abspath(tgt_path))
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+        else:
+            embed.add_field(name="Result", value=f"**{pretty} survives.**", inline=False)
+
+        # Refresh pinned tracker (if present)
+        try:
+            bcfg2 = _load_battles()
+            if bcfg2.has_section(chan_id):
+                msg_id = bcfg2.getint(chan_id, "message_id", fallback=0)
+                if msg_id:
+                    block = _format_tracker_block(bcfg2, chan_id)
+                    content = "**EVERYONE ROLL FOR INITIATIVE!**\\n```text\\n" + block + "\\n```"
+                    msg = await ctx.channel.fetch_message(msg_id)
+                    await msg.edit(content=content)
+        except Exception:
+            pass
+
+        await ctx.send(embed=embed)
+
     @commands.command(name="charm")
     async def harpy_song(self, ctx, singer: str, *targets):
         """
@@ -20665,8 +21075,17 @@ class Combat(commands.Cog):
         return (item.get("size") or "").strip().lower()
         
         
-    def _item_type(self, item: dict) -> str:
+    def _item_type(self, item) -> str:
+        if isinstance(item, str):
+            _c, _it = self._item_lookup(item)
+            if _it:
+                item = _it
+            else:
+                return ""
+        if not isinstance(item, dict):
+            return ""
         return (item.get("type") or "").strip().lower()
+
 
 
     def _item_is_weapon(self, item: dict) -> bool:
@@ -29258,9 +29677,36 @@ class Combat(commands.Cog):
             "barbarian_unarmored_defense":{"default": True, "desc": "Barbarians gain level-based AC when unarmored."},
             "classic_vancian_prep": {"default": False, "desc": "Prepare duplicate copies (e.g., Sleep x2). Modular OFF."},
             "magethief_illusionist_list": {"default": True, "desc": "Magethief uses Illusionist spells (OFF = Magic-User list)."},
-            
+            "group_initiative": {"default": False, "desc": "Side initiative (B/X style): PCs act as a group, then Monsters act as a group."},            
         }
 
+
+    def _group_init_enabled(cfg, chan_id: str) -> bool:
+        """
+        Enabled if either:
+          - direct override flag exists in battle section (optional), OR
+          - house rule is enabled in {chan_id}:hr
+        """
+        try:
+            if cfg.has_section(chan_id) and cfg.has_option(chan_id, "group_init"):
+                return cfg.getint(chan_id, "group_init", fallback=0) > 0
+        except Exception:
+            pass
+        return _hr_enabled(cfg, chan_id, "group_initiative", default=False)
+
+
+    def _g_other(side: str) -> str:
+        return "mon" if side == "pc" else "pc"
+
+
+    def _g_clear_state(cfg, chan_id: str) -> None:
+        for k in ("g_side", "g_order", "g_step", "g_pc", "g_mon"):
+            try:
+                if cfg.has_option(chan_id, k):
+                    cfg.remove_option(chan_id, k)
+            except Exception:
+                pass
+                
 
     def _hr_migrate_once(self, channel) -> None:
         """
