@@ -9976,13 +9976,22 @@ class Combat(commands.Cog):
             if drain_n > 0:
                 try:
                     tgt_cfg = read_cfg(tgt_path)
-                    await self._auto_apply_negative_levels(
-                        ctx,
-                        tgt_name, tgt_cfg, tgt_path,
-                        n_levels=drain_n,
-                        source=f"{atk_name} {(chosen_attack or 'attack')}",
-                        embed=embed,
-                    )
+
+                    # ✅ Don’t drain undead/construct/etc.
+                    if not self._is_living_cfg(tgt_cfg):
+                        embed.add_field(
+                            name="Energy Drain",
+                            value="No effect — target is not living (e.g., undead).",
+                            inline=False
+                        )
+                    else:
+                        await self._auto_apply_negative_levels(
+                            ctx, tgt_name, tgt_cfg, tgt_path,
+                            n_levels=drain_n,
+                            source=f"{atk_name} {(chosen_attack or 'attack')}",
+                            embed=embed
+                        )
+
                 except Exception as e:
                     embed.add_field(
                         name="Energy Drain",
@@ -9990,6 +9999,7 @@ class Combat(commands.Cog):
                                f"GM may run `!drain {tgt_name} {drain_n}`. ({type(e).__name__})"),
                         inline=False
                     )
+
 
                                                                          
         if want_charge and bcfg.has_section(chan_id):
@@ -11905,15 +11915,30 @@ class Combat(commands.Cog):
             if drain_n > 0:
                 try:
                     tgt_cfg = read_cfg(tgt_path)
-                    await self._auto_apply_negative_levels(
-                        ctx, tgt_name, tgt_cfg, tgt_path, n_levels=drain_n, source=f"{atk_name} {(chosen_attack or 'attack')}", embed=embed
-                    )
+
+                    # ✅ Don’t drain undead/construct/etc.
+                    if not self._is_living_cfg(tgt_cfg):
+                        embed.add_field(
+                            name="Energy Drain",
+                            value="No effect — target is not living (e.g., undead).",
+                            inline=False
+                        )
+                    else:
+                        await self._auto_apply_negative_levels(
+                            ctx, tgt_name, tgt_cfg, tgt_path,
+                            n_levels=drain_n,
+                            source=f"{atk_name} {(chosen_attack or 'attack')}",
+                            embed=embed
+                        )
+
                 except Exception as e:
                     embed.add_field(
                         name="Energy Drain",
-                        value=(f"{drain_n} negative level(s) **not applied** due to an error; GM may run `!drain {tgt_name} {drain_n}`. ({type(e).__name__})"),
+                        value=(f"{drain_n} negative level(s) **not applied** due to an error; "
+                               f"GM may run `!drain {tgt_name} {drain_n}`. ({type(e).__name__})"),
                         inline=False
                     )
+
 
 
                                                  
@@ -28795,8 +28820,8 @@ class Combat(commands.Cog):
         return +3
    
 
-    def _with_l0(self, cfg, totals: dict[int,int], info_class: str, level: int) -> dict[int,int]:
-        prof = self._caster_profile(info_class, ctx.channel) or {}
+    def _with_l0(self, cfg, totals: dict[int,int], info_class: str, level: int, channel=None) -> dict[int,int]:
+        prof = self._caster_profile(info_class, channel) or {}
         abil = prof.get("cantrip_ability", "int")
         l0 = max(0, level + self._abil_mod(cfg, abil))
         totals = dict(totals)        
@@ -28828,7 +28853,7 @@ class Combat(commands.Cog):
         return _num_to_mod(score)
 
 
-    def _lock_highest_slots_now(self, cfg, added_levels: int) -> tuple[dict[int,int], int]:
+    def _lock_highest_slots_now(self, cfg, added_levels: int, channel=None) -> tuple[dict[int,int], int]:
         """
         Spend (lock) one highest-level slot per newly-added negative level.
         Skips L0. Only spends *available* (unspent) slots.
@@ -28842,7 +28867,7 @@ class Combat(commands.Cog):
         level = getint_compat(cfg, "cur", "level", fallback=1)
 
                                                           
-        profile = self._caster_profile(info_class, ctx.channel)
+        profile = self._caster_profile(info_class, channel)
         if not profile:
                                              
             return {}, added
@@ -29736,6 +29761,134 @@ class Combat(commands.Cog):
                 _save_battles(cfg)
         except Exception:
             pass
+
+    @commands.command(name="dmi")
+    async def dmi(self, ctx, *, args: str = ""):
+        """
+        DM Inspiration (DMI): Track Dungeon Master Inspiration (0/1) on your active character.
+
+        Usage:
+          !dmi [reason]      -> set DMI to 1 (max 1). If a reason is provided, it is shown in italics.
+          !dmi 1 | !dmi +1   -> same as !dmi
+          !dmi 0 | !dmi -1   -> set DMI to 0 (spend/remove)
+          !dmi help          -> show this help
+        """
+        # --- Active character ---
+        char_name = get_active(ctx.author.id)
+        if not char_name:
+            await ctx.send("❌ No active character. Use `!char <name>` first.")
+            return
+
+        path = f"{char_name.replace(' ', '_')}.coe"
+        if not os.path.exists(path):
+            await ctx.send(f"❌ Character file not found for **{char_name}**.")
+            return
+
+        cfg = read_cfg(path)
+
+        # --- Ownership / GM check (same pattern as other sheet-modifying commands) ---
+        owner_id = str(get_compat(cfg, "info", "owner_id", fallback="") or "").strip()
+        is_gm = bool(getattr(getattr(ctx.author, "guild_permissions", None), "manage_guild", False))
+        if owner_id and owner_id != str(ctx.author.id) and not is_gm:
+            await ctx.send(f"❌ You do not own **{char_name}**.")
+            return
+
+        raw = (args or "").strip()
+
+        def _bubbles(cur: int, total: int = 1) -> str:
+            total = max(1, int(total))
+            cur = max(0, min(int(cur), total))
+            return ("●" * cur) + ("○" * (total - cur))
+
+        def _get_dmi(tcfg) -> int:
+            # Primary key: [cur].dmi
+            # Tolerate a few legacy/alternate keys if ever used.
+            try:
+                candidates = [
+                    getint_compat(tcfg, "cur", "dmi", fallback=0),
+                    getint_compat(tcfg, "cur", "inspiration", fallback=0),
+                    getint_compat(tcfg, "stats", "dmi", fallback=0),
+                ]
+                return max(0, min(1, int(max(candidates))))
+            except Exception:
+                return 0
+
+        cur_dmi = _get_dmi(cfg)
+
+        # --- Help ---
+        if raw.lower() in {"help", "-h", "--help", "h", "?"}:
+            embed = nextcord.Embed(title="🔥 DM Inspiration", color=0xFFAA33)
+            embed.description = (
+                "Tracks a **0/1** DM Inspiration token on your active character.\n\n"
+                "**Commands**\n"
+                "• `!dmi [reason]` → gain DMI (max 1)\n"
+                "• `!dmi 1` / `!dmi +1` → gain DMI\n"
+                "• `!dmi 0` / `!dmi -1` → spend/remove DMI\n\n"
+                "Spending DMI is just a **re-roll**—you’ll type the command again, then mark it spent with `!dmi 0`."
+            )
+            embed.add_field(name="Current", value=f"{_bubbles(cur_dmi)}  **{cur_dmi}/1**", inline=False)
+            await ctx.send(embed=embed)
+            return
+
+        # --- Parse intent ---
+        intent = "add"
+        reason = None
+        if raw:
+            parts = raw.split()
+            head = parts[0].lower()
+
+            if head in {"0", "-0", "-1", "clear", "remove", "spend", "off"}:
+                intent = "clear"
+            elif head in {"1", "+1", "add", "on"}:
+                intent = "add"
+                reason = " ".join(parts[1:]).strip() or None
+            else:
+                intent = "add"
+                reason = raw
+
+        # --- Apply ---
+        changed = False
+        new_dmi = cur_dmi
+
+        if intent == "clear":
+            new_dmi = 0
+            changed = (cur_dmi != 0)
+        else:
+            new_dmi = 1
+            changed = (cur_dmi == 0)
+
+        # --- Persist if needed ---
+        if changed:
+            if not cfg.has_section("cur"):
+                cfg.add_section("cur")
+            cfg.set("cur", "dmi", str(new_dmi))
+            # Avoid double-meaning keys if anyone ever set them.
+            try:
+                if cfg.has_option("cur", "inspiration"):
+                    cfg.remove_option("cur", "inspiration")
+            except Exception:
+                pass
+            write_cfg(path, cfg)
+
+        # --- Embed ---
+        if intent == "clear":
+            title = "🔥 DM Inspiration" if changed else "🔥 DM Inspiration"
+            color = 0xE67E22 if changed else 0x95A5A6
+            desc = (f"**{char_name}** spends their **DM Inspiration**."
+                    if changed else f"**{char_name}** already has **0/1** DM Inspiration.")
+        else:
+            title = "🔥 DM Inspiration" if changed else "🔥 DM Inspiration"
+            color = 0x2ECC71 if changed else 0x95A5A6
+            desc = (f"**{char_name}** gains **DM Inspiration**!"
+                    if changed else f"**{char_name}** already has **1/1** DM Inspiration.")
+
+        embed = nextcord.Embed(title=title, description=desc, color=color)
+        embed.add_field(name="DMI", value=f"{_bubbles(new_dmi)}  **{new_dmi}/1**", inline=False)
+        if intent != "clear" and reason and changed:
+            embed.add_field(name="Reason", value=f"*{reason}*", inline=False)
+        embed.set_footer(text="DMI = one re-roll on an attack/check/save. Use `!dmi 0` after spending it.")
+        await ctx.send(embed=embed)
+
 
 
 def setup(bot):
