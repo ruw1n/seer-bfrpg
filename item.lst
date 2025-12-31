@@ -19029,7 +19029,8 @@ desc=This device is a bag which appears to be about 2 feet wide and 4 feet deep.
 [BootsofTravelingandLeaping]
 weight=1
 type=rare
-cat=manual
+cat=auto
+move_bonus=10
 desc=These boots allow the wearer to make great leaps, jumping up to 10' high and/or 30' across. They improve the wearer's movement so greatly that they also increase their movement rate on land by an additional 10 feet per round.
 
 [BroomofFlying]
