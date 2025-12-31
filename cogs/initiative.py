@@ -8679,6 +8679,32 @@ class Initiative(commands.Cog):
             pass
 
 
+    def _eq_get_weapons(self, cfg) -> list[str]:
+        """Return equipped weapons in order (weapon1..weaponN), compacted."""
+        names: list[str] = []
+        try:
+            cnt = getint_compat(cfg, "eq", "weapon", fallback=None)
+        except Exception:
+            cnt = None
+
+        if cnt and cnt > 0:
+            for i in range(1, cnt + 1):
+                w = get_compat(cfg, "eq", f"weapon{i}", fallback="").strip()
+                if w:
+                    names.append(w)
+        else:
+                                 
+            if cfg.has_section("eq"):
+                pairs = []
+                for k, v in cfg.items("eq"):
+                    m = re.fullmatch(r"weapon(\d+)", k, flags=re.I)
+                    if m and v.strip():
+                        pairs.append((int(m.group(1)), v.strip()))
+                names = [v for _, v in sorted(pairs)]
+
+        return names
+
+
 
     @commands.command(name="magicweapon")
     async def magicweapon(self, ctx, *weapon_words):
