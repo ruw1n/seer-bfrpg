@@ -18661,6 +18661,13 @@ carry=700
 type=beast
 desc=Draft horses are large horses bred to be working animals doing hard tasks such as plowing and other farm labor. There are a number of breeds, with varying characteristics, but all share common traits of strength, patience, and a docile temperament. A light load for a draft horse is up to 350 pounds; a heavy load, up to 700 pounds. Draft horses are not suited to take into battle. A draft horse can move at a rate of 60 ft. per round.
 
+[Mule]
+price=60
+weight=0
+carry=600
+type=beast
+desc=Mules are a domestic equine hybrid between a donkey and a horse. Mules vary widely in size, and may be of any color. They are more patient, hardier and longer-lived than horses, and are perceived as less obstinate and more intelligent than donkeys. Like donkeys, they are capable of being taken into dungeons as pack animals. A light load for a mule is up to 300 pounds; a heavy load, up to 600 pounds. A mule can move at a rate of 40 ft. per round, has 13 AC, and attacks with 1 kick or 1 bite. If you want a barding, consider armor cost × 4. Custom mules need to be created by GM. Armor may slow move speed.
+
 [WarHorse]
 price=200
 weight=0
@@ -18929,7 +18936,7 @@ stat=str
 type=bludgeoning
 base=Club
 cat=auto
-desc=This staff is treated as a +1 Club. Its primary power may only be used if wielded by a Cleric or Spellcrafter: By uttering a command word, an effect similar to the spell Striking occurs. Expenditure of one charge adds 1d6 points of damage to the weapon's next strike; expenditure of two charges adds 2d6, and expenditure of three charges adds 3d6 damage. If the weapon is not successfully used after the command word has been spoken, the effect dissipates after one round. A newly created staff has 30 charges; a staff found in a treasure hoard will have 3d10 charges remaining.
+desc=This staff is treated as a +1 Club. Its primary power may only be used if wielded by a Cleric, Druid or Spellcrafter: By uttering a command word, an effect similar to the spell Striking occurs. Expenditure of one charge adds 1d6 points of damage to the weapon's next strike; expenditure of two charges adds 2d6, and expenditure of three charges adds 3d6 damage. If the weapon is not successfully used after the command word has been spoken, the effect dissipates after one round. A newly created staff has 30 charges; a staff found in a treasure hoard will have 3d10 charges remaining.
 
 [StaffofWizardry]
 weight=1
