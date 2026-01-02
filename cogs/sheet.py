@@ -5327,68 +5327,6 @@ Zundrin"""
             return
 
 
-    @commands.command(name="syncbase", aliases=["basefromstats", "sync_base"])
-    async def syncbase(self, ctx):
-        """
-        GM-only: For every *.coe in the current folder:
-          - Copy ALL keys from [stats] into [base]
-          - Recompute the six ability modifiers from the scores and write them into BOTH sections
-
-        Usage:
-          !syncbase
-        """
-        import nextcord, random
-
-        is_gm = getattr(ctx.author.guild_permissions, "manage_guild", False)
-        if not is_gm:
-            await ctx.send("❌ GM-only.")
-            return
-
-        files = sorted([fn for fn in os.listdir(".") if fn.lower().endswith(".coe")])
-        if not files:
-            await ctx.send("ℹ️ No `.coe` files found in this folder.")
-            return
-
-        stat_keys = ["str", "dex", "con", "int", "wis", "cha"]
-        updated = 0
-        skipped = 0
-        errors: list[str] = []
-
-        for fn in files:
-            try:
-                cfg = read_cfg(fn)
-                if not cfg.has_section("stats"):
-                    skipped += 1
-                    continue
-                if not cfg.has_section("base"):
-                    cfg.add_section("base")
-
-                # Copy every [stats] key into [base]
-                for k, v in cfg["stats"].items():
-                    cfg["base"][k] = str(v)
-
-                # Recompute ability modifiers from the score (and keep both sections consistent)
-                for s in stat_keys:
-                    val = getint_compat(cfg, "stats", s, fallback=getint_compat(cfg, "base", s, fallback=10))
-                    mod = calculate_modifier(val)
-                    cfg["stats"][s] = str(val)
-                    cfg["stats"][f"{s}_modifier"] = str(mod)
-                    cfg["base"][s] = str(val)
-                    cfg["base"][f"{s}_modifier"] = str(mod)
-
-                write_cfg(fn, cfg)
-                updated += 1
-            except Exception as e:
-                errors.append(f"{fn}: {e}")
-
-        embed = nextcord.Embed(title="✅ Synced [base] from [stats]", color=random.randint(0, 0xFFFFFF))
-        embed.add_field(name="Files updated", value=str(updated), inline=True)
-        embed.add_field(name="Files skipped", value=str(skipped), inline=True)
-        embed.add_field(name="Files found", value=str(len(files)), inline=True)
-        if errors:
-            embed.add_field(name="Errors (first 10)", value="\n".join(errors[:10]), inline=False)
-        await ctx.send(embed=embed)
-
 
 def setup(bot):
     bot.add_cog(SheetCog(bot))
