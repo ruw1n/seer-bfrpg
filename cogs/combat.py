@@ -11988,6 +11988,8 @@ class Combat(commands.Cog):
         await ctx.send(embed=embed)
 
 
+        
+        
     @commands.command(name="equip")
     async def equip_item(self, ctx, *, item_name: str):
         """
@@ -12009,6 +12011,20 @@ class Combat(commands.Cog):
 
         Always recomputes AC / equipped weight / move and refreshes the tracker.
         """
+
+        # NEW: allow multi-equip, e.g. `!equip shortbow leatherarmor dagger`
+        # Tip: quote multi-word items: `!equip "chain mail" "ring of protection+1"`
+        import shlex
+        parts = [p.strip() for p in shlex.split(item_name or "") if p.strip()]
+        if not parts:
+            await ctx.send("Usage: `!equip <item1> [item2 ...]` (quote multi-word items).")
+            return
+        if len(parts) > 1:
+            # Run the existing single-item behavior for each requested item.
+            for p in parts:
+                await self.equip_item.callback(self, ctx, item_name=p)
+            return
+        item_name = parts[0]
 
         char_name = get_active(ctx.author.id)
         if not char_name:
@@ -12346,6 +12362,8 @@ class Combat(commands.Cog):
         )
 
 
+
+
     @commands.command(name="unequip")
     async def unequip(self, ctx, *, what: str):
         """
@@ -12358,6 +12376,19 @@ class Combat(commands.Cog):
           !unequip belt
           !unequip ChainMail
         """
+        # NEW: allow multi-unequip, e.g. `!unequip armor shield weapon1`
+        # Tip: quote multi-word items: `!unequip "chain mail" "ring of protection+1"`
+        import shlex
+        parts = [p.strip() for p in shlex.split(what or "") if p.strip()]
+        if not parts:
+            await ctx.send("Usage: `!unequip <slot/item1> [slot/item2 ...]` (quote multi-word items).")
+            return
+        if len(parts) > 1:
+            # Run the existing single-item behavior for each requested unequip.
+            for p in parts:
+                await self.unequip.callback(self, ctx, what=p)
+            return
+        what = parts[0]
 
         char_name = get_active(ctx.author.id)
         if not char_name:
@@ -12521,6 +12552,8 @@ class Combat(commands.Cog):
             )
         else:
             await ctx.send("ℹ️ Nothing to unequip (no matching slot/item found).")
+
+
 
     @commands.command(name="carry")
     async def carry_item(self, ctx, *, item_name: str):
@@ -22339,6 +22372,30 @@ class Combat(commands.Cog):
                                    
         if class_lc == "barbarian":
             mv += 5
+
+        # Boots of Traveling and Leaping (and any future boots with move_bonus in item.lst):
+        # +10' land movement when equipped.
+        try:
+            boots_name = (get_compat(cfg, "eq", "boots", fallback="") or "").strip()
+        except Exception:
+            boots_name = ""
+        if boots_name:
+            bonus = 0
+            try:
+                _c, b_item = self._item_lookup(boots_name)
+                if b_item:
+                    # data-driven: allow `move_bonus=10` (or similar numeric text)
+                    raw = b_item.get("move_bonus", "") or b_item.get("move", "") or b_item.get("movespeed", "") or ""
+                    mnum = re.search(r"-?\d+", str(raw))
+                    if mnum:
+                        bonus = int(mnum.group(0))
+            except Exception:
+                pass
+            # fallback (if item.lst lacks move_bonus)
+            if bonus == 0 and normalize_name(boots_name) == "bootsoftravelingandleaping":
+                bonus = 10
+            mv += bonus
+
 
         if not cfg.has_section("stats"):
             cfg.add_section("stats")
