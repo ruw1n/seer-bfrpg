@@ -452,6 +452,11 @@ class SheetCog(commands.Cog):
     def _truthy(self, v) -> bool:
         return str(v).strip().lower() in {"$true", "true", "1", "yes", "y"}
 
+    def _item_is_shield(self, item: dict) -> bool:
+        flag = item.get("armor2") or item.get("ARMOR2") or item.get("Armor2")
+        return str(flag).strip().lower() in {"$true", "true", "yes", "y", "1"}
+
+
     def _item_lookup(self, name: str):
         if not name:
             return "", {}
@@ -879,6 +884,60 @@ class SheetCog(commands.Cog):
             try: return int(str(x).strip())
             except Exception: return d
 
+        # --- Size-aware starter gear (prevents illegal auto-equip combos) ---
+        # Small races (e.g., Halflings) must wield Medium weapons in two hands,
+        # so they can’t start with a Shield *equipped* alongside a Medium weapon.
+        try:
+            race_lc0 = (race or "").strip().lower()
+            skills_raw = (char_race_data or {}).get("skills", [])
+            if isinstance(skills_raw, (list, tuple, set)):
+                skills = {str(x).strip().lower() for x in skills_raw if str(x).strip()}
+            else:
+                skills = {t.strip().lower() for t in str(skills_raw).replace(',', ' ').split() if t.strip()}
+
+            is_small = (race_lc0 == "halfling") or ("small" in skills)
+
+            def _item_size(name: str) -> str:
+                v = _item_get(name, "size", "")
+                if not v:
+                    v = _item_get(name, "Size", "")
+                return str(v).strip().lower()
+
+            def _item_hands(name: str) -> int:
+                v = _item_get(name, "hands", None)
+                if v is None:
+                    v = _item_get(name, "Hands", None)
+                try:
+                    return max(1, int(str(v).strip()))
+                except Exception:
+                    return 1
+
+            if is_small and armor2 and _truthy(_item_get(armor2, "armor2", "")):
+                # Prefer sword+shield staying valid by swapping Longsword -> Shortsword when available.
+                swapped = False
+                for i, w in enumerate(list(weapons)):
+                    if str(w).strip().lower() == "longsword" and items_cfg.has_section("Shortsword"):
+                        weapons[i] = "Shortsword"
+                        swapped = True
+
+                if not swapped:
+                    # Otherwise, if any starting weapon becomes effectively 2-handed, drop the shield.
+                    def _eff_hands(w: str) -> int:
+                        h = _item_hands(w)
+                        wl = str(w).strip().lower()
+                        # If item.lst doesn't define size/hands, still fix the common case explicitly.
+                        if wl == "longsword":
+                            h = max(h, 2)
+                        if _item_size(w) in {"m", "med", "medium"}:
+                            h = max(h, 2)
+                        return h
+
+                    if any(_eff_hands(w) >= 2 for w in weapons):
+                        armor2 = ""
+        except Exception:
+            pass
+
+
         armor1_ac = _int_or_none(_item_get(armor1, "AC", None))
         shield_bonus = 0
         if armor2 and _truthy(_item_get(armor2, "armor2", "")):
@@ -1273,6 +1332,29 @@ class SheetCog(commands.Cog):
 
         try:
             self._recompute_move(config)  # STR might have changed
+        except Exception:
+            pass
+
+        # --- Keep [base] synced with the newly rolled stats ---
+        # Many systems treat [base] as the "ceiling" for recovery; if reroll only updates [stats],
+        # stale [base] can clamp characters back down later.
+        try:
+            if not config.has_section("base"):
+                config.add_section("base")
+            # Ability scores + mods
+            for stat in stat_keys:
+                config["base"][stat] = str(stats[stat])
+                config["base"][f"{stat}_modifier"] = str(modifiers[f"{stat}_modifier"])
+            # Common derived fields if present
+            for k in ("ac", "move"):
+                if config.has_option("stats", k):
+                    config["base"][k] = config["stats"][k]
+
+            # Reroll is a "fresh start": clear STR-loss buckets if they exist
+            if not config.has_section("cur"):
+                config.add_section("cur")
+            for k in ("str_loss_temp", "str_loss_perm", "str_perm_loss"):
+                config["cur"][k] = "0"
         except Exception:
             pass
 
@@ -5243,6 +5325,69 @@ Zundrin"""
             emb.set_footer(text=f"{len(notes)} note{'s' if len(notes) != 1 else ''} remaining.")
             await ctx.send(embed=emb)
             return
+
+
+    @commands.command(name="syncbase", aliases=["basefromstats", "sync_base"])
+    async def syncbase(self, ctx):
+        """
+        GM-only: For every *.coe in the current folder:
+          - Copy ALL keys from [stats] into [base]
+          - Recompute the six ability modifiers from the scores and write them into BOTH sections
+
+        Usage:
+          !syncbase
+        """
+        import nextcord, random
+
+        is_gm = getattr(ctx.author.guild_permissions, "manage_guild", False)
+        if not is_gm:
+            await ctx.send("❌ GM-only.")
+            return
+
+        files = sorted([fn for fn in os.listdir(".") if fn.lower().endswith(".coe")])
+        if not files:
+            await ctx.send("ℹ️ No `.coe` files found in this folder.")
+            return
+
+        stat_keys = ["str", "dex", "con", "int", "wis", "cha"]
+        updated = 0
+        skipped = 0
+        errors: list[str] = []
+
+        for fn in files:
+            try:
+                cfg = read_cfg(fn)
+                if not cfg.has_section("stats"):
+                    skipped += 1
+                    continue
+                if not cfg.has_section("base"):
+                    cfg.add_section("base")
+
+                # Copy every [stats] key into [base]
+                for k, v in cfg["stats"].items():
+                    cfg["base"][k] = str(v)
+
+                # Recompute ability modifiers from the score (and keep both sections consistent)
+                for s in stat_keys:
+                    val = getint_compat(cfg, "stats", s, fallback=getint_compat(cfg, "base", s, fallback=10))
+                    mod = calculate_modifier(val)
+                    cfg["stats"][s] = str(val)
+                    cfg["stats"][f"{s}_modifier"] = str(mod)
+                    cfg["base"][s] = str(val)
+                    cfg["base"][f"{s}_modifier"] = str(mod)
+
+                write_cfg(fn, cfg)
+                updated += 1
+            except Exception as e:
+                errors.append(f"{fn}: {e}")
+
+        embed = nextcord.Embed(title="✅ Synced [base] from [stats]", color=random.randint(0, 0xFFFFFF))
+        embed.add_field(name="Files updated", value=str(updated), inline=True)
+        embed.add_field(name="Files skipped", value=str(skipped), inline=True)
+        embed.add_field(name="Files found", value=str(len(files)), inline=True)
+        if errors:
+            embed.add_field(name="Errors (first 10)", value="\n".join(errors[:10]), inline=False)
+        await ctx.send(embed=embed)
 
 
 def setup(bot):
