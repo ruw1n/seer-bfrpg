@@ -2437,6 +2437,12 @@ def _tick_status_counter(cfg, chan_id: str, name_key: str, key: str, label: str)
         by_opt = f"{slot}.{key}_by"
         if cfg.has_option(chan_id, by_opt):
             cfg.remove_option(chan_id, by_opt)
+            src_opt = f"{slot}.{key}_src"
+            if cfg.has_option(chan_id, src_opt):
+                cfg.remove_option(chan_id, src_opt)
+            reason_opt = f"{slot}.{key}_reason"
+            if cfg.has_option(chan_id, reason_opt):
+                cfg.remove_option(chan_id, reason_opt)
         _save_battles(cfg)
         return (False, f"{name_key}’s **{label}** has ended.")
     else:
@@ -3530,7 +3536,6 @@ class Initiative(commands.Cog):
             dec("ghh")
             dec("magearmor", (f"{slot}.magearmor_by",))
             dec("boneskin",  (f"{slot}.boneskin_by",))
-            dec("sph",       (f"{slot}.sph_bonus",))
             dec("swd"),
             dec("shl",       (f"{slot}.shl_hit", f"{slot}.shl_dmg", f"{slot}.shl_die"))
             dec("light",     (f"{slot}.light_by", f"{slot}.light_level"),       "light_perm")
@@ -3539,11 +3544,9 @@ class Initiative(commands.Cog):
             dec("cc",        (f"{slot}.cc_by", f"{slot}.cc_level"))
             dec("ck",        (f"{slot}.ck_by", f"{slot}.ck_level"))
             dec("cl", (f"{slot}.cl_by", f"{slot}.cl_die", f"{slot}.cl_bolts", f"{slot}.cl_last_round"))
-            dec("cn", (f"{slot}.cn_by", f"{slot}.cn_last", f"{slot}.cn_tar", f"{slot}.cn_tar_by"))
             dec("db")
             dec("inw")
             dec("pnm")
-            dec("fear", (f"{slot}.fear_by", f"{slot}.fear_src"))
             dec("inv")
             dec("gas", (f"{slot}.gas_by", f"{slot}.gas_ac_hint"))
             dec("sc", (f"{slot}.sc_by", f"{slot}.sc_level"))
@@ -11018,17 +11021,34 @@ class Initiative(commands.Cog):
             stood = False
 
             try:
-                new_eff, new_temp, stood = self._recover_one_point_of_str(pcfg)
+                # Prefer Combat cog helper if present (canonical STR recovery uses stats + loss buckets).
+                combat = None
+                try:
+                    combat = ctx.bot.get_cog("Combat")
+                except Exception:
+                    combat = None
+
+                if hasattr(self, "_recover_one_point_of_str"):
+                    new_eff, new_temp, stood = self._recover_one_point_of_str(pcfg)
+                elif combat and hasattr(combat, "_recover_one_point_of_str"):
+                    new_eff, new_temp, stood = combat._recover_one_point_of_str(pcfg)
+                else:
+                    raise AttributeError("_recover_one_point_of_str missing")
                 used_helper = True
                 write_cfg(path, pcfg)
             except Exception:
 
                 prev_eff = getint_compat(pcfg, "stats", "str", fallback=None)
-                base_str = getint_compat(pcfg, "base",  "str", fallback=prev_eff if prev_eff is not None else 10)
+
                 perm_loss = (
                     getint_compat(pcfg, "cur", "str_loss_perm", fallback=
                     getint_compat(pcfg, "cur", "str_perm_loss", fallback=0))
                 )
+
+                # Derive baseline from current effective + loss buckets (do NOT trust [base])
+                eff_now = (prev_eff if prev_eff is not None else 10)
+                base_str = max(1, int(eff_now) + int(prev_temp) + int(perm_loss))
+                
                 if prev_temp > 0:
                     if not pcfg.has_section("cur"):
                         pcfg.add_section("cur")
@@ -11042,6 +11062,20 @@ class Initiative(commands.Cog):
                     pcfg.add_section("stats")
                 pcfg.set("stats", "str", str(new_eff))
 
+                # Keep modifier consistent with the score
+                try:
+                    def _osr_mod(score: int) -> int:
+                        s = max(1, int(score))
+                        if s <= 3:  return -3
+                        if s <= 5:  return -2
+                        if s <= 8:  return -1
+                        if s <= 12: return 0
+                        if s <= 15: return 1
+                        if s <= 17: return 2
+                        return 3
+                    pcfg.set("stats", "str_modifier", str(_osr_mod(new_eff)))
+                except Exception:
+                    pass
                 stood = (prev_eff is not None and prev_eff < 3 and new_eff >= 3)
 
                 write_cfg(path, pcfg)
@@ -11272,7 +11306,7 @@ class Initiative(commands.Cog):
             token = canon if canon else name
             _inv_add_stack(token, qty)
             if qty > 1:
-                added_tokens.append(f"{re.sub(r'\\s+','',token)}×{qty}")
+                tok_compact = re.sub(r"\s+", "", token); added_tokens.append(f"{tok_compact}×{qty}")
             else:
                 added_tokens.append(re.sub(r"\s+","",token))
             return added_tokens
