@@ -6608,8 +6608,9 @@ class Initiative(commands.Cog):
             if not died:
                 try:
                     await self._process_start_of_turn_web_bridge(ctx, cfg, chan_id, who)
-                except Exception:
-                    pass
+                except Exception as e:
+                    import traceback
+                    traceback.print_exc()
 
         # Refresh cfg/names in case anything died/was removed
         try:
