@@ -2898,11 +2898,23 @@ class SpellsCog(commands.Cog, name="Spells"):
 
 
         if bcfg.get(chan_id, ign_key, fallback="") == "1":
-            bcfg.remove_option(chan_id, ign_key)
+            # pretty was undefined; use disp (the display name you already computed)
+            pretty = disp
+
+            # IMPORTANT: don't remove ign_key up-front; the "clear all" loop removes it anyway.
+            # bcfg.remove_option(chan_id, ign_key)
 
             s, rolls, flat = roll_dice("2d4")
             raw = s + flat
-            final, note = _apply_mitigation(raw, weapon_name="Burning Web", weapon_type="fire", t_cfg=t_cfg, chan_id=str(ctx.channel.id), target_name=pretty, is_magical=True)
+            final, note = _apply_mitigation(
+                raw,
+                weapon_name="Burning Web",
+                weapon_type="fire",
+                t_cfg=t_cfg,
+                chan_id=chan_id,          # keep consistent with the rest of your system
+                target_name=pretty,       # <-- was crashing before
+                is_magical=True
+            )
 
             old_hp = getint_compat(t_cfg, "cur", "hp", fallback=0)
             mhp    = getint_compat(t_cfg, "max", "hp", fallback=max(1, old_hp))
@@ -2912,7 +2924,7 @@ class SpellsCog(commands.Cog, name="Spells"):
             t_cfg["cur"]["hp"] = str(new_hp)
             write_cfg(who_path, t_cfg)
 
-
+            # Clear ALL web flags AFTER successfully applying the burn
             for suf in (".web", ".web_state", ".web_canbrk", ".webignite"):
                 opt = f"{slot}{suf}"
                 if bcfg.has_option(chan_id, opt):
@@ -18148,12 +18160,12 @@ class SpellsCog(commands.Cog, name="Spells"):
 
             slot = None
             if bcfg and bcfg.has_section(chan_id):
-                names, _ = _parse_combatants(bcfg, chan_id)
-                key = _find_ci_name(names, tgt_disp) or tgt_disp
+                ci_names, _ = _parse_combatants(bcfg, chan_id)
+                key = _find_ci_name(ci_names, pretty) or pretty
                 try:
                     slot = _slot(key)
                 except Exception:
-                    slot = (key or tgt_disp).replace(" ", "_")
+                    slot = (key or pretty).replace(" ", "_")
 
             fear_mod = self._fear_save_mod_for_slot(bcfg, chan_id, slot) if slot else 0
 
