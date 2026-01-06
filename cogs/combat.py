@@ -2327,7 +2327,8 @@ def _apply_mitigation(raw, weapon_name="", weapon_type="", t_cfg=None, is_magica
                         if inw_left > 0:
                                                                       
                             wname = (weapon_name or "").lower()
-                            if (not is_magical) and (wname not in {"oil", "holy water"}):
+                            weaponish = (not wtokens) or bool(wtokens & PHYS)
+                            if (not is_magical) and weaponish and (wname not in {"oil", "holy water"}):
                                 return 0, "immune (nonmagical)"
                         break
                 except Exception:
@@ -2363,7 +2364,8 @@ def _apply_mitigation(raw, weapon_name="", weapon_type="", t_cfg=None, is_magica
 
     if "nonmagical" in imm and not is_magical:
         wname = (weapon_name or "").lower()
-        if wname not in {"oil", "holy water"}:
+        weaponish = (not wtokens) or bool(wtokens & PHYS)
+        if weaponish and (wname not in {"oil", "holy water"}):
             return 0, "immune (nonmagical)"
 
     match_imm = imm & wtokens
@@ -7547,7 +7549,9 @@ class Combat(commands.Cog):
                             inw_left = bcfg_inw.getint(chan_id, f"{s_tgt_inw}.inw", fallback=0)
                             if inw_left > 0:
                                 oil_or_holy = canon_name in {"Oil", "Holy Water"}
-                                if (not is_magical_attack) and (not oil_or_holy):
+                                wtokens_inw = {x.strip().lower() for x in re.split(r"[,\s]+", str(weapon_type or "")) if x.strip()}
+                                weaponish = (not wtokens_inw) or bool(wtokens_inw & {"slashing","piercing","bludgeoning"})
+                                if (not is_magical_attack) and weaponish and (not oil_or_holy):
                                     final_damage_b = 0
                                     inw_note_b = "immune (nonmagical)"
                                     mitig_note_b = (f"{mitig_note_b}; {inw_note_b}" if mitig_note_b else inw_note_b)
@@ -17003,7 +17007,10 @@ class Combat(commands.Cog):
             if not cfg.has_section("stats"):
                 cfg.add_section("stats")
             cfg["stats"]["str"] = str(max(1, str_before + delta))
-
+            try:
+                cfg["stats"]["str_modifier"] = str(osr_mod(getint_compat(cfg, "stats", "str", fallback=str_before)))
+            except Exception:
+                pass
                                                                                  
             try:
                 if cfg.has_option("cur", "str_recover_rounds"):
@@ -17099,6 +17106,10 @@ class Combat(commands.Cog):
             if not cfg.has_section("stats"):
                 cfg.add_section("stats")
             cfg["stats"]["str"] = str(new_str)
+            try:
+                cfg["stats"]["str_modifier"] = str(osr_mod(int(new_str)))
+            except Exception:
+                pass            
             write_cfg(file_path, cfg)
             cfg = read_cfg(file_path)
 
@@ -25993,6 +26004,10 @@ class Combat(commands.Cog):
                                                 
             if not cfg.has_section("stats"): cfg.add_section("stats")
             cfg["stats"]["str"] = str(eff)
+            try:
+                cfg["stats"]["str_modifier"] = str(osr_mod(eff))
+            except Exception:
+                pass            
         temp = getint_compat(cfg, "cur", "str_loss_temp", fallback=0)
         base = eff + temp                                                 
         return eff, temp, base
@@ -26003,6 +26018,10 @@ class Combat(commands.Cog):
         if eff is not None:
             if not cfg.has_section("stats"): cfg.add_section("stats")
             cfg["stats"]["str"] = str(max(0, int(eff)))
+            try:
+                cfg["stats"]["str_modifier"] = str(osr_mod(int(eff)))
+            except Exception:
+                pass            
         if temp is not None:
             if not cfg.has_section("cur"): cfg.add_section("cur")
             cfg["cur"]["str_loss_temp"] = str(max(0, int(temp)))
