@@ -976,7 +976,8 @@ def _apply_mitigation(raw, weapon_name="", weapon_type="", t_cfg=None, is_magica
                         if inw_left > 0:
                                                                       
                             wname = (weapon_name or "").lower()
-                            if (not is_magical) and (wname not in {"oil", "holy water"}):
+                            weaponish = (not wtokens) or bool(wtokens & PHYS)
+                            if (not is_magical) and weaponish and (wname not in {"oil", "holy water"}):
                                 return 0, "immune (nonmagical)"
                         break
                 except Exception:
@@ -1012,7 +1013,8 @@ def _apply_mitigation(raw, weapon_name="", weapon_type="", t_cfg=None, is_magica
 
     if "nonmagical" in imm and not is_magical:
         wname = (weapon_name or "").lower()
-        if wname not in {"oil", "holy water"}:
+        weaponish = (not wtokens) or bool(wtokens & PHYS)
+        if weaponish and (wname not in {"oil", "holy water"}):
             return 0, "immune (nonmagical)"
 
     match_imm = imm & wtokens
