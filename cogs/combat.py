@@ -97,7 +97,7 @@ _PRESET_MAP = {
         "overrides": {
             "classic_vancian_prep": False,      
             "magethief_illusionist_list": True,     
-            "group_initiative": False,              
+            "group_initiative": True,              
         },
     },
 }
@@ -4865,6 +4865,8 @@ class Combat(commands.Cog):
                 hit = False                                              
             else:
                 hit = (is_crit or (total_to_hit >= target_ac))
+        test_attack = (target_ac is None)
+        hit_for_damage = (hit is True) or test_attack
 
 
                                                                         
@@ -5389,9 +5391,9 @@ class Combat(commands.Cog):
         mult = 1
         if is_crit:
             mult *= 2
-        sneak_applied = bool(want_sneak and is_thief and (hit is True))
-        snipe_applied = bool(want_snipe and is_scout and (hit is True))
-        charge_applied = bool(want_charge and (hit is True))
+        sneak_applied = bool(want_sneak and is_thief and hit_for_damage)
+        snipe_applied = bool(want_snipe and is_scout and hit_for_damage)
+        charge_applied = bool(want_charge and hit_for_damage)
         if sneak_applied:
             mult *= 2
         if snipe_applied:
@@ -5646,7 +5648,8 @@ class Combat(commands.Cog):
             ac_note = " (charging –2)" if ac_penalty_applied else ""
                                                                                                      
             embed.add_field(name="Result", value=("✅ **HIT!**" if hit else "❌ **MISS**"), inline=True)
-
+        else:
+            embed.add_field(name="Result", value="🎯 *(no target — test roll)*", inline=True)
                                                                                         
         pnm_on = self._pnm_active_for(bcfg, chan_id, display_target or primary_target)
         if pnm_on and self._pc_attack_is_normal_missile(canon_name, item, is_oil=False, is_holy=False,
@@ -6466,8 +6469,8 @@ class Combat(commands.Cog):
                                                                           
                     pass
     
-            if hit:
-                embed.add_field(name="Damage", value=dmg_line, inline=False)
+            if hit_for_damage:
+                embed.add_field(name=("Damage (test)" if test_attack else "Damage"), value=dmg_line, inline=False)
 
 
             new_hp = None
@@ -29778,7 +29781,7 @@ class Combat(commands.Cog):
             "barbarian_unarmored_defense":{"default": True, "desc": "Barbarians gain level-based AC when unarmored."},
             "classic_vancian_prep": {"default": False, "desc": "Prepare duplicate copies (e.g., Sleep x2). Modular OFF."},
             "magethief_illusionist_list": {"default": True, "desc": "Magethief uses Illusionist spells (OFF = Magic-User list)."},
-            "group_initiative": {"default": False, "desc": "Side initiative (B/X style): PCs act as a group, then Monsters act as a group."},            
+            "group_initiative": {"default": True, "desc": "Side initiative (B/X style): PCs act as a group, then Monsters act as a group."},            
         }
 
 
