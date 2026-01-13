@@ -2225,7 +2225,7 @@ fm = 0
 il = 0
 nec = 0
 sp = 0
-desc = A single, small tool (such as a quill pen, spoon, sewing needle, or small hammer) is aniamted by this cantrip. It will perform a single, repetitive task (such as writing dictated words, stirring a pot of soup, sewing the hem of a dress, or nailing boards into a house) for as long as a turn (60 rounds). The spellcaster must be able to perform the repeated action by hand themself. Weapons may not be animated by this cantrip, and objects animated may not be used as weapons.
+desc = A single, small tool (such as a quill pen, spoon, sewing needle, or small hammer) is animated by this cantrip. It will perform a single, repetitive task (such as writing dictated words, stirring a pot of soup, sewing the hem of a dress, or nailing boards into a house) for as long as a turn (60 rounds). The spellcaster must be able to perform the repeated action by hand themself. Weapons may not be animated by this cantrip, and objects animated may not be used as weapons.
 mt = 0
 
 [Clean]
