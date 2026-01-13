@@ -2796,6 +2796,7 @@ def _format_tracker_block(cfg, chan_id: str):
                 return fn
         return None
 
+    gi_on = _group_init_enabled(cfg, chan_id)
     lines = [header]
     for ent in entries:
         name = ent["name"]
@@ -2808,10 +2809,10 @@ def _format_tracker_block(cfg, chan_id: str):
         if cfg.has_option(chan_id, f"{slot}.acpen"):
             disp = f"{disp} (–2 AC)"
 
-        # NEW: markers
-        if name == active_turn:
+        # Markers (cosmetic). In group-initiative, hide the "current turn" marker.
+        if (not gi_on) and name == active_turn:
             prefix = "> "
-        elif inactive_turn and name == inactive_turn:
+        elif (not gi_on) and inactive_turn and name == inactive_turn:
             prefix = "· "          # optional: show the other mode’s cursor
         else:
             prefix = "  "
