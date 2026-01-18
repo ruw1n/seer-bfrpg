@@ -5587,6 +5587,11 @@ class Initiative(commands.Cog):
           !n = normal combat next-turn behavior.
         When battle is OFF:
           !n = acts like !t (exploration turn).
+
+        Group initiative QoL:
+          • If group initiative is enabled and the mode actually changes, we:
+              - ping all PC owners so everyone sees "turn 1" of the new state
+              - clear saved group-phase state so re-entering combat never starts mid-round
         """
         cfg = _load_battles()
         chan_id = _section_id(ctx.channel)
@@ -5614,17 +5619,40 @@ class Initiative(commands.Cog):
             await ctx.send("Usage: `!battle`, `!battle on`, or `!battle off`.")
             return
 
+        changed_mode = (new != current)
+        gi_on = _group_init_enabled(cfg, chan_id)
+
+        # If we're changing modes under group initiative, clear any saved group-phase state.
+        # Otherwise it's possible to re-enter combat on the *second* phase (e.g., MONSTER PHASE)
+        # without a fresh roll, which can feel like the PCs were skipped.
+        if gi_on and changed_mode:
+            try:
+                _g_clear_state(cfg, chan_id)
+            except Exception:
+                pass
+
         _set_battle_mode(cfg, chan_id, new)
         _save_battles(cfg)
 
         mode = "⚔️ **BATTLE**" if new else "🧭 **EXPLORATION**"
         detail = "(`!n` = combat rounds)" if new else "(`!n` = exploration turns)"
-        await ctx.send(f"{mode} mode for this channel {detail}.")
+
+        # Ping all PC owners on a mode change (group initiative only).
+        party_pings = ""
+        if gi_on and changed_mode:
+            try:
+                party_pings = _all_pc_owner_mentions(cfg, chan_id)
+            except Exception:
+                party_pings = ""
+
+        line = f"{mode} mode for this channel {detail}."
+        await ctx.send((party_pings + "\n" if party_pings else "") + line)
 
         try:
             await self._update_tracker_message(ctx, cfg, chan_id)
         except Exception:
             pass
+
 
 
 
