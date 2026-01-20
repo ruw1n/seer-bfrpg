@@ -823,9 +823,36 @@ def _is_slashing_weapon(canon_name: str, item: dict) -> bool:
 
     return False
 
-def _item_is_shield(self, item: dict) -> bool:
-    flag = item.get("armor2") or item.get("ARMOR2")
-    return str(flag).strip().lower() in {"$true", "true", "yes", "y", "1"}
+def _item_is_shield(self, item: dict, name: str = "") -> bool:
+    """Return True if item should be treated as a shield.
+
+    Backwards-compatibility:
+      1) explicit armor2 flag (any casing)
+      2) type indicates shield (any casing)
+      3) fallback: provided name contains 'shield'
+    """
+    try:
+        for k in ("armor2", "Armor2", "ARMOR2"):
+            if k in item:
+                if str(item.get(k)).strip().lower() in {"$true", "true", "yes", "y", "1"}:
+                    return True
+                break
+    except Exception:
+        pass
+
+    try:
+        typ = ""
+        for k in ("type", "Type", "TYPE", "shop_cat", "ShopCat", "SHOP_CAT"):
+            if k in item and str(item.get(k)).strip():
+                typ = str(item.get(k)).strip().lower()
+                break
+        if typ == "shield" or "shield" in typ:
+            return True
+    except Exception:
+        pass
+
+    return ("shield" in str(name).strip().lower()) if name else False
+
 
 def _item_hands(self, item: dict) -> int:
     h = item.get("hands") or item.get("HANDS") or "1"
@@ -4079,7 +4106,7 @@ class Combat(commands.Cog):
         shield_name = get_compat(cfg, "eq", "armor2", fallback="").strip()
         if shield_name:
             _csh, it_sh = self._item_lookup(shield_name)
-            if it_sh and self._item_is_shield(it_sh):
+            if it_sh and self._item_is_shield(it_sh, name=(_csh or shield_name)):
                 eff_h = self._effective_hands(item, race_lc)
                 if eff_h >= 2:
                     size = self._item_size(item)
@@ -12099,13 +12126,29 @@ class Combat(commands.Cog):
 
 
         item_type = (self._item_type(item) or "").strip().lower()
-        if item_type in {"gear", "food", "tool"}:
+
+        # Only armor/shields/weapons and actual wearable/magic items should be equip-able.
+        # Prevent nonsense like equipping Oil, mounts, potions/scrolls, etc.
+        blocked_types = {"gear", "food", "tool", "beast", "fire", "holy", "potion", "scroll", "wand", "staff", "rod"}
+        if item_type in blocked_types:
             pretty = re.sub(r"(?<!^)([A-Z])", r" \1", canon).strip()
+            if item_type in {"gear", "food", "tool"}:
+                why = "ordinary gear"
+            elif item_type == "beast":
+                why = "a mount/animal"
+            elif item_type in {"potion", "scroll"}:
+                why = "a consumable"
+            elif item_type in {"fire", "holy"}:
+                why = "a thrown consumable"
+            else:
+                why = "a magic item used from inventory"
+
             await ctx.send(
-                f"⚠️ **{pretty}** is ordinary gear, not something you wear or wield.\n"
+                f"⚠️ **{pretty}** can't be equipped (it's {why}).\n"
                 f"Use `!carry {pretty}` if you want it in your carried items."
             )
             return
+
 
 
         
@@ -12325,7 +12368,7 @@ class Combat(commands.Cog):
             sh = get_compat(cfg, "eq", "armor2", fallback="").strip()
             if sh:
                 _csh, it_sh = self._item_lookup(sh)
-                if it_sh and self._item_is_shield(it_sh):
+                if it_sh and self._item_is_shield(it_sh, name=(_csh or sh)):
                     size = self._item_size(item)
                     small_2h = (self._race_is_small(race_lc) and size == "m")
                     note = " (Small races must use Medium weapons two-handed)" if small_2h else ""
@@ -12605,6 +12648,7 @@ class Combat(commands.Cog):
             """Collapse duplicate carry slots (by normalized name) using the max qty per item."""
             if not cfg.has_section("eq"):
                 return
+
             slots = []
             for opt, val in cfg.items("eq"):
                 if opt.startswith("carry") and not opt.endswith("_qty"):
@@ -12612,13 +12656,20 @@ class Combat(commands.Cog):
                         idx = int(opt[5:])
                     except Exception:
                         idx = 999999
+
                     nm = (val or "").strip()
                     if not nm:
                         continue
+
+                    # 🔧 purge junk carry slots like carry24 = "23"
+                    if re.fullmatch(r"\d+(?:\.\d+)?", nm):
+                        continue
+
                     try:
                         q = int(cfg.get("eq", f"{opt}_qty", fallback="1"))
                     except Exception:
                         q = 1
+
                     slots.append((idx, nm, max(1, q)))
 
             if not slots:
@@ -12646,6 +12697,7 @@ class Combat(commands.Cog):
                 nm, q = merged[key]
                 cfg.set("eq", f"carry{i}", nm)
                 cfg.set("eq", f"carry{i}_qty", str(max(1, int(q))))
+
 
         # Repair any existing duplicate carry slots before we add more.
         _compact_carry_slots()
@@ -13202,7 +13254,7 @@ class Combat(commands.Cog):
                 tags.append("🧥"); is_equipped = True
             if lk == armor2_l:
                 _c2, it2 = self._item_lookup(name)
-                tags.append("🛡️" if (it2 and self._item_is_shield(it2)) else "🧥")
+                tags.append("🛡️" if (it2 and self._item_is_shield(it2, name=(_c2 or name))) else "🧥")
                 is_equipped = True
             if lk in other_set and not is_equipped:
                 tags.append("🔹"); is_equipped = True
@@ -14069,7 +14121,7 @@ class Combat(commands.Cog):
         shield_name = ""
         if a2:
             c2, it2 = self._item_lookup(a2)
-            if it2 and self._item_is_shield(it2):
+            if it2 and self._item_is_shield(it2, name=(c2 or a2)):
                 shield_name = c2 or a2
 
         armor_text = f"🧥 {a1}" if a1 else "🧥 —"
@@ -14891,12 +14943,21 @@ class Combat(commands.Cog):
                             if turn_name:
                                 round_no = bcfg.getint(chan_id, "round", fallback=0)
                                 ini_score = scores.get(turn_name, 0)
-                                await ctx.send(
-                                    f"🎯 It is now **{turn_name}**'s turn "
-                                    f"(initiative {ini_score}, round {round_no})."
-                                )
+
+                                gi_on = False
+                                try:
+                                    gi_on = _group_init_enabled(bcfg, chan_id)
+                                except Exception:
+                                    gi_on = False
+
+                                if not gi_on:
+                                    await ctx.send(
+                                        f"🎯 It is now **{turn_name}**'s turn "
+                                        f"(initiative {ini_score}, round {round_no})."
+                                    )
                         except Exception:
                             pass
+
 
                 try:
                     os.remove(tgt_path)
@@ -21124,9 +21185,43 @@ class Combat(commands.Cog):
             return 0.0
 
 
-    def _item_is_shield(self, item: dict) -> bool:
-        flag = item.get("armor2") or item.get("ARMOR2")
-        return str(flag).strip().lower() in {"$true", "true", "yes", "y", "1"}
+    def _item_is_shield(self, item: dict, name: str = "", **_ignored) -> bool:
+        """Return True if this item should be treated as a shield.
+
+        Accepts optional `name=` (and ignores extra kwargs) because several call sites
+        use: self._item_is_shield(item, name=canon_name)
+        """
+        try:
+            # If someone passed a string, try to resolve it.
+            if not isinstance(item, dict):
+                if isinstance(item, str):
+                    _, it = self._item_lookup(item)
+                    item = it or {}
+                else:
+                    item = {}
+
+            # 1) explicit armor2 flag
+            for k in ("armor2", "Armor2", "ARMOR2"):
+                if k in item:
+                    if str(item.get(k)).strip().lower() in {"$true", "true", "yes", "y", "1"}:
+                        return True
+                    break
+
+            # 2) type/category hints
+            for k in ("type", "Type", "TYPE", "shop_cat", "ShopCat", "SHOP_CAT"):
+                if k in item and str(item.get(k)).strip():
+                    typ = str(item.get(k)).strip().lower()
+                    if typ == "shield" or "shield" in typ:
+                        return True
+                    break
+
+            # 3) fallback to provided name
+            if name:
+                return "shield" in str(name).strip().lower()
+        except Exception:
+            pass
+        return False
+
 
 
     def _item_hands(self, item: dict) -> int:
@@ -21959,7 +22054,7 @@ class Combat(commands.Cog):
         shield_bonus = 0
         if a2:
             _c2, it2 = self._item_lookup(a2)
-            if it2 and self._item_is_shield(it2):
+            if it2 and self._item_is_shield(it2, name=(_c2 or a2)):
                 try:
                     shield_bonus = int((it2.get("AC") or it2.get("ac") or "").strip() or "0")
                 except Exception:
