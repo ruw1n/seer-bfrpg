@@ -1952,7 +1952,7 @@ desc = This spell does 1d4 points of damage to one creature within range. Furthe
 nec = 2
 range = 30
 duration = special
-desc = This spell allows the caster to influence an undead creature. If the undead creature is intelligent, this spell operates as CharmPerson, except that the caster can influence 2 HD per caster level, instead of just a flat 4 HD. It otherwise operates the same, including duration.//If the undead creature is unintelligent, the caster immediately gains completely control, the creature gets no saving throw, and the duration is permanent. Any unintelligent undead controlled using this spell count against the total control limit from Reanimation.
+desc = This spell allows the caster to influence an undead creature. If the undead creature is intelligent, this spell operates as CharmPerson, except that the caster can influence 2 HD per caster level, instead of just a flat 4 HD. It otherwise operates the same, including duration.//If the undead creature is unintelligent, the caster immediately gains complete control, the creature gets no saving throw, and the duration is permanent. Any unintelligent undead controlled using this spell count against the total control limit from Reanimation.
 
 [ControlUndead]
 nec = 6
