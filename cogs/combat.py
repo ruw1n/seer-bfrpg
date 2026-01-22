@@ -3250,8 +3250,9 @@ class Combat(commands.Cog):
 
         if class_lc in {"druid"}:
             other.append(
-                "• **Animal Affinity**\n  `!calm <target1> [target2 ...]`"
+                "• **Control Animals**\n  `!control <target1> [target2 ...]` *(alias: `!calm`)*"
             )
+
 
         if is_caster:
             other.append(
@@ -15329,23 +15330,28 @@ class Combat(commands.Cog):
         await ctx.send(embed=embed)
 
 
-    @commands.command(name="calm")
-    async def druid_animal_affinity(self, ctx, *args):
-        """Druid: Animal Affinity. Usage:
-           !calm wolf1 wolf2 ...
-           Flags (optional): -tame (all count as 1/2 HD), -monstrous (all count as +1 HD)
+    @commands.command(name="control", aliases=["calm"])
+    async def druid_control_animals(self, ctx, *args):
+        """Druid: Control Animals. Usage:
+           !control wolf1 wolf2 ...
+           Flags (optional):
+             -tame / -dom / -domesticated : treat all targets as domesticated (½ HD)
+             -monstrous / -magical        : treat all targets as monstrous/magical (+1 HD)
         """
         if not args:
-            await ctx.send("Usage: `!calm <animal1> [animal2 ...] [-tame] [-monstrous]`")
+            await ctx.send("Usage: `!control <animal1> [animal2 ...] [-tame|-domesticated] [-monstrous]`")
             return
 
         tokens = [str(a).strip() for a in args]
-        global_tame = any(t.lower() in ("-tame", "-tame", "tame") for t in tokens)
-        global_monstrous = any(t.lower() in ("-monstrous", "-monstrous", "monstrous", "-monster") for t in tokens)
-        target_names = [t for t in tokens if t.lower() not in {"-tame","-tame","tame","-monstrous","-monstrous","monstrous","-monster"}]
+        dom_flags = {"-tame", "tame", "-dom", "dom", "-domesticated", "domesticated"}
+        mon_flags = {"-monstrous", "monstrous", "-monster", "-magical", "magical"}
+
+        global_dom = any(t.lower() in dom_flags for t in tokens)
+        global_monstrous = any(t.lower() in mon_flags for t in tokens)
+        target_names = [t for t in tokens if t.lower() not in (dom_flags | mon_flags)]
 
         if not target_names:
-            await ctx.send("Usage: `!calm <animal1> [animal2 ...] [-tame] [-monstrous]`")
+            await ctx.send("Usage: `!control <animal1> [animal2 ...] [-tame|-domesticated] [-monstrous]`")
             return
 
         char_name = get_active(ctx.author.id)
@@ -15364,84 +15370,61 @@ class Combat(commands.Cog):
 
         klass = (get_compat(ccfg, "info", "class", fallback="") or "").strip().lower()
         if klass != "druid":
-            await ctx.send("❌ Only Druids can use `!calm`.")
+            await ctx.send("❌ Only Druids can use `!control`.")
             return
         level = getint_compat(ccfg, "cur", "level", fallback=1)
 
         cfg_b = _load_battles()
         chan_id = str(ctx.channel.id)
         in_battle = cfg_b.has_section(chan_id)
+
+        # Enforce the "one full turn" lockout after a failed attempt (60 rounds in your tracker).
         if in_battle:
-                                                                             
             try:
                 slot_self = _slot(char_name)
             except Exception:
-                slot_self = char_name.replace(" ","_")
+                slot_self = char_name.replace(" ", "_")
             cur_round = cfg_b.getint(chan_id, "round", fallback=0)
-            until = cfg_b.getint(chan_id, f"{slot_self}.aa_until", fallback=0)
-                                                          
-                                           
-                                                                                                                           
-                       
-                                                    
-                                             
-                                                                       
-                                                                          
-                                         
+            until_aa = cfg_b.getint(chan_id, f"{slot_self}.aa_until", fallback=0)   # legacy key
+            until_ca = cfg_b.getint(chan_id, f"{slot_self}.ca_until", fallback=0)   # new key
+            until = max(int(until_aa or 0), int(until_ca or 0))
+            if cur_round and until and cur_round < until:
+                await ctx.send(f"⏳ You cannot attempt **Control Animals** again until **round {until}** (current: {cur_round}).")
+                return
 
-            _save_battles(cfg_b)
-            
-                                                
-                                                                                        
-        AA_TABLE = [
-                 
-            [ 9, 13, 17, 19, None, None, None, None, None, None, None ],
-                 
-            [ 7, 11, 15, 18, 20,  None, None, None, None, None, None ],
-                 
-            [ 5,  9, 13, 17, 19,  None, None, None, None, None, None ],
-                 
-            [ 3,  7, 11, 15, 18, 20,   None, None, None, None, None ],
-                 
-            [ 2,  5,  9, 13, 17, 19,   None, None, None, None, None ],
-                 
-            [ 'C', 3,  7, 11, 15, 18, 20,   None, None, None, None ],
-                 
-            [ 'C', 2,  5,  9, 13, 17, 19,   None, None, None, None ],
-                 
-            [ 'C','C', 3,  7, 11, 15, 18, 20,   None, None, None ],
-                 
-            [ 'B','C', 2,  5,  9, 13, 17, 19,   None, None, None ],
-                  
-            [ 'B','C','C', 3,  7, 11, 15, 18, 20,   None, None ],
-                  
-            [ 'B','B','C', 2,  5,  9, 13, 17, 19,   None, None ],
-                  
-            [ 'B','B','C','C', 3,  7, 11, 15, 18, 20,   None ],
-                  
-            [ 'B','B','B','C', 2,  5,  9, 13, 17, 19,   None ],
-                  
-            [ 'B','B','B','C','C', 3,  7, 11, 15, 18, 20 ],
-                  
-            [ 'B','B','B','B','C', 2,  5,  9, 13, 17, 19 ],
-                  
-            [ 'B','B','B','B','C','C', 3,  7, 11, 15, 18 ],
-                  
-            [ 'B','B','B','B','B','C', 2,  5,  9, 13, 17 ],
-                  
-            [ 'B','B','B','B','B','C','C', 3,  7, 11, 15 ],
-                  
-            [ 'B','B','B','B','B','B','C', 2,  5,  9, 13 ],
-                  
-            [ 'B','B','B','B','B','B','C','C', 3,  7, 11 ],
+        # Control Animals Table
+        # Columns: <1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 HD
+        # Values: None = No; int = minimum d20 to Influence; 'I' = auto Influence; 'C' = auto Control
+        CA_TABLE = [
+            [ 9, 13, 17, 19, None, None, None, None, None, None, None ],  # 1
+            [ 7, 11, 15, 18, 20,   None, None, None, None, None, None ],  # 2
+            [ 5,  9, 13, 17, 19,   None, None, None, None, None, None ],  # 3
+            [ 3,  7, 11, 15, 18,  20,   None, None, None, None, None ],   # 4
+            [ 2,  5,  9, 13, 17,  19,   None, None, None, None, None ],   # 5
+            [ 'I', 3,  7, 11, 15, 18,  20,   None, None, None, None ],    # 6
+            [ 'I', 2,  5,  9, 13, 17,  19,   None, None, None, None ],    # 7
+            [ 'I','I', 3,  7, 11, 15, 18,  20,   None, None, None ],      # 8
+            [ 'C','I', 2,  5,  9, 13, 17,  19,   None, None, None ],      # 9
+            [ 'C','I','I', 3,  7, 11, 15, 18,  20,   None, None ],        # 10
+            [ 'C','C','I', 2,  5,  9, 13, 17,  19,   None, None ],        # 11
+            [ 'C','C','I','I', 3,  7, 11, 15, 18,  20,   None ],          # 12
+            [ 'C','C','C','I', 2,  5,  9, 13, 17,  19,   None ],          # 13
+            [ 'C','C','C','I','I', 3,  7, 11, 15, 18,  20 ],              # 14
+            [ 'C','C','C','C','I', 2,  5,  9, 13, 17,  19 ],              # 15
+            [ 'C','C','C','C','I','C', 3,  7, 11, 15, 18 ],               # 16
+            [ 'C','C','C','C','C','C', 2,  5,  9, 13, 17 ],               # 17
+            [ 'C','C','C','C','C','C','C', 3,  7, 11, 15 ],               # 18
+            [ 'C','C','C','C','C','C','C', 2,  5,  9, 13 ],               # 19 (treat stray 'B' as 'C')
+            [ 'C','C','C','C','C','C','C','C', 3,  7, 11 ],               # 20
         ]
-        def _aa_entry(lv: int, col: int):
-            lv = max(1, min(20, lv))
-            col = max(0, min(10, col))
-            return AA_TABLE[lv-1][col]
+
+        def _ca_entry(lv: int, col: int):
+            lv = max(1, min(20, int(lv)))
+            col = max(0, min(10, int(col)))
+            v = CA_TABLE[lv - 1][col]
+            return 'C' if v == 'B' else v
 
         def _hd_from_cfg(tcfg):
-                                                                                                          
             raw = str(get_compat(tcfg, "base", "hd", fallback="1")).strip()
             m = re.match(r"\s*(\d+)", raw)
             return int(m.group(1)) if m else 1
@@ -15450,32 +15433,28 @@ class Combat(commands.Cog):
             ty = (get_compat(tcfg, "base", "type", fallback="") or "").strip().lower()
             return ("animal" in ty)
 
-        def _effective_col_and_notes(tcfg, tame_glob: bool, mon_glob: bool):
+        def _truthy(v):
+            return str(v or "").strip().lower() in {"1", "true", "yes", "y", "$true"}
+
+        def _effective_col_and_notes(tcfg, dom_glob: bool, mon_glob: bool):
             base_hd = _hd_from_cfg(tcfg)
-                                           
-            tame_local = str(get_compat(tcfg, "base", "tame", fallback="0")).strip() in {"1","true","yes","y"}
-            dom_local  = str(get_compat(tcfg, "base", "domesticated", fallback="0")).strip() in {"1","true","yes","y"}
-            mon_local  = str(get_compat(tcfg, "base", "monstrous", fallback="0")).strip() in {"1","true","yes","y"}
+            tame_local = _truthy(get_compat(tcfg, "base", "tame", fallback="0"))
+            dom_local  = _truthy(get_compat(tcfg, "base", "domesticated", fallback="0"))
+            mon_local  = _truthy(get_compat(tcfg, "base", "monstrous", fallback="0"))
 
             eff = float(base_hd)
             notes = []
-            if tame_glob or tame_local or dom_local:
+            if dom_glob or tame_local or dom_local:
                 eff = eff / 2.0
-                notes.append("½ HD (tame)")
+                notes.append("½ HD (domesticated)")
             if mon_glob or mon_local:
                 eff = eff + 1.0
                 notes.append("+1 HD (monstrous)")
 
-                                 
-            if eff < 1.0:
-                col = 0
-            else:
-                col = int(min(10, math.floor(eff)))
+            col = 0 if eff < 1.0 else int(min(10, math.floor(eff)))
             return col, base_hd, eff, notes
 
-        resolved = []
-        not_found = []
-        non_animals = []
+        resolved, not_found, non_animals = [], [], []
         for name in target_names:
             disp, tpath = _resolve_char_ci(name)
             pretty = disp or name
@@ -15484,16 +15463,8 @@ class Combat(commands.Cog):
             tcfg = read_cfg(tpath)
             if not _is_animal_cfg(tcfg):
                 non_animals.append(pretty); continue
-            col, base_hd, eff_hd, notes = _effective_col_and_notes(tcfg, global_tame, global_monstrous)
-            resolved.append({
-                "pretty": pretty,
-                "path": tpath,
-                "cfg":  tcfg,
-                "col":  col,                               
-                "base_hd": base_hd,                           
-                "eff_hd": eff_hd,                                              
-                "notes": notes,                       
-            })
+            col, base_hd, eff_hd, notes = _effective_col_and_notes(tcfg, global_dom, global_monstrous)
+            resolved.append({"pretty": pretty, "path": tpath, "cfg": tcfg, "col": col, "base_hd": base_hd, "eff_hd": eff_hd, "notes": notes})
 
         if not resolved:
             msg = "No valid animal targets."
@@ -15502,126 +15473,96 @@ class Combat(commands.Cog):
             await ctx.send(msg)
             return
 
-                                                                  
         resolved.sort(key=lambda r: (r["col"], r["eff_hd"]))
-
-                                
         weakest = resolved[0]
-        req0 = _aa_entry(level, weakest["col"])
+        req0 = _ca_entry(level, weakest["col"])
         d20 = random.randint(1, 20)
-        auto = (req0 in ('C','B'))
+        auto = (req0 in ('C', 'I'))
         success_weakest = auto or (isinstance(req0, int) and d20 >= req0)
 
-                     
-        title = f"🌿 {char_name} uses Animal Affinity (Lv {level})"
+        title = f"🐾 {char_name} uses Control Animals (Lv {level})"
         embed = nextcord.Embed(title=title, color=random.randint(0, 0xFFFFFF))
         if auto:
-            auto_txt = "Auto " + ("Befriend" if req0 == 'B' else "Calm")
-            embed.add_field(name="Affinity Roll", value=auto_txt, inline=True)
+            embed.add_field(name="Control Roll", value="Auto " + ("Control" if req0 == "C" else "Influence"), inline=True)
         else:
             face = "**20** 🎉" if d20 == 20 else ("**1** 💀" if d20 == 1 else str(d20))
-            need = req0 if req0 is not None else "No"
-            embed.add_field(name="Affinity Roll", value=f"{face} vs {need}", inline=True)
-        embed.add_field(
-            name="Weakest (HD col)",
-            value=f"{weakest['pretty']} (col {weakest['col']})",
-            inline=True
-        )
+            embed.add_field(name="Control Roll", value=f"{face} vs {req0 if req0 is not None else 'No'}", inline=True)
+        embed.add_field(name="Weakest (HD col)", value=f"{weakest['pretty']} (col {weakest['col']})", inline=True)
 
-                                                               
         if (req0 is None) or (not success_weakest):
-            lines = []
-            if req0 is None:
-                lines.append(f"Too powerful to affect **{weakest['pretty']}** at level {level}.")
-            else:
-                lines.append("The animals resist your presence.")
-            if not_found:
-                lines.append("Not found: " + ", ".join(not_found))
-            if non_animals:
-                lines.append("Not animals: " + ", ".join(non_animals))
-            embed.add_field(name="Result", value="\n".join(lines), inline=False)
+            out = []
+            out.append(f"Too powerful to affect **{weakest['pretty']}** at level {level}." if req0 is None else "The animals resist your will.")
+            if not_found:   out.append("Not found: " + ", ".join(not_found))
+            if non_animals: out.append("Not animals: " + ", ".join(non_animals))
+            embed.add_field(name="Result", value="\n".join(out), inline=False)
 
-                                              
             if in_battle:
-                try:
-                    slot_self = _slot(char_name)
-                except Exception:
-                    slot_self = char_name.replace(" ","_")
+                try: slot_self = _slot(char_name)
+                except Exception: slot_self = char_name.replace(" ", "_")
                 cur_round = cfg_b.getint(chan_id, "round", fallback=0)
                 if cur_round:
                     cfg_b.set(chan_id, f"{slot_self}.aa_until", str(cur_round + 60))
+                    cfg_b.set(chan_id, f"{slot_self}.ca_until", str(cur_round + 60))
                     _save_battles(cfg_b)
 
             await ctx.send(embed=embed)
             return
 
-                                           
-        d6a, d6b = random.randint(1,6), random.randint(1,6)
+        d6a, d6b = random.randint(1, 6), random.randint(1, 6)
         pool = d6a + d6b
         embed.add_field(name="HD Pool", value=f"2d6 → [{d6a}, {d6b}] = **{pool}**", inline=True)
 
-                                                                                
-                                                                 
-        lines = []
-        any_fail_threshold = False                                                      
-        hd_left = pool
-        min_one_applied = False
+        lines_out, any_fail_threshold = [], False
+        hd_left, min_one_applied = pool, False
 
         for r in resolved:
-            entry = _aa_entry(level, r["col"])
+            entry = _ca_entry(level, r["col"])
             pretty = r["pretty"]
-                                                           
+
             if entry is None:
-                lines.append(f"**{pretty}**: No effect possible at this level.")
+                lines_out.append(f"**{pretty}**: No effect possible at this level.")
                 any_fail_threshold = True
                 continue
-            if entry in ('C','B'):
-                roll_ok = True
-                mode = ("BEFRIENDED" if entry == 'B' else "CALMED")
+
+            if entry == "C":
+                roll_ok, mode = True, "CONTROLLED"
+            elif entry == "I":
+                roll_ok, mode = True, "INFLUENCED"
             else:
-                roll_ok = (d20 >= int(entry))
-                mode = "CALMED"
-                                                                                                                
+                roll_ok, mode = (d20 >= int(entry)), "INFLUENCED"
+
             spend_hd = max(1, int(min(10, math.floor(r["eff_hd"])) if r["eff_hd"] >= 1 else 1))
 
             if not roll_ok:
-                lines.append(f"**{pretty}**: Roll {d20} vs {entry} → **FAIL**")
+                lines_out.append(f"**{pretty}**: Roll {d20} vs {entry} → **FAIL**")
                 any_fail_threshold = True
                 continue
 
-                                                                            
             spend_ok = (hd_left >= spend_hd) or (not min_one_applied)
             if not spend_ok:
-                lines.append(f"**{pretty}**: Eligible, but **no HD left** → unaffected (can try again next round).")
+                lines_out.append(f"**{pretty}**: Eligible, but **no HD left** → unaffected (can try again next round).")
                 continue
 
             min_one_applied = True
             if hd_left > 0:
                 hd_left = max(0, hd_left - spend_hd)
 
-                          
-            note = ""
-            if r["notes"]:
-                note = " (" + "; ".join(r["notes"]) + ")"
-            lines.append(f"**{pretty}**: **{mode}**{note}")
+            note = " (" + "; ".join(r["notes"]) + ")" if r["notes"] else ""
+            lines_out.append(f"**{pretty}**: **{mode}**{note}")
 
-                                       
-        if not_found:
-            lines.append("Not found: " + ", ".join(not_found))
-        if non_animals:
-            lines.append("Not animals: " + ", ".join(non_animals))
+        if not_found:   lines_out.append("Not found: " + ", ".join(not_found))
+        if non_animals: lines_out.append("Not animals: " + ", ".join(non_animals))
 
-        embed.add_field(name="Effects", value="\n".join(lines) if lines else "No valid effects.", inline=False)
+        embed.add_field(name="Effects", value="\n".join(lines_out) if lines_out else "No valid effects.", inline=False)
+        embed.set_footer(text="Influenced: docile/non-hostile. Controlled: obeys simple commands (GM adjudicates).")
 
-                                                                                            
         if any_fail_threshold and in_battle:
-            try:
-                slot_self = _slot(char_name)
-            except Exception:
-                slot_self = char_name.replace(" ","_")
+            try: slot_self = _slot(char_name)
+            except Exception: slot_self = char_name.replace(" ", "_")
             cur_round = cfg_b.getint(chan_id, "round", fallback=0)
             if cur_round:
                 cfg_b.set(chan_id, f"{slot_self}.aa_until", str(cur_round + 60))
+                cfg_b.set(chan_id, f"{slot_self}.ca_until", str(cur_round + 60))
                 _save_battles(cfg_b)
 
         await ctx.send(embed=embed)
