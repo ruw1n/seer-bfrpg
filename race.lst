@@ -26,7 +26,7 @@ conmax=17
 skills=Darkvision SecretDoor QuickLearner
 wand=1
 spell=1
-desc=Half-elves are the result of crossbreeding between elves and humans. An average half-elf male stands around 5'6" in height, with females averaging an inch shorter. They have pointed ears, but their features tend to favor the human parent a bit more than the elf. Half-elves are well-tolerated by humans in most cases, but are often shunned by elven society.//Half-elves may become members of most classes excluding Barbarian and Assassin, and they can also access the combination classes like elves.//Half-elves have Darkvision with a 30' range. They can find secret doors as well as an elf, and gain a 5 percent bonus on experience points gained.
+desc=Half-elves are the result of crossbreeding between elves and humans. An average half-elf male stands around 5'6" in height, with females averaging an inch shorter. They have pointed ears, but their features tend to favor the human parent a bit more than the elf. Half-elves are well-tolerated by humans in most cases, but are often shunned by elven society.//Half-elves may become members of most classes excluding Barbarian and Assassin, and they can also access the combination classes like elves.//Half-elves have Darkvision with a 30' range. They can find secret doors as well as an elf, but do not find secret doors on a cursory examination as elves do. Half-elves gain a 5 percent bonus on experience points gained.
 
 [Half-Ogre]
 class=Fighter Cleric Druid Barbarian Paladin Scout
