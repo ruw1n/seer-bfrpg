@@ -3113,7 +3113,7 @@ class Combat(commands.Cog):
         # fallback list for any weird/house-rule classes not represented with spell tables
         if not is_caster and class_lc in {
             "cleric","magicuser","magic-user","illusionist","spellcrafter","druid",
-            "necromancer","magethief","sorcerer","paladin","ranger"
+            "necromancer","magethief","sorcerer","paladin"
         }:
             is_caster = True
 
