@@ -3872,33 +3872,41 @@ class Combat(commands.Cog):
 
 
         if wkey == "sword":
-            CASTER_CLASSES = {"necromancer","spellcrafter","fightermage","magic-user","magethief","cleric","druid","illusionist"}
-            if class_lc not in CASTER_CLASSES:
-                                                        
-                equipped = list(self._eq_get_weapons(cfg))                                                 
-                pick = None
+            # Always prefer an equipped sword first (even for casters)
+            equipped = list(self._eq_get_weapons(cfg))
+            pick = None
 
-                                  
-                prios = ("greatsword", "longsword", "shortsword", "sword")
-                low = [w.lower() for w in equipped]
-                for needle in prios:
-                    for i, w in enumerate(low):
-                        if needle in w:
-                            pick = equipped[i]                                       
-                            break
-                    if pick:
+            prios = ("greatsword", "longsword", "shortsword", "sword")
+            low = [w.lower() for w in equipped]
+            for needle in prios:
+                for i, w in enumerate(low):
+                    if needle in w:
+                        pick = equipped[i]
                         break
+                if pick:
+                    break
 
-                if not pick:
+            if pick:
+                weapon = pick
+                if "greatsword" in pick.lower():
+                    wkey = "great"
+                elif "longsword" in pick.lower():
+                    wkey = "long"
+                elif "shortsword" in pick.lower():
+                    wkey = "short"
+                else:
+                    wkey = "long"  # generic sword → treat like longsword for disambiguation
+            else:
+                # No equipped sword: non-casters get an error; casters fall through to the spell attack
+                CASTER_CLASSES = {
+                    "necromancer","spellcrafter","fightermage","magic-user",
+                    "magethief","cleric","druid","illusionist"
+                }
+                if class_lc not in CASTER_CLASSES:
                     await ctx.send("🗡️ You don’t have a sword equipped. Equip one first.")
                     return
-
-                                                                           
-                weapon = pick                                                         
-                if "greatsword" in pick.lower(): wkey = "great"
-                elif "longsword" in pick.lower(): wkey = "long"
-                elif "shortsword" in pick.lower(): wkey = "short"
-                else: wkey = "long"                      
+                # else: caster with no sword equipped → keep wkey=="sword" and let spell handler run
+                 
 
         if wkey in {"controlhuman", "charmgaze", "ch"}:
             await self._attack_controlhuman(ctx, atk_cfg, atk_name, atk_level, sh_targets)
@@ -3917,7 +3925,7 @@ class Combat(commands.Cog):
         if wkey in {"spiritualhammer","spirituallhammer","spirit_hammer","spirithammer","sh"}:
             await self._attack_spiritual_hammer(ctx, atk_cfg, atk_name, atk_level, sh_targets)
             return
-        if wkey in {"sword"}:
+        if wkey in {"sword", "swordspell", "spellsword"}:
             await self._attack_sword(ctx, atk_cfg, atk_name, atk_level, sh_targets)
             return
                                                                                    
@@ -3986,7 +3994,13 @@ class Combat(commands.Cog):
         elif not is_natural:
             canon_name, item = self._item_lookup(weapon)
             if not item:
-                canon_name, item = await self._resolve_weapon_from_partial(ctx, cfg, weapon, ctx.author)
+                canon_name, item, handled = await self._resolve_weapon_from_partial(
+                    ctx, cfg, weapon, ctx.author,
+                    emit_not_found=False,   # don't spam; later code will produce the "unknown weapon" message
+                )
+                if handled and not item:
+                    return
+
 
             # NEW: natural/innate PC attacks defined on the sheet (atk_<name>)
             if not item:
@@ -4093,15 +4107,27 @@ class Combat(commands.Cog):
                 return
 
         equipped_names = {normalize_name(w) for w in self._eq_get_weapons(cfg)}
+
         if not (is_oil_kw or is_holy_kw or want_wrestle or is_natural):
             if normalize_name(canon_name) not in equipped_names:
-                canon2, item2 = await self._resolve_weapon_from_partial(ctx, cfg, weapon, ctx.author)
+                canon2, item2, handled = await self._resolve_weapon_from_partial(
+                    ctx, cfg, weapon, ctx.author,
+                    emit_not_found=False,  # don't send "Weapon not found..." here
+                )
+
                 if item2:
                     canon_name, item = canon2, item2
                 else:
+                    if handled:
+                        return  # user cancelled the picker; helper already told them
                     current = " / ".join(self._eq_get_weapons(cfg)) or "none"
-                    await ctx.send(f"❌ That weapon isn’t equipped. Equip it first. Currently equipped: `{current}`")
+                    await ctx.send(
+                        f"❌ That weapon isn’t equipped. Equip it first. "
+                        f"Currently equipped: `{current}`"
+                    )
                     return
+
+
 
                                        
         shield_name = get_compat(cfg, "eq", "armor2", fallback="").strip()
@@ -27451,39 +27477,38 @@ class Combat(commands.Cog):
                                                              
 
 
-    async def _resolve_weapon_from_partial(self, ctx, cfg, token: str, author) -> tuple[str | None, dict | None]:
+    async def _resolve_weapon_from_partial(
+        self, ctx, cfg, token: str, author, *, emit_not_found: bool = True
+    ) -> tuple[str | None, dict | None, bool]:
         """
         Try to resolve `token` among **equipped** weapons with substring match.
-        - If exactly one match → return it.
-        - If multiple → interactive picker (10s).
-        - If none → show 'not found' with suggestions; return (None, None).
-        Returns (canon_name, item_dict) or (None, None) on fail.
+        Returns (canon_name, item_dict, handled_msg)
+          - handled_msg=True means this function already sent a message (timeout/cancel or not-found if enabled)
         """
         token = (token or "").strip()
         eq = self._equipped_weapon_names(cfg)
         if not token or not eq:
-            return (None, None)
+            return (None, None, False)
 
-                                                               
         t = token.lower()
         candidates = [w for w in eq if t in w.lower()]
 
-                                                                                    
         if not candidates:
             starts = [w for w in eq if w.lower().startswith(t)]
             if starts:
                 candidates = starts
 
         if not candidates:
-                                             
-            sug = difflib.get_close_matches(token, eq, n=5, cutoff=0.4)
-            text = f"❌ Weapon not found for **{token}**."
-            if sug:
-                text += " Did you mean: " + ", ".join(f"`{s}`" for s in sug)
-            else:
-                text += " Currently equipped: " + (", ".join(f"`{w}`" for w in eq) if eq else "*none*")
-            await ctx.send(text)
-            return (None, None)
+            if emit_not_found:
+                sug = difflib.get_close_matches(token, eq, n=5, cutoff=0.4)
+                text = f"❌ Weapon not found for **{token}**."
+                if sug:
+                    text += " Did you mean: " + ", ".join(f"`{s}`" for s in sug)
+                else:
+                    text += " Currently equipped: " + (", ".join(f"`{w}`" for w in eq) if eq else "*none*")
+                await ctx.send(text)
+                return (None, None, True)
+            return (None, None, False)
 
         if len(candidates) == 1:
             chosen = candidates[0]
@@ -27491,14 +27516,12 @@ class Combat(commands.Cog):
             chosen = await self._prompt_paginated_selection(ctx, ctx.author, token, candidates, timeout_sec=10.0)
             if not chosen:
                 await ctx.send("Selection timed out or was cancelled.")
-                return (None, None)
+                return (None, None, True)
 
-                                                                   
         canon, item = self._item_lookup(chosen)
         if not item:
-                                                                        
             canon, item = self.find_item(chosen)
-        return (canon, item) if item else (None, None)
+        return (canon, item, False) if item else (None, None, False)
 
 
     async def _attack_controlhuman(
