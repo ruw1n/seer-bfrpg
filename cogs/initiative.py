@@ -2701,20 +2701,37 @@ def _sorted_entries(cfg, chan_id: str):
 
 def _hr_enabled(cfg, chan_id: str, key: str, default: bool = False) -> bool:
     """
-    Reads {chan_id}:hr section (your existing house-rule storage pattern).
+    Reads/writes {chan_id}:hr section (house-rule storage).
+    If missing, seeds the key with the provided default so behavior is stable
+    across new combats.
     """
     sec = f"{chan_id}:hr"
-    if not cfg or not cfg.has_section(sec):
+    if not cfg:
         return default
+
     try:
-        return cfg.getint(sec, key, fallback=(1 if default else 0)) > 0
+        if not cfg.has_section(sec):
+            cfg.add_section(sec)
+
+        # Seed missing key with default (persistent)
+        if not cfg.has_option(sec, key):
+            cfg.set(sec, key, "1" if default else "0")
+            _save_battles(cfg)
+            return default
+
+        # Normal read
+        try:
+            return cfg.getint(sec, key, fallback=(1 if default else 0)) > 0
+        except Exception:
+            v = (cfg.get(sec, key, fallback="") or "").strip().lower()
+            if v in ("1", "true", "yes", "on"):
+                return True
+            if v in ("0", "false", "no", "off"):
+                return False
+            return default
     except Exception:
-        v = (cfg.get(sec, key, fallback="") or "").strip().lower()
-        if v in ("1", "true", "yes", "on"):
-            return True
-        if v in ("0", "false", "no", "off"):
-            return False
         return default
+
 
 
 def _group_init_enabled(cfg, chan_id: str) -> bool:
@@ -2728,7 +2745,7 @@ def _group_init_enabled(cfg, chan_id: str) -> bool:
             return cfg.getint(chan_id, "group_init", fallback=0) > 0
     except Exception:
         pass
-    return _hr_enabled(cfg, chan_id, "group_initiative", default=False)
+    return _hr_enabled(cfg, chan_id, "group_initiative", default=True)
 
 
 def _g_other(side: str) -> str:
@@ -5544,9 +5561,20 @@ class Initiative(commands.Cog):
             dm_id = cfg.get(chan_id, "DM", fallback="")
             round_no = cfg.getint(chan_id, "round", fallback=0)
             turn = cfg.get(chan_id, "turn", fallback="") or "—"
+            gi_on = _group_init_enabled(cfg, chan_id)
+            if gi_on:
+                side = (cfg.get(chan_id, "g_side", fallback="") or "").strip().lower()
+                if side == "pc":
+                    extra = ", phase **PC**"
+                elif side == "mon":
+                    extra = ", phase **MON**"
+                else:
+                    extra = ""
+            else:
+                extra = f", turn **{turn}**"            
             await ctx.send(
                 f"❌ A battle is already running here (GM: {f'<@{dm_id}>' if dm_id else 'unknown'}, "
-                f"round {round_no}, turn **{turn}**). Use `!list` or `!end`."
+                f"round {round_no}{extra}). Use `!list` or `!end`."
             )
             return
 
@@ -10110,6 +10138,98 @@ class Initiative(commands.Cog):
                 color=0x7f1d1d
             )
             await ctx.send(embed=emb)
+
+
+    @commands.command(name="tclock")
+    async def tclock(self, ctx, delta=None):
+        """
+        Show clocks (no args), or adjust exploration clock by N rounds.
+          !tclock
+          !tclock -60
+          !tclock +60
+        """
+        import random
+        import nextcord
+
+        cfg = _load_battles()
+        chan_id = _section_id(ctx.channel)
+        if not cfg.has_section(chan_id):
+            await ctx.send("❌ No initiative running here.")
+            return
+
+        # ---- VIEW MODE (no args) ----
+        if delta is None or not str(delta).strip():
+            exp_rounds = self._get_expl_clock(cfg, chan_id)
+            total_rounds = cfg.getint(chan_id, "round", fallback=0)
+            combat_rounds = max(0, total_rounds - exp_rounds)
+
+            bm = cfg.getint(chan_id, "battle_mode", fallback=0)
+            mode = "Exploration" if bm == 1 else "Combat"
+
+            turn_c = (cfg.get(chan_id, "turn", fallback="") or "").strip()
+            turn_e = (cfg.get(chan_id, "turn_e", fallback="") or "").strip()
+            gi_on = _group_init_enabled(cfg, chan_id)
+            
+            emb = nextcord.Embed(
+                title="⏱️ Clocks",
+                description="Use `!tclock -60` to undo one exploration turn (10 minutes).",
+                color=random.randint(0, 0xFFFFFF),
+            )
+            emb.add_field(name="Mode", value=mode, inline=True)
+            emb.add_field(name="Combat clock", value=f"{combat_rounds} rounds", inline=True)
+            emb.add_field(
+                name="Exploration clock",
+                value=f"{exp_rounds} rounds ({self._format_turns_from_rounds(exp_rounds)})",
+                inline=False,
+            )
+            # (Optional) show cursors if present.
+            # In group-initiative, suppress the single-actor cursor display.
+            if not gi_on:
+                if turn_c:
+                    emb.add_field(name="Combat turn", value=turn_c, inline=True)
+                if turn_e:
+                    emb.add_field(name="Exploration cursor", value=turn_e, inline=True)
+
+            await ctx.send(embed=emb)
+            return
+
+        # ---- ADJUST MODE (arg provided) ----
+        try:
+            d = int(str(delta).strip())
+        except Exception:
+            await ctx.send("Usage: `!tclock` or `!tclock -60` (integer rounds; can be negative).")
+            return
+
+        # GM-only gate for adjustments (view mode is open)
+        dm_id = (cfg.get(chan_id, "DM", fallback="") or "").strip()
+        is_gm = getattr(ctx.author.guild_permissions, "manage_guild", False) or (dm_id and str(ctx.author.id) == str(dm_id))
+        if not is_gm:
+            await ctx.send("❌ Only the GM can adjust clocks.")
+            return
+
+        before_exp = self._get_expl_clock(cfg, chan_id)
+        before_round = cfg.getint(chan_id, "round", fallback=0)
+
+        new_exp = max(0, before_exp + d)
+        new_round = max(0, before_round + d)  # keep combat-vs-exploration split aligned
+
+        cfg.set(chan_id, "expl_clock", str(new_exp))
+        cfg.set(chan_id, "etime_rounds", str(new_exp))
+        cfg.set(chan_id, "round", str(new_round))
+
+        _save_battles(cfg)
+
+        try:
+            await self._update_tracker_message(ctx, cfg, chan_id)
+        except Exception:
+            pass
+
+        await ctx.send(
+            f"⏱️ Clocks adjusted by {d} rounds.\n"
+            f"• Exploration: **{before_exp} → {new_exp}** ({self._format_turns_from_rounds(new_exp)})\n"
+            f"• Round counter: **{before_round} → {new_round}**"
+        )
+
 
     @commands.command(name="track", aliases=["tr"])
     async def track_timer(self, ctx, *, expr: str = ""):
