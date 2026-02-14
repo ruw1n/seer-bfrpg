@@ -1100,32 +1100,68 @@ def _extract_targetish_tokens(rest_raw: str) -> list[str]:
 
 
 def _merge_split_target_tokens(seq):
-    out = []; i = 0
+    """
+    Merge only ID-like targets that get split, e.g.:
+      SK 3  -> SK3
+      S K 3 -> SK3
+      WO 5  -> WO5
+      W O5  -> WO5
+
+    Avoid merging normal short names like "Dip Bonk" into one token.
+    """
+    out = []
+    i = 0
+
     while i < len(seq):
         t = str(seq[i]).strip()
-        if not t: i += 1; continue
+        if not t:
+            i += 1
+            continue
+
+        # keep flags intact
         if t.startswith("-"):
-            out.append(t); i += 1; continue
-        if re.fullmatch(r"[A-Za-z]{1,4}", t):
-            acc = t; j = i + 1
-            while j < len(seq):
-                nxt = str(seq[j]).strip()
-                if not nxt or nxt.startswith("-"):
-                    break
-                if re.fullmatch(r"[A-Za-z0-9]{1,6}", nxt):
-                    acc += nxt; j += 1; continue
-                if re.fullmatch(r"[_\-\s,.:;/\\]+", nxt):
-                    j += 1; continue
-                break
-            if j > i + 1:
-                out.append(acc); i = j; continue
-        out.append(t); i += 1
-    seen = set(); dedup = []
+            out.append(t)
+            i += 1
+            continue
+
+        # Only attempt merges when the prefix is very short (1–2 letters).
+        if re.fullmatch(r"[A-Za-z]{1,2}", t):
+            # Pattern: S K 3  (3 tokens)
+            if i + 2 < len(seq):
+                a = str(seq[i + 1]).strip()
+                b = str(seq[i + 2]).strip()
+                if re.fullmatch(r"[A-Za-z]{1,2}", a) and re.fullmatch(r"[0-9]{1,3}", b):
+                    out.append(t + a + b)
+                    i += 3
+                    continue
+
+            # Pattern: SK 3 / WO 5  (2 tokens: letters + digits)
+            if i + 1 < len(seq):
+                nxt = str(seq[i + 1]).strip()
+                if re.fullmatch(r"[0-9]{1,3}", nxt):
+                    out.append(t + nxt)
+                    i += 2
+                    continue
+
+                # Pattern: W O5  (2 tokens: single letter + letter+digits)
+                if len(t) == 1 and re.fullmatch(r"[A-Za-z][0-9]{1,3}", nxt):
+                    out.append(t + nxt)
+                    i += 2
+                    continue
+
+        out.append(t)
+        i += 1
+
+    # Dedup case-insensitively, preserving first occurrence.
+    seen = set()
+    dedup = []
     for x in out:
         xl = x.lower()
         if xl not in seen:
-            seen.add(xl); dedup.append(x)
+            seen.add(xl)
+            dedup.append(x)
     return dedup
+
 
 
 
