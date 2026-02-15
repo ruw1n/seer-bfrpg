@@ -5659,6 +5659,12 @@ class Initiative(commands.Cog):
             except Exception:
                 pass
 
+            # NEW: clear the group "done" list when switching battle/exploration
+            try:
+                _group_done_clear(cfg, chan_id)
+            except Exception:
+                pass
+                
         _set_battle_mode(cfg, chan_id, new)
         _save_battles(cfg)
 
