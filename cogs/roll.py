@@ -467,6 +467,619 @@ def _roll_special_humans(label: str) -> tuple[int, str, str]:
         note = "Humans/NPCs; build as you like (light armor, bows, etc.)."
     return (total + flat, f"2d6 [{', '.join(map(str, rolls))}] = {total + flat}", note)
 
+# ---------------------------
+# Background Generator (BFRPG Quick Character Generation - Chart B)
+# ---------------------------
+
+_BG_BIRTH_ORDER = [
+    None,
+    "First born",
+    "Second child",
+    "Second child",
+    "Third child",
+    "Third child",
+    "Fourth",
+    "Fifth",
+    "Sixth",
+    "Seventh",
+    "Eighth or more",
+]
+
+_BG_PARENT_OCC = [
+    None,
+    ("Beggar", "Drifter"),
+    "Criminal",
+    ("Peasant", "Farm worker"),
+    ("Farmer", "Fisherman"),
+    ("Miner", "Forester"),
+    "Sailor",
+    ("Soldier", "Mercenary"),
+    "Craftsman/Skilled worker",
+    "Craftsman/Skilled worker",
+    ("Sage", "Scholar", "Alchemist"),
+    "Scribe",
+    "Slaver",
+    "Adventurer",
+    ("Actor", "Bard", "Courtesan"),
+    "Government Official",
+    "Merchant",
+    "Merchant",
+    "Clergy",
+    "Gentleman",
+    "Noble",
+]
+
+_BG_CRAFT = [
+    None,
+    "Tailor",
+    ("Fletcher", "Bowyer"),
+    "Glass blower",
+    "Carpenter",
+    ("Animal trainer", "Beast master"),
+    "Cartographer",
+    "Smith",
+    "Cobbler",
+    "Weaver",
+    ("Armorer", "Weaponsmith"),
+    ("Brewer", "Baker"),
+    "Mason",
+    "Potter",
+    "Miller",
+    "Dyer",
+    "Shipwright",
+    "Jeweler",
+    ("Artist", "Sculptor"),
+    "Musician",
+    "ROLL_TWICE",
+]
+
+_BG_GOV_OFFICIAL = [
+    None,
+    "Tax collector",
+    "Tax collector",
+    ("Sheriff", "Shrive"),
+    "Forest warden",
+    "Magistrate",
+    "Town mayor",
+    "City mayor",
+    ("Royal advisor", "Ducal advisor"),
+]
+
+_BG_MERCHANT = [
+    None,
+    "Shopkeeper (foodstuffs)",
+    "Shopkeeper (dry goods)",
+    "Shopkeeper (exotic goods)",
+    "Innkeeper",
+    "Local trader",
+    "Long-distance trader",
+]
+
+_BG_CLERGY = [
+    None,
+    "Parish/lower clergy (mainstream religion)",
+    "Parish/lower clergy (mainstream religion)",
+    "Upper clergy (mainstream religion)",
+    "Clergy (heretic religion)",
+    "Pagan/Druidical",
+    "Elder gods",
+]
+
+_BG_NOBILITY = [
+    None,
+    "Landless Knight",
+    "Landless Knight",
+    "Landless Knight",
+    "Knight Banneret",
+    "Knight Banneret",
+    "Knight Banneret",
+    "Knight",
+    "Knight",
+    "Knight",
+    "Knight",
+    ("Baron", "Landgraf"),
+    ("Baron", "Landgraf"),
+    ("Baron", "Landgraf"),
+    ("Baron", "Landgraf"),
+    ("Baron", "Landgraf"),
+    "Count",
+    ("Marquis", "Margrave"),
+    "Duke",
+    ("Arch Duke", "Prince"),
+    "King",
+]
+
+_BG_GUARDIANS = [
+    None,
+    ("Wicked/cruel stepmother", "Wicked/cruel stepfather"),
+    ("Hedge Wizard", "Mage"),
+    "Monastery/Convent",
+    "Craftworker (roll 2A)",
+    "Relative (roll 3B)",
+    "Sold into slavery",
+    "Raised by wolves",
+    "Adventurer",
+    "Dwarven indentured servants",
+    "Mysterious red-robed “elven” guardians",
+    "Centaurs/Hobgoblins/Deep Ones/other monsters",
+    "Raised by mercenaries/landsknechts",
+    "Bandits/pirates",
+    "Nomads/cossacks/barbarians",
+    "Adopted by merchant (roll 2C)",
+    "Adopted by clergy (roll 2D)",
+    "Adopted by noble (roll 2E)",
+    "Lived on the streets/no guardian",
+    "Lived on the streets/no guardian",
+    "Lived on the streets/no guardian",
+]
+
+_BG_RELATIVE = [
+    None,
+    "Brother/Sister",
+    "First cousin",
+    "Uncle/Aunt",
+    "Grandfather/mother",
+    "Great uncle/aunt",
+    "Distant relation",
+]
+
+_BG_OTHER = [
+    None,
+    "Government official (roll 2B)",
+    "Friend",
+    "Thief",
+    "Wizard",
+    "Mentor",
+    "Noble (roll 2E)",
+    "Raider/invader",
+    "Humanoid/demi-human",
+    "Monster",
+    "Lover",
+    "Craftsman",
+    "Highwayman/bandit/pirate",
+    "Adventurer",
+    "Comrade",
+    "Wild animal",
+    "Nomad",
+    "Religious sect member/leader",
+    "Mysterious stranger",
+    "ROLL_TWICE",
+    "ROLL_TWICE",
+]
+
+_BG_CRIME = [
+    None,
+    "Theft",
+    "Theft",
+    "Assault",
+    "Heresy",
+    "Heresy",
+    "Murder",
+    "Insulted a noble of higher order",
+    "Treason",
+    "Tax evasion",
+    "Political dissidence",
+    "Political dissidence",
+    "Harboring criminals",
+    "Unlawful sorcery",
+    "Banditry/piracy",
+    "Wrong place at the wrong time",
+    "Wrong place at the wrong time",
+    "Messenger of bad news",
+    "ROLL_TWICE",
+    "ROLL_TWICE",
+    "ROLL_TWICE",
+]
+
+_BG_MIL_EVENT = [
+    None,
+    "Promoted",
+    "Demoted",
+    "Lone survivor of unit",
+    "Captured by enemy and tortured",
+    "Deserted",
+    "Joined mercenaries/landsknechts",
+    "Responsible for the deaths of comrades",
+    "Best friend killed at your side",
+    "Prevented the destruction of innocents",
+    "Rear-echelon non-combat service (roll 4B)",
+    "Committed an unsanctioned crime (roll 3D)",
+    "Ran away from battle",
+    "Displayed heroism on the battlefield",
+    "Learned use of exotic weapons",
+    "Learned siegecraft",
+    "Led mutiny",
+    "Survived disease/magical occurrence",
+    "Developed virtues/vices (roll 4C/4D)",
+    "Transferred to other service (roll 4B)",
+    "Transferred to other service (roll 4B)",
+]
+
+_BG_OTHER_SERVICE = [
+    None,
+    "Palace guard",
+    "City guard/watch",
+    "Temple guard",
+    "Border militia/rangers",
+    "Private bodyguard",
+    ("Engineer", "Sapper"),
+    "Scouts",
+    "Navy",
+    "Shipboard marine",
+    "Messenger",
+    "Caravan guard",
+    "Border guard",
+]
+
+_BG_VIRTUE = [
+    None,
+    "Cleanliness",
+    "Benefactor for the poor",
+    "Well-mannered",
+    "Friendly",
+    "Teetotaler",
+    "Pious",
+    ("Sincere", "Earnest"),
+    "Quiet/good listener",
+    "Honest",
+    "Defender of the oppressed",
+    "Loving",
+    "Tolerant of all faiths",
+    "Self-confident",
+    "Hard-working",
+    "Humble",
+    "Good negotiator/diplomat",
+    "Hard bargainer",
+    "Punctual",
+    ("Sensitive", "Tender"),
+    "Gregarious",
+]
+
+_BG_VICE = [
+    None,
+    "Heavy drinker",
+    "Drug problem",
+    "Gambler",
+    "Randiness",
+    "Swears like a sailor",
+    "Duplicitous",
+    "Mistrustful",
+    "Loner",
+    "Pushy",
+    "Loud",
+    "Poor hygiene",
+    "Loves brawling",
+    "Quick-tempered",
+    "Selfish",
+    "Braggart",
+    "Lazy",
+    "Greedy",
+    "Intolerant",
+    "Lacks self-confidence",
+    "Sacrilegious",
+]
+
+_BG_RELIGIOUS = [
+    None,
+    "Joined faith",
+    "Lost faith",
+    "Vision of demi-god/saint",
+    "Vision of deity",
+    "Vision of demon/elder god",
+    "Became lay clergy (non-spellcasting)",
+    "Pilgrimage to holy place",
+    "Excommunicated",
+    "Persecuted for faith",
+    "Involved in holy war (roll 4A)",
+    "Became religious hypocrite",
+    "Made prophetic statement",
+    "Discredited faith",
+    "Sent to religious school",
+    "Started own sect",
+    "Developed virtue/vice (roll 4C/4D)",
+    "Developed virtue/vice (roll 4C/4D)",
+    "Developed virtue/vice (roll 4C/4D)",
+    "Developed virtue/vice (roll 4C/4D)",
+    "Developed virtue/vice (roll 4C/4D)",
+]
+
+_BG_MAGIC = [
+    None,
+    "Survived magical disaster",
+    "Witnessed summoning",
+    "Saw magical omens",
+    "Visited by witch",
+    "Gathered spell components for a hedge wizard",
+    "Found magical place",
+    "Found arcane scrolls",
+    "Discovered ancient book",
+    "Spell cast on you",
+    "Learned a cantrip",
+]
+
+def _bg_d(n: int) -> int:
+    return random.randint(1, n)
+
+def _bg_resolve(entry):
+    if isinstance(entry, (list, tuple)):
+        return random.choice(list(entry))
+    return entry
+
+def _bg_roll_once(table: list, die: int):
+    r = _bg_d(die)
+    return r, table[r]
+
+def _bg_roll_multi(table: list, die: int, *, n_min: int = 1, n_max: int = 4, unique: bool = True, depth: int = 0):
+    # Roll 1-4 times on a table (per chart headers).
+    if depth > 4:
+        return ["…"]
+    n = _bg_d(n_max) if n_max == n_min else random.randint(n_min, n_max)
+    out = []
+    seen = set()
+    for _ in range(n):
+        _, e = _bg_roll_once(table, die)
+        if e == "ROLL_TWICE":
+            out.extend(_bg_roll_multi(table, die, n_min=2, n_max=2, unique=unique, depth=depth+1))
+            continue
+        val = _bg_resolve(e)
+        if unique:
+            key = str(val).lower()
+            if key in seen:
+                continue
+            seen.add(key)
+        out.append(str(val))
+        if len(out) >= n_max:
+            break
+    return out
+
+def _bg_roll_craft():
+    _, e = _bg_roll_once(_BG_CRAFT, 20)
+    if e == "ROLL_TWICE":
+        picks = _bg_roll_multi(_BG_CRAFT, 20, n_min=2, n_max=2, unique=True)
+        return " & ".join(picks)
+    chosen = _bg_resolve(e)
+    if isinstance(e, (list, tuple)):
+        return f"{chosen} (from {'/'.join(map(str, e))})"
+    return str(chosen)
+
+def _bg_roll_gov():
+    _, e = _bg_roll_once(_BG_GOV_OFFICIAL, 8)
+    chosen = _bg_resolve(e)
+    if isinstance(e, (list, tuple)):
+        return f"{chosen} (from {'/'.join(map(str, e))})"
+    return str(chosen)
+
+def _bg_roll_merchant():
+    _, e = _bg_roll_once(_BG_MERCHANT, 6)
+    return str(_bg_resolve(e))
+
+def _bg_roll_clergy():
+    _, e = _bg_roll_once(_BG_CLERGY, 6)
+    return str(_bg_resolve(e))
+
+def _bg_roll_noble():
+    _, e = _bg_roll_once(_BG_NOBILITY, 20)
+    chosen = _bg_resolve(e)
+    if isinstance(e, (list, tuple)):
+        return f"{chosen} (from {'/'.join(map(str, e))})"
+    return str(chosen)
+
+def _bg_roll_parent_occ():
+    r, e = _bg_roll_once(_BG_PARENT_OCC, 20)
+    if e == "Craftsman/Skilled worker":
+        return r, f"Craftsman/Skilled worker — {_bg_roll_craft()}"
+    if e == "Government Official":
+        return r, f"Government Official — {_bg_roll_gov()}"
+    if e == "Merchant":
+        return r, f"Merchant — {_bg_roll_merchant()}"
+    if e == "Clergy":
+        return r, f"Clergy — {_bg_roll_clergy()}"
+    if e == "Noble":
+        return r, f"Noble — {_bg_roll_noble()}"
+    chosen = _bg_resolve(e)
+    if isinstance(e, (list, tuple)):
+        return r, f"{chosen} (from {'/'.join(map(str, e))})"
+    return r, str(chosen)
+
+def _bg_roll_relative():
+    _, e = _bg_roll_once(_BG_RELATIVE, 6)
+    return str(e)
+
+def _bg_roll_other(depth: int = 0):
+    if depth > 4:
+        return "…"
+    _, e = _bg_roll_once(_BG_OTHER, 20)
+    if e == "ROLL_TWICE":
+        a = _bg_roll_other(depth=depth+1)
+        b = _bg_roll_other(depth=depth+1)
+        return a if a == b else f"{a} & {b}"
+    if e == "Government official (roll 2B)":
+        return f"Government official — {_bg_roll_gov()}"
+    if e == "Noble (roll 2E)":
+        return f"Noble — {_bg_roll_noble()}"
+    return str(_bg_resolve(e))
+
+def _bg_roll_crime(depth: int = 0):
+    if depth > 4:
+        return "…"
+    _, e = _bg_roll_once(_BG_CRIME, 20)
+    if e == "ROLL_TWICE":
+        a = _bg_roll_crime(depth=depth+1)
+        b = _bg_roll_crime(depth=depth+1)
+        return a if a == b else f"{a} & {b}"
+    return str(e)
+
+def _bg_roll_virtues():
+    return _bg_roll_multi(_BG_VIRTUE, 20, n_min=1, n_max=4, unique=True)
+
+def _bg_roll_vices():
+    return _bg_roll_multi(_BG_VICE, 20, n_min=1, n_max=4, unique=True)
+
+def _bg_roll_other_service():
+    _, e = _bg_roll_once(_BG_OTHER_SERVICE, 12)
+    chosen = _bg_resolve(e)
+    if isinstance(e, (list, tuple)):
+        return f"{chosen} (from {'/'.join(map(str, e))})"
+    return str(chosen)
+
+def _bg_roll_magic():
+    return _bg_roll_multi(_BG_MAGIC, 10, n_min=1, n_max=4, unique=True)
+
+def _bg_roll_military(depth: int = 0):
+    if depth > 4:
+        return "…"
+    _, e = _bg_roll_once(_BG_MIL_EVENT, 20)
+    if e.startswith("Rear-echelon"):
+        return "Rear-echelon non-combat service — " + _bg_roll_other_service()
+    if e.startswith("Transferred"):
+        return "Transferred to other service — " + _bg_roll_other_service()
+    if "unsanctioned crime" in e:
+        return "Committed an unsanctioned crime — " + _bg_roll_crime(depth=depth+1)
+    if e.startswith("Developed virtues/vices"):
+        if random.random() < 0.5:
+            return "Developed virtues — " + ", ".join(_bg_roll_virtues())
+        return "Developed vices — " + ", ".join(_bg_roll_vices())
+    if e == "Survived disease/magical occurrence":
+        if random.random() < 0.5:
+            return "Survived disease"
+        return "Survived magical occurrence — " + "; ".join(_bg_roll_magic())
+    return str(e)
+
+def _bg_roll_religious(depth: int = 0):
+    if depth > 4:
+        return ["…"]
+    picks = _bg_roll_multi(_BG_RELIGIOUS, 20, n_min=1, n_max=4, unique=True, depth=depth+1)
+    out = []
+    for p in picks:
+        if p.startswith("Involved in holy war"):
+            out.append("Involved in holy war — " + _bg_roll_military(depth=depth+1))
+        elif p.startswith("Developed virtue/vice"):
+            if random.random() < 0.5:
+                out.append("Developed virtue — " + ", ".join(_bg_roll_virtues()))
+            else:
+                out.append("Developed vice — " + ", ".join(_bg_roll_vices()))
+        else:
+            out.append(p)
+    return out
+
+def _bg_roll_guardian(depth: int = 0) -> str:
+    if depth > 4:
+        return "…"
+    _, e = _bg_roll_once(_BG_GUARDIANS, 20)
+    chosen = _bg_resolve(e)
+    label = str(chosen)
+    if label.startswith("Craftworker"):
+        return f"Craftworker — {_bg_roll_craft()}"
+    if label.startswith("Relative"):
+        return f"Relative — {_bg_roll_relative()}"
+    if label.startswith("Adopted by merchant"):
+        return f"Merchant — {_bg_roll_merchant()}"
+    if label.startswith("Adopted by clergy"):
+        return f"Clergy — {_bg_roll_clergy()}"
+    if label.startswith("Adopted by noble"):
+        return f"Noble — {_bg_roll_noble()}"
+    return label
+
+def _bg_roll_child_event(parent_occ_str: str, depth: int = 0) -> str:
+    if depth > 4:
+        return "…"
+    r = _bg_d(20)
+    if r == 1:
+        return "Loved/protected by parents"
+    if r == 2:
+        return "Unloved/spurned by parents"
+    if r in (3, 4):
+        return f"Orphaned — raised by {_bg_roll_guardian(depth=depth+1)}"
+    if r == 5:
+        return f"Family killed by {_bg_roll_other(depth=depth+1)}"
+    if r == 6:
+        if random.random() < 0.5:
+            return f"Caused the death of a relative — {_bg_roll_relative()}"
+        return f"Caused the death of {_bg_roll_other(depth=depth+1)}"
+    if r == 7:
+        if random.random() < 0.5:
+            return "Illegitimate — raised by mother"
+        return f"Illegitimate — raised by guardian ({_bg_roll_guardian(depth=depth+1)})"
+    if r == 8:
+        return f"Apprenticed in parent's occupation — {parent_occ_str}"
+    if r == 9:
+        _, occ = _bg_roll_parent_occ()
+        return f"Apprenticed in a mentor's craft/occupation — {occ}"
+    if r == 10:
+        if random.random() < 0.5:
+            return f"Parent killed by relative — {_bg_roll_relative()}"
+        return f"Parent killed by {_bg_roll_other(depth=depth+1)}"
+    if r == 11:
+        who = random.choice(["Father", "Mother", "Both parents"])
+        return f"{who} outlawed for — {_bg_roll_crime(depth=depth+1)}"
+    if r == 12:
+        return "Religious experience"
+    if r == 13:
+        return "Jealous sibling/rivalry"
+    if r == 14:
+        return "Lived a nomadic life"
+    if r == 15:
+        return "Moved to the big city"
+    if r == 16:
+        return "Moved to the borderlands/wilderness"
+    if r == 17:
+        return "Ran away from home or guardian"
+    if r == 18:
+        return "Learned weapon usage"
+    if r == 19:
+        if random.random() < 0.5:
+            return "Religious experience — " + "; ".join(_bg_roll_religious(depth=depth+1))
+        return "Magic occurrence — " + "; ".join(_bg_roll_magic())
+    return "Committed a crime — " + _bg_roll_crime(depth=depth+1)
+
+def _bg_roll_young_adult_event(depth: int = 0) -> str:
+    if depth > 4:
+        return "…"
+    r = _bg_d(20)
+    if r == 1:
+        return "Religious experience — " + "; ".join(_bg_roll_religious(depth=depth+1))
+    if r == 2:
+        return "Magic occurrence — " + "; ".join(_bg_roll_magic())
+    if r == 3:
+        if random.random() < 0.5:
+            return "Responsible for death of relative — " + _bg_roll_relative()
+        return "Responsible for death of " + _bg_roll_other(depth=depth+1)
+    if r == 4:
+        return "Developed virtues — " + ", ".join(_bg_roll_virtues())
+    if r == 5:
+        return "Developed vices — " + ", ".join(_bg_roll_vices())
+    if r in (6, 7):
+        return "Military service — " + _bg_roll_military(depth=depth+1)
+    if r == 8:
+        return "Romantic affair" + (" (pregnancy if opposite sex and compatible race)" if random.random() < 0.25 else "")
+    if r == 9:
+        _, occ = _bg_roll_parent_occ()
+        return f"Learned occupation — {occ}"
+    if r == 10:
+        return "Traveled abroad"
+    if r == 11:
+        return "Survived plague"
+    if r == 12:
+        return "Moved to big city"
+    if r == 13:
+        return "Moved to borderlands/wilderness"
+    if r == 14:
+        return "Sold into slavery (escaped)"
+    if r == 15:
+        return "Committed a crime — " + _bg_roll_crime(depth=depth+1)
+    if r == 16:
+        return "Home village/town wiped out by — " + _bg_roll_other(depth=depth+1)
+    if r == 17:
+        return "Encountered monster"
+    if r == 18:
+        return "Served wealthy patron/noble court"
+    if r == 19:
+        if random.random() < 0.5:
+            return "Saved life of relative — " + _bg_roll_relative()
+        return "Saved life of " + _bg_roll_other(depth=depth+1)
+    return "Apprenticed to mentor — " + _bg_roll_craft()
+
+
 
 class Dice(commands.Cog):
     def __init__(self, bot):
@@ -475,84 +1088,217 @@ class Dice(commands.Cog):
     @commands.command(name="r", aliases=["roll"])
     async def roll(self, ctx, *pieces):
         """
-        Roll dice with simple math.
+        Roll dice with math, exponent, and exploding dice.
+
+        Dice:
+          XdY         e.g. 2d6, d20, d% (d% = d100)
+          XdYeN       exploding dice; explode on >= N
+                     e.g. 1d10e10 explodes on 10 only
+                          1d10e8  explodes on 8,9,10
+
+        Math:
+          +  -  *  /  //  %  parentheses ()
+          ^ for exponent (power), e.g. 1d8^2
+
         Examples:
-          !r 2d6+3
-          !r 15d6/2
-          !r 6d6*2
-          !r (1d8+5)*2
-          !r 2d6 + 3          # spaced math is OK
-          !r 2d6+3 1d4+2      # multiple expressions
+          !r 1d8+2+1d6
+          !r (d10+1)*2
+          !r 1d8^2
+          !r 1d10e10
+          !r 3d6e6+2
+          !r (2d6+3) * (1d4+1)
+          !r 2(1d6+1)          # implicit multiply supported
         """
-        import re, random
+        import re, random, ast
 
         if not pieces:
-            await ctx.send("🎲 Usage: `!r 2d6+3`, `!r 15d6/2`, or multiple like `!r 2d6+3 1d4+2`")
+            await ctx.send("🎲 Usage: `!r 2d6+3`, `!r (1d8+4)*2`, `!r 1d10e10`, or multiple like `!r 2d6+3 1d4+2`")
             return
+
+        # If the user spaced out operators, join into one expression.
+        # Otherwise, treat each token as its own expression (supports: !r 2d6+3 1d4+2).
+        if any(re.fullmatch(r'^[+\-*/()^%]+$', str(p)) for p in pieces):
+            expressions = [''.join(str(p) for p in pieces)]
+        else:
+            expressions = [str(p) for p in pieces]
 
         embed = nextcord.Embed(title="🎲 Dice Roll Results", color=nextcord.Color.blurple())
         grand_total = 0
 
+        # --- limits to keep this command from melting the bot ---
+        MAX_EXPR_CHARS = 300
+        MAX_DICE_PER_TERM = 200
+        MAX_SIDES = 100000
+        MAX_EXPLODE_CHAIN = 100   # per die
+        MAX_POW_EXP = 12
+        MAX_ABS_RESULT = 10**12
 
-        if any(re.fullmatch(r'^[+\-*/()]+$', p) for p in pieces):
-            expressions = [''.join(pieces)]
-        else:
+        dice_re = re.compile(r'(?i)(\d*)d(\d+|%)(?:e(\d+))?')
 
-            expressions = list(pieces)
+        def _safe_eval_int(expr: str) -> int:
+            """
+            Safely evaluate an arithmetic expression using AST.
+            Allowed: integers, + - * // % **, unary +/-, parentheses.
+            """
+            tree = ast.parse(expr, mode='eval')
 
-        dice_re = re.compile(r'(?i)(\d*)d(\d+)')
+            def ev(node):
+                if isinstance(node, ast.Expression):
+                    return ev(node.body)
+
+                if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+                    # We only want finite numeric constants
+                    v = node.value
+                    if isinstance(v, float):
+                        if not (v == v and abs(v) != float("inf")):
+                            raise ValueError("Bad number.")
+                    return v
+
+                if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+                    v = ev(node.operand)
+                    return +v if isinstance(node.op, ast.UAdd) else -v
+
+                if isinstance(node, ast.BinOp):
+                    a = ev(node.left)
+                    b = ev(node.right)
+
+                    if isinstance(node.op, ast.Add):
+                        v = a + b
+                    elif isinstance(node.op, ast.Sub):
+                        v = a - b
+                    elif isinstance(node.op, ast.Mult):
+                        v = a * b
+                    elif isinstance(node.op, ast.FloorDiv):
+                        v = a // b
+                    elif isinstance(node.op, ast.Mod):
+                        v = a % b
+                    elif isinstance(node.op, ast.Pow):
+                        # enforce small-ish integer exponents
+                        if int(b) != b:
+                            raise ValueError("Exponent must be an integer.")
+                        bi = int(b)
+                        if abs(bi) > MAX_POW_EXP:
+                            raise ValueError(f"Exponent too large (max {MAX_POW_EXP}).")
+                        v = a ** bi
+                    else:
+                        raise ValueError("Unsupported operator.")
+
+                    if abs(v) > MAX_ABS_RESULT:
+                        raise ValueError("Result too large.")
+                    return v
+
+                raise ValueError("Unsupported expression.")
+
+            out = ev(tree)
+            if isinstance(out, float):
+                out = int(out)
+            return int(out)
 
         def expand_and_eval(expr: str):
             """
-            Replace dice with their rolled sums, then evaluate arithmetic safely.
+            Replace dice (and exploding dice) with rolled sums, then evaluate math safely.
             Returns (total:int, details_lines:list[str], display_expr:str)
             """
-            expr = expr.strip()
+            expr = (expr or "").strip()
+            if not expr:
+                raise ValueError("Empty expression.")
+            if len(expr) > MAX_EXPR_CHARS:
+                raise ValueError(f"Expression too long (max {MAX_EXPR_CHARS} chars).")
+
             details = []
 
+            def fmt_d20(v: int) -> str:
+                if v == 20: return "**20** 🎉"
+                if v == 1:  return "**1** 💀"
+                return str(v)
 
             def repl(m: re.Match) -> str:
-                count = int(m.group(1)) if m.group(1) else 1
-                sides = int(m.group(2))
+                count = int(m.group(1) or 1)
+                sides_raw = m.group(2)
+                sides = 100 if sides_raw == "%" else int(sides_raw)
+                explode_raw = m.group(3)
+                explode = int(explode_raw) if explode_raw else None
 
                 if count <= 0 or sides <= 0:
                     raise ValueError("Dice and sides must be positive.")
+                if count > MAX_DICE_PER_TERM:
+                    raise ValueError(f"Too many dice in one term (max {MAX_DICE_PER_TERM}).")
+                if sides > MAX_SIDES:
+                    raise ValueError(f"Too many sides (max {MAX_SIDES}).")
 
-                rolls = [random.randint(1, sides) for _ in range(count)]
+                if explode is not None and explode < 2:
+                    raise ValueError("Explode threshold must be >= 2 (e.g. e6, e8, e10).")
 
-                def fmt(r):
-                    if sides == 20 and r == 20: return "**20** 🎉"
-                    if sides == 20 and r == 1:  return "**1** 💀"
-                    return str(r)
+                term_total = 0
 
-                total = sum(rolls)
-                details.append(f"{count}d{sides} → [{', '.join(fmt(r) for r in rolls)}] = {total}")
-                return str(total)
+                # For display:
+                # - non-exploding: [3, 5, 1]
+                # - exploding (count==1): [10!, 5]
+                # - exploding (count>1): [[6!, 2], [4], [6!, 6!, 1]]
+                shown_dice = []
 
+                for _ in range(count):
+                    seq = []
+                    r = random.randint(1, sides)
+                    seq.append(r)
+
+                    if explode is not None:
+                        steps = 0
+                        while r >= explode:
+                            steps += 1
+                            if steps > MAX_EXPLODE_CHAIN:
+                                raise ValueError("Explosion limit reached (rerolled too many times).")
+                            r = random.randint(1, sides)
+                            seq.append(r)
+
+                    term_total += sum(seq)
+
+                    if explode is None or len(seq) == 1:
+                        # normal display
+                        shown_dice.append(fmt_d20(seq[0]) if sides == 20 else str(seq[0]))
+                    else:
+                        # exploding display: mark each roll that triggered an explosion with "!"
+                        parts = []
+                        for i, val in enumerate(seq):
+                            bang = "!" if (i < len(seq) - 1 and val >= explode) else ""
+                            base = fmt_d20(val) if sides == 20 else str(val)
+                            parts.append(f"{base}{bang}")
+                        shown_dice.append("[" + ", ".join(parts) + "]")
+
+                label = f"{count}d{('100' if sides_raw == '%' else sides)}" + (f"e{explode}" if explode is not None else "")
+
+                if explode is not None and count == 1 and shown_dice and shown_dice[0].startswith("["):
+                    # avoid double brackets like [[10!, 5]]
+                    pretty_rolls = shown_dice[0].strip("[]")
+                    details.append(f"{label} → [{pretty_rolls}] = {term_total}")
+                else:
+                    details.append(f"{label} → [{', '.join(shown_dice)}] = {term_total}")
+
+                return str(term_total)
 
             squashed = expr.replace(" ", "")
             numeric = dice_re.sub(repl, squashed)
 
+            # Support implicit multiplication: 2(3+4) or (3+4)2 or )(  -> insert *
+            numeric = re.sub(r'(\d)\(', r'\1*(', numeric)
+            numeric = re.sub(r'\)(\d)', r')*\1', numeric)
+            numeric = re.sub(r'\)\(', r')*(', numeric)
 
-            safe = numeric.replace('/', '//')
-            if not re.fullmatch(r'[0-9+\-*/() ]+', safe):
-                raise ValueError("Invalid characters (allowed: digits, d, + - * / and parentheses).")
+            # Normalize operators:
+            # - ^ becomes ** (power)
+            # - single / becomes // (floor division), but keep existing //
+            eval_str = numeric.replace("^", "**")
+            eval_str = re.sub(r'(?<!/)/(?!/)', '//', eval_str)
 
+            # Quick character sanity check (after dice substitution there should be NO letters)
+            if re.search(r'[^0-9+\-*/()%\s]', eval_str):
+                raise ValueError("Invalid characters. Allowed: dice like 2d6 or 1d10e10, and math + - * / // % ( ) ^")
 
-            try:
-                result = eval(safe, {"__builtins__": None}, {})
-            except Exception:
-                raise ValueError("Bad math expression.")
+            total = _safe_eval_int(eval_str)
 
-            if not isinstance(result, (int, float)):
-                raise ValueError("Expression did not produce a number.")
-
-
-            if isinstance(result, float):
-                result = int(result)
-
-            display_expr = safe.replace('//', ' // ')
-            return int(result), details, display_expr
+            # Pretty display: show ^ instead of **, and space out //
+            display_expr = eval_str.replace("**", "^").replace("//", " // ")
+            return int(total), details, display_expr
 
         for expr in expressions:
             try:
@@ -568,9 +1314,12 @@ class Dice(commands.Cog):
                 embed.add_field(name=expr, value="\n".join(lines), inline=False)
             except ValueError as e:
                 embed.add_field(name=expr, value=f"❌ {e}", inline=False)
+            except Exception:
+                embed.add_field(name=expr, value="❌ Bad roll expression.", inline=False)
 
         embed.set_footer(text=f"Grand Total of All Rolls: {grand_total}")
         await ctx.send(embed=embed)
+
 
 
     @commands.command(name="save")
@@ -804,7 +1553,7 @@ class Dice(commands.Cog):
         await ctx.send(embed=embed)
 
 
-    @commands.command(name="s")
+    @commands.command(name="s", aliases=["skills", "skill"])
     async def thief_skill(self, ctx, skill: str = None, *, tail: str = ""):
         """
         Skill check with optional manual modifier and/or target name.
@@ -1176,11 +1925,22 @@ class Dice(commands.Cog):
                     race_sec = sec
                     break
             if race_sec:
-                bonus_keys = [canon_key] + (["climb"] if canon_key == "climbwall" else [])
+                # Build list of possible keys in race.lst for this skill
+                bonus_keys = [canon_key]
+
+                # climbwall can be written as "climb" in race.lst
+                if canon_key == "climbwall":
+                    bonus_keys.append("climb")
+
+                # tracking can be written as "track" in race.lst (like Gnoll)
+                if canon_key == "tracking":
+                    bonus_keys.append("track")
+
                 for bk in bonus_keys:
                     if bk in rp[race_sec]:
                         try:
-                            bonus = int(rp[race_sec][bk]); break
+                            bonus = int(rp[race_sec][bk])
+                            break
                         except ValueError:
                             pass
 
@@ -1686,7 +2446,7 @@ class Dice(commands.Cog):
     @commands.command(name="forage")
     async def forage(self, ctx, *args):
         """
-        Foraging (doesn't slow travel).
+        Foraging
         RAW: For each *day of travel while foraging*, 1-in-6 chance to find enough food for **1d6 human-sized beings** (for one day).
         Usage:
           !forage
@@ -1779,7 +2539,7 @@ class Dice(commands.Cog):
     @commands.command(name="hunt")
     async def hunt(self, ctx, *args):
         """
-        Hunting (takes a full day; no travel/rest that day).
+        Hunting
         RAW: While hunting, you have a 1-in-6 chance to encounter edible animals (if you can catch them).
              By default this ALSO runs a normal wilderness wandering encounter.
 
@@ -2161,6 +2921,67 @@ class Dice(commands.Cog):
             )
             embed.set_footer(text="Rules: 4-5-6>Triples>Points>1-2-3. Use !chin -h to play vs the House.")
             await ctx.send(embed=embed)
+
+    @commands.command(name="bg", aliases=["background"])
+    async def background(self, ctx, level: int = 1):
+        """
+        Generate a random character background (BFRPG Quick Character Generation – Chart B).
+
+        Usage:
+          !bg
+          !bg 1
+          !bg 5   # adds extra Young Adulthood rolls (per 2 levels past 1st)
+        """
+        try:
+            level = int(level)
+        except Exception:
+            level = 1
+
+        level = max(1, min(level, 20))
+
+        birth_roll = _bg_d(10)
+        birth = _BG_BIRTH_ORDER[birth_roll]
+
+        occ_roll, parent_occ = _bg_roll_parent_occ()
+
+        n_child = random.randint(1, 4)
+        child_events = [_bg_roll_child_event(parent_occ) for _ in range(n_child)]
+
+        base_adult = random.randint(1, 4)
+        extra = (level - 1) // 2
+        n_adult = min(12, base_adult + extra)
+        adult_events = [_bg_roll_young_adult_event() for _ in range(n_adult)]
+
+        def bullets(items: list[str], limit: int = 1000) -> str:
+            if not items:
+                return "—"
+            out = []
+            used = 0
+            for it in items:
+                line = f"• {it}"
+                if used + len(line) + 1 > limit:
+                    out.append("• …")
+                    break
+                out.append(line)
+                used += len(line) + 1
+            return "\n".join(out)
+
+        embed = nextcord.Embed(
+            title="📜 Character Background",
+            description="Random background hooks (BFRPG Quick Character Generation — Chart B).",
+            color=nextcord.Color.blurple(),
+        )
+        embed.add_field(name="Birth Order", value=f"**{birth}** (d10={birth_roll})", inline=False)
+        embed.add_field(name="Parent Occupation", value=f"**{parent_occ}** (d20={occ_roll})", inline=False)
+        embed.add_field(name=f"Childhood & Adolescence (x{n_child})", value=bullets(child_events), inline=False)
+        embed.add_field(name=f"Young Adulthood (x{n_adult})", value=bullets(adult_events), inline=False)
+
+        if level > 1:
+            embed.set_footer(text=f"Level {level}: +{extra} extra Young Adulthood rolls (per 2 levels past 1st).")
+        else:
+            embed.set_footer(text="Tip: `!bg 5` adds extra Young Adulthood rolls for higher-level characters.")
+
+        await ctx.send(embed=embed)
 
     @commands.command(name="br")
     async def scene_break(self, ctx, count: int = 1):
