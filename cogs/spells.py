@@ -2709,6 +2709,46 @@ class SpellsCog(commands.Cog, name="Spells"):
             gh.get("_slot"), gh.get("_format_tracker_block"),
         )
 
+
+    def _controlled_minion_records_global(self, owner_id: str, controller_name: str):
+        """Return a list of (name, path, cfg) for monster .coe files controlled by controller_name (global)."""
+        oid = str(owner_id or "").strip()
+        ctl = str(controller_name or "").strip().lower()
+        if not oid or not ctl:
+            return []
+        out = []
+        for fn in os.listdir("."):
+            if not fn.lower().endswith(".coe"):
+                continue
+            try:
+                cfg = read_cfg(fn)
+            except Exception:
+                continue
+            try:
+                if str(get_compat(cfg, "info", "class", fallback="")).strip().lower() != "monster":
+                    continue
+            except Exception:
+                continue
+            if str(get_compat(cfg, "info", "owner_id", fallback="")).strip() != oid:
+                continue
+            if str(get_compat(cfg, "info", "controller", fallback="")).strip().lower() != ctl:
+                continue
+            name = (get_compat(cfg, "info", "name", fallback=fn[:-4]) or fn[:-4]).strip()
+            out.append((name, fn, cfg))
+        return out
+
+    def _sum_controlled_hd_global(self, owner_id: str, controller_name: str, undead_only: bool = False) -> int:
+        total = 0
+        for nm, _path, cfg in self._controlled_minion_records_global(owner_id, controller_name):
+            if undead_only and not _is_undead_cfg(cfg, nm):
+                continue
+            try:
+                hd = int(SpellsCog._hd_or_level_from_cfg(cfg))
+            except Exception:
+                hd = getint_compat(cfg, "cur", "level", fallback=1)
+            total += max(1, int(hd or 1))
+        return total
+
     def _refresh_tracker(self, channel: nextcord.abc.GuildChannel):
         try:
             _load_battles, _save_battles, *_rest = self._battle_helpers()
@@ -14145,7 +14185,7 @@ class SpellsCog(commands.Cog, name="Spells"):
                 total += max(1, int(hd_now))
             return total
 
-        already = _sum_controlled(caster_owner_id, caster_name)
+        already = self._sum_controlled_hd_global(caster_owner_id, caster_name, undead_only=True)
         control_cap = 4 * max(1, int(caster_level or 1))
         if already + want_hd > control_cap:
             return [f"❌ Control cap exceeded: you control **{already} HD**; cap is **{control_cap} HD**; "
@@ -14387,7 +14427,7 @@ class SpellsCog(commands.Cog, name="Spells"):
                 total += max(1, int(hd_now))
             return total
 
-        already = _sum_controlled(caster_owner_id, caster_name)
+        already = self._sum_controlled_hd_global(caster_owner_id, caster_name, undead_only=True)
         control_cap = 6 * max(1, int(caster_level or 1))
         if already + want_hd > control_cap:
             return [f"❌ Control cap exceeded: you control **{already} HD**; cap is **{control_cap} HD**; "
@@ -14638,7 +14678,7 @@ class SpellsCog(commands.Cog, name="Spells"):
                     total += max(1, getint_compat(xc, "cur", "level", fallback=1))
                 return total
 
-            already = _sum_controlled(owner, controller or "")
+            already = self._sum_controlled_hd_global(owner, controller or "", undead_only=True)
             cap = 4 * max(1, ctrl_level)
             if already + delta > cap:
                 await ctx.send(f"❌ Control cap would be exceeded for **{controller or 'controller'}**: "
@@ -14696,6 +14736,287 @@ class SpellsCog(commands.Cog, name="Spells"):
             pass
 
         await ctx.send(f"🛠️ **{mon_name}** HD: **{old_hd} → {new_hd}** ({hp_note}).")
+
+
+    @commands.command(name="minions", aliases=["undead"])
+    async def minions(self, ctx, *args):
+        """List (and manage) your controlled minions (global, across channels).
+
+        Usage:
+          !minions                     # list all controlled minions for your active character
+          !undead                      # list controlled undead only
+          !minions undead              # same as !undead
+          !minions release <MINION...> # stop controlling (frees HD)
+          !minions delete <MINION...> -y  # remove from initiative (if present) and delete the .coe
+
+        Notes:
+          • Control is tracked on the monster's .coe via [info].controller and [info].owner_id.
+          • HD totals are global (all battles/channels), so dead/deleted minions stop counting automatically.
+        """
+
+        caster_name = get_active(ctx.author.id)
+        if not caster_name:
+            await ctx.send("❌ No active character set. Use `!active <name>` first.")
+            return
+
+        caster_path = f"{caster_name.replace(' ', '_')}.coe"
+        caster_cfg = read_cfg(caster_path) if os.path.exists(caster_path) else None
+        caster_owner_id = (get_compat(caster_cfg, "info", "owner_id", fallback=str(ctx.author.id)) if caster_cfg else str(ctx.author.id)) or str(ctx.author.id)
+        caster_level = getint_compat(caster_cfg, "cur", "level", fallback=1) if caster_cfg else 1
+
+        toks = [str(a).strip() for a in args if str(a).strip()]
+        invoked = (getattr(ctx, "invoked_with", "") or "").strip().lower()
+        filter_undead = invoked == "undead"
+
+        subcmd = None
+        if toks and toks[0].lower() in ("undead", "u"):
+            filter_undead = True
+            toks = toks[1:]
+        if toks and toks[0].lower() in ("all", "a"):
+            filter_undead = False
+            toks = toks[1:]
+
+        if toks and toks[0].lower() in ("release", "free", "unbind", "uncontrol"):
+            subcmd = "release"
+            toks = toks[1:]
+        if toks and toks[0].lower() in ("delete", "del", "kill", "dismiss", "remove"):
+            subcmd = "delete"
+            toks = toks[1:]
+
+        confirm = any(t.lower() in ("-y", "--yes") for t in toks)
+        toks = [t for t in toks if t.lower() not in ("-y", "--yes")]
+
+        all_recs = self._controlled_minion_records_global(caster_owner_id, caster_name)
+
+        # Build an index for quick lookups (name or filename without extension, case-insensitive)
+        idx = {}
+        for nm, path, cfg in all_recs:
+            base = path[:-4] if path.lower().endswith(".coe") else path
+            idx[nm.strip().lower()] = (nm, path, cfg)
+            idx[base.strip().lower()] = (nm, path, cfg)
+
+        def _resolve_owned_minion(token: str):
+            key = (token or "").strip().lower()
+            if not key:
+                return None, "empty"
+            if key in idx:
+                return idx[key], None
+
+            # try prefix / substring matches against *display names* only
+            cand = []
+            for nm, path, cfg in all_recs:
+                nml = nm.lower()
+                basel = (path[:-4] if path.lower().endswith(".coe") else path).lower()
+                if nml == key or basel == key:
+                    return (nm, path, cfg), None
+                if nml.startswith(key) or basel.startswith(key) or key in nml or key in basel:
+                    cand.append((nm, path, cfg))
+            if len(cand) == 1:
+                return cand[0], None
+            if len(cand) > 1:
+                return None, "ambiguous"
+            return None, "notfound"
+
+        def _chan_mention(cid: str) -> str:
+            cid = (cid or "").strip()
+            return f"<#{cid}>" if cid.isdigit() else ""
+
+        if subcmd in ("release", "delete"):
+            if not toks:
+                await ctx.send(f"Usage: `!minions {subcmd} <MINION...>`" + (" `-y`" if subcmd == "delete" else ""))
+                return
+            if subcmd == "delete" and not confirm:
+                await ctx.send("⚠️ Deleting a minion removes its .coe (and pulls it out of initiative if present).\n"
+                               "Re-run with `-y` to confirm: `!minions delete <MINION...> -y`")
+                return
+
+            bcfg = None
+            try:
+                bcfg = _load_battles()
+            except Exception:
+                bcfg = None
+
+            removed_from_battles = 0
+            battle_dirty = 0
+            changed = 0
+            missing = 0
+            ambig = 0
+
+            def _remove_from_battle_section(bcfg2, battle_chan: str, pretty: str) -> bool:
+                if not (bcfg2 and battle_chan and bcfg2.has_section(battle_chan)):
+                    return False
+                try:
+                    names, scores = _parse_combatants(bcfg2, battle_chan)
+                except Exception:
+                    return False
+                key = None
+                try:
+                    key = _find_ci_name(names, pretty) or pretty
+                except Exception:
+                    key = pretty
+                if key not in names:
+                    return False
+
+                try:
+                    names = [n for n in names if n != key]
+                    if isinstance(scores, dict):
+                        scores.pop(key, None)
+                    _write_combatants(bcfg2, battle_chan, names, scores)
+                except Exception:
+                    pass
+
+                try:
+                    slot = _slot(key)
+                except Exception:
+                    slot = key.replace(" ", "_")
+
+                # Remove any slot.* options (including minion tags and effects)
+                try:
+                    for opt_key, _v in list(bcfg2.items(battle_chan)):
+                        if opt_key == key or opt_key.startswith(f"{slot}."):
+                            bcfg2.remove_option(battle_chan, opt_key)
+                except Exception:
+                    pass
+
+                try:
+                    if (bcfg2.get(battle_chan, "turn", fallback="") or "").strip() == key:
+                        ents = _sorted_entries(bcfg2, battle_chan)
+                        bcfg2.set(battle_chan, "turn", ents[0]["name"] if ents else "")
+                except Exception:
+                    pass
+
+                return True
+
+            results = []
+            for token in toks:
+                rec, err = _resolve_owned_minion(token)
+                if err == "ambiguous":
+                    ambig += 1
+                    continue
+                if not rec:
+                    missing += 1
+                    continue
+                nm, path, cfgm = rec
+
+                if subcmd == "release":
+                    try:
+                        if cfgm.has_option("info", "controller"):
+                            cfgm.remove_option("info", "controller")
+                        write_cfg(path, cfgm)
+                        changed += 1
+                        results.append(f"• **{nm}**: released (no longer controlled).")
+                        try:
+                            battle_chan = (get_compat(cfgm, "info", "battle_chan", fallback="") or "").strip()
+                            if bcfg and battle_chan and bcfg.has_section(battle_chan):
+                                try:
+                                    slot = _slot(nm)
+                                except Exception:
+                                    slot = nm.replace(" ", "_")
+                                for k in (f"{slot}.minion_by", f"{slot}.minion_type",
+                                          f"{slot}.controller", f"{slot}.owner", f"{slot}.summoner",
+                                          f"{slot}.hired_by", f"{slot}.hire_owner_id"):
+                                    if bcfg.has_option(battle_chan, k):
+                                        bcfg.remove_option(battle_chan, k)
+                                        battle_dirty = 1
+                        except Exception:
+                            pass
+                    except Exception:
+                        results.append(f"• **{nm}**: ❌ could not update file.")
+                    continue
+
+                # delete
+                battle_chan = (get_compat(cfgm, "info", "battle_chan", fallback="") or "").strip()
+                if bcfg and battle_chan and bcfg.has_section(battle_chan):
+                    if _remove_from_battle_section(bcfg, battle_chan, nm):
+                        removed_from_battles += 1
+
+                try:
+                    os.remove(os.path.abspath(path))
+                    changed += 1
+                    results.append(f"• **{nm}**: deleted. {(_chan_mention(battle_chan) + ' ') if battle_chan else ''}".rstrip())
+                except Exception:
+                    results.append(f"• **{nm}**: ❌ could not delete file.")
+
+            if bcfg and (removed_from_battles or battle_dirty):
+                try:
+                    _save_battles(bcfg)
+                except Exception:
+                    pass
+
+            msg = []
+            if results:
+                msg.extend(results[:25])
+                if len(results) > 25:
+                    msg.append(f"…and {len(results) - 25} more.")
+            if ambig:
+                msg.append(f"⚠️ {ambig} name(s) were ambiguous; use exact IDs (e.g., `SK1`).")
+            if missing:
+                msg.append(f"⚠️ {missing} name(s) not found among your controlled minions.")
+            await ctx.send("\n".join(msg) if msg else "Nothing changed.")
+            return
+
+        # LIST MODE
+        recs = all_recs
+        if filter_undead:
+            recs = [(nm, path, cfgm) for (nm, path, cfgm) in recs if _is_undead_cfg(cfgm, nm)]
+
+        total_hd_all = 0
+        total_hd_undead = 0
+        for nm, _p, cfgm in all_recs:
+            try:
+                hd = int(SpellsCog._hd_or_level_from_cfg(cfgm))
+            except Exception:
+                hd = getint_compat(cfgm, "cur", "level", fallback=1)
+            total_hd_all += max(1, int(hd or 1))
+            if _is_undead_cfg(cfgm, nm):
+                total_hd_undead += max(1, int(hd or 1))
+
+        title = ("🕯️ Undead Control" if filter_undead else "🧿 Minions")
+        embed = nextcord.Embed(
+            title=f"{title} — {caster_name}",
+            color=random.randint(0, 0xFFFFFF)
+        )
+
+        if not all_recs:
+            embed.description = "You don’t currently control any minions."
+        else:
+            embed.description = (
+                f"Controlled minions: **{len(all_recs)}**  •  Total HD: **{total_hd_all}**\n"
+                f"Undead HD: **{total_hd_undead}**  •  Common undead cap (6×level): **{total_hd_undead} / {6*max(1,int(caster_level or 1))}**"
+            )
+
+        if recs:
+            lines = []
+            for nm, path, cfgm in sorted(recs, key=lambda x: x[0].lower()):
+                try:
+                    hd = int(SpellsCog._hd_or_level_from_cfg(cfgm))
+                except Exception:
+                    hd = getint_compat(cfgm, "cur", "level", fallback=1)
+                cur_hp = getint_compat(cfgm, "cur", "hp", fallback=0)
+                max_hp = getint_compat(cfgm, "max", "hp", fallback=cur_hp)
+                mtype = (get_compat(cfgm, "info", "monster_type", fallback="") or "").strip()
+                summoned = (get_compat(cfgm, "info", "summoned", fallback="") or "").strip()
+                kind = mtype or summoned or "minion"
+                battle_chan = (get_compat(cfgm, "info", "battle_chan", fallback="") or "").strip()
+                where = _chan_mention(battle_chan)
+                lines.append(f"• **{nm}** — *{kind}* — HD **{hd}** — HP {cur_hp}/{max_hp}{(' ' + where) if where else ''}")
+
+            # chunk into fields (1024 limit)
+            chunk = ""
+            for ln in lines:
+                if len(chunk) + len(ln) + 1 > 1024:
+                    embed.add_field(name="Minions", value=chunk.rstrip(), inline=False)
+                    chunk = ""
+                chunk += ln + "\n"
+            if chunk:
+                embed.add_field(name="Minions" if not embed.fields else "Minions (cont.)", value=chunk.rstrip(), inline=False)
+        else:
+            if all_recs:
+                embed.add_field(name="Minions", value="(None match this filter.)", inline=False)
+
+        embed.set_footer(text="Manage: !minions release <id...>  |  Delete: !minions delete <id...> -y")
+
+        await ctx.send(embed=embed)
 
     async def _cast_conjureelemental(self, ctx, cfg, caster_name: str, caster_level: int, targets, *_extra, **_kw):
 
@@ -20667,7 +20988,7 @@ class SpellsCog(commands.Cog, name="Spells"):
         hd_budget_used  = 0
 
         control_cap = 6 * max(1, int(caster_level or 1))
-        control_used = _sum_controlled(caster_owner_id, caster_name)
+        control_used = self._sum_controlled_hd_global(caster_owner_id, caster_name, undead_only=True)
 
 
         head = f"🕯️ **Command Undead**"
@@ -23826,7 +24147,7 @@ class SpellsCog(commands.Cog, name="Spells"):
         hd_budget_used  = 0
 
         control_cap = 6 * level
-        control_used = _sum_controlled(caster_owner_id, caster_name)
+        control_used = self._sum_controlled_hd_global(caster_owner_id, caster_name, undead_only=True)
 
 
         rounds_ctrl = 6 * level
