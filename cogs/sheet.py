@@ -452,9 +452,35 @@ class SheetCog(commands.Cog):
     def _truthy(self, v) -> bool:
         return str(v).strip().lower() in {"$true", "true", "1", "yes", "y"}
 
-    def _item_is_shield(self, item: dict) -> bool:
-        flag = item.get("armor2") or item.get("ARMOR2") or item.get("Armor2")
-        return str(flag).strip().lower() in {"$true", "true", "yes", "y", "1"}
+    def _item_is_shield(self, item: dict, name: str = "") -> bool:
+        """Return True if this item should be treated as a shield.
+
+        Backwards-compatibility rules:
+          1) Explicit `armor2` flag (any common casing)
+          2) `type` field indicates shield (any common casing)
+          3) Fallback: the provided `name` contains 'shield'
+        """
+        try:
+            for k in ("armor2", "Armor2", "ARMOR2"):
+                if k in item:
+                    if str(item.get(k)).strip().lower() in {"$true", "true", "yes", "y", "1"}:
+                        return True
+                    break
+        except Exception:
+            pass
+
+        try:
+            typ = ""
+            for k in ("type", "Type", "TYPE", "shop_cat", "ShopCat", "SHOP_CAT"):
+                if k in item and str(item.get(k)).strip():
+                    typ = str(item.get(k)).strip().lower()
+                    break
+            if typ == "shield" or "shield" in typ:
+                return True
+        except Exception:
+            pass
+
+        return ("shield" in str(name).strip().lower()) if name else False
 
 
     def _item_lookup(self, name: str):
@@ -479,7 +505,7 @@ class SheetCog(commands.Cog):
         shield_bonus = 0
         if a2:
             _c2, it2 = self._item_lookup(a2)
-            if it2 and self._item_is_shield(it2):
+            if it2 and self._item_is_shield(it2, name=(_c2 or a2)):
                 try:
                     shield_bonus = int((it2.get("AC") or it2.get("ac") or "").strip() or "0")
                 except Exception:
@@ -880,6 +906,19 @@ class SheetCog(commands.Cog):
             except Exception: return None
         def _truthy(v) -> bool:
             return str(v).strip().lower() in {"$true","true","1","yes","y"}
+        def _is_shield(name: str) -> bool:
+            if not name:
+                return False
+            # explicit `armor2` flag (allow any common casing in item.lst)
+            for k in ("armor2", "Armor2", "ARMOR2"):
+                if _truthy(_item_get(name, k, "")):
+                    return True
+            # type field
+            typ = str(_item_get(name, "type", "") or _item_get(name, "Type", "") or "").strip().lower()
+            if "shield" in typ:
+                return True
+            # fallback: section name itself
+            return "shield" in str(name).strip().lower()
         def _safe_int(x, d=None):
             try: return int(str(x).strip())
             except Exception: return d
@@ -912,7 +951,7 @@ class SheetCog(commands.Cog):
                 except Exception:
                     return 1
 
-            if is_small and armor2 and _truthy(_item_get(armor2, "armor2", "")):
+            if is_small and armor2 and _is_shield(armor2):
                 # Prefer sword+shield staying valid by swapping Longsword -> Shortsword when available.
                 swapped = False
                 for i, w in enumerate(list(weapons)):
@@ -940,8 +979,8 @@ class SheetCog(commands.Cog):
 
         armor1_ac = _int_or_none(_item_get(armor1, "AC", None))
         shield_bonus = 0
-        if armor2 and _truthy(_item_get(armor2, "armor2", "")):
-            s_ac = _int_or_none(_item_get(armor2, "AC", None))
+        if armor2 and _is_shield(armor2):
+            s_ac = _int_or_none(_item_get(armor2, "AC", None) or _item_get(armor2, "ac", None))
             if s_ac is not None:
                 shield_bonus += s_ac
 
@@ -1634,7 +1673,7 @@ class SheetCog(commands.Cog):
                     if a2:
                         data2 = self.items.get(self._canon(a2), {})
                         def _truthy(v): return str(v).strip().lower() in {"$true","true","1","yes","y"}
-                        if _truthy(data2.get("armor2", "")):
+                        if self._item_is_shield(data2, name=a2):
                             try:
                                 shield_bonus = int(str(data2.get("AC", "0")).strip() or "0")
                             except Exception:
