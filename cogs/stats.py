@@ -682,7 +682,6 @@ class StatsCog(commands.Cog):
 
             ranger_block = _CLASS_CACHE.get("Ranger", {}) or _CLASS_CACHE.get("ranger", {})
 
-
             races_cfg = load_races("race.lst")
             race_data = {}
             if race:
@@ -691,14 +690,19 @@ class StatsCog(commands.Cog):
                         race_data = sec
                         break
 
-
             race_bonus_raw = {k.lower(): v for k, v in race_data.items()}
+
+            # 🔧 Accept either "track" or "tracking" in race.lst
+            if "track" in race_bonus_raw and "tracking" not in race_bonus_raw:
+                race_bonus_raw["tracking"] = race_bonus_raw["track"]
+
             race_bonus = {}
             for k in ("movesilently","hide","tracking"):
                 try:
                     race_bonus[k] = int(race_bonus_raw.get(k, 0))
                 except (TypeError, ValueError):
                     race_bonus[k] = 0
+
 
             ranger_labels = {
                 "movesilently": "Move Silently",
@@ -739,7 +743,6 @@ class StatsCog(commands.Cog):
         if char_class.lower() == "scout":
             scout_block = _CLASS_CACHE.get("Scout", {}) or _CLASS_CACHE.get("scout", {})
 
-
             races_cfg = load_races("race.lst")
             race_data = {}
             if race:
@@ -747,15 +750,21 @@ class StatsCog(commands.Cog):
                     if sec_name.lower() == race.lower():
                         race_data = sec
                         break
-            race_bonus_raw = {k.lower(): v for k, v in race_data.items()}
-            race_bonus = {}
 
+            race_bonus_raw = {k.lower(): v for k, v in race_data.items()}
+
+            # 🔧 Accept either "track" or "tracking" in race.lst
+            if "track" in race_bonus_raw and "tracking" not in race_bonus_raw:
+                race_bonus_raw["tracking"] = race_bonus_raw["track"]
+
+            race_bonus = {}
             for k in ("openlock","movesilently","climbwall","climb","hide","listen","tracking"):
                 kk = "climbwall" if k == "climb" else k
                 try:
                     race_bonus[kk] = int(race_bonus_raw.get(k, 0))
                 except (TypeError, ValueError):
                     race_bonus[kk] = 0
+
 
             scout_labels = {
                 "openlock":     "Open Locks",
@@ -1295,6 +1304,305 @@ class StatsCog(commands.Cog):
             pass
 
         await ctx.send(embed=embed)
+
+
+    # ---------------------------
+    # Bank helpers + commands
+    # ---------------------------
+
+    _COIN_TO_CP = {"pp": 1000, "gp": 100, "ep": 50, "sp": 10, "cp": 1}
+    _UNIT_MAP = {
+        "pp": "pp", "platinum": "pp", "plat": "pp",
+        "gp": "gp", "gold": "gp",
+        "ep": "ep", "electrum": "ep",
+        "sp": "sp", "silver": "sp",
+        "cp": "cp", "copper": "cp",
+    }
+
+    def _wallet_cp_section(self, cfg, section: str) -> int:
+        if not cfg.has_section(section):
+            return 0
+        pp = getint_compat(cfg, section, "pp", fallback=0)
+        gp = getint_compat(cfg, section, "gp", fallback=0)
+        ep = getint_compat(cfg, section, "ep", fallback=0)
+        sp = getint_compat(cfg, section, "sp", fallback=0)
+        cp = getint_compat(cfg, section, "cp", fallback=0)
+        return pp * 1000 + gp * 100 + ep * 50 + sp * 10 + cp
+
+    def _set_wallet_from_cp_section(self, cfg, section: str, total_cp: int) -> tuple[int, int, int, int, int]:
+        total_cp = max(0, int(total_cp or 0))
+        pp = total_cp // 1000
+        rem = total_cp % 1000
+        gp = rem // 100
+        rem = rem % 100
+        ep = rem // 50
+        rem = rem % 50
+        sp = rem // 10
+        cp = rem % 10
+
+        if not cfg.has_section(section):
+            cfg.add_section(section)
+        cfg.set(section, "pp", str(pp))
+        cfg.set(section, "gp", str(gp))
+        cfg.set(section, "ep", str(ep))
+        cfg.set(section, "sp", str(sp))
+        cfg.set(section, "cp", str(cp))
+        return pp, gp, ep, sp, cp
+
+    def _update_coin_weight_from_cur(self, cfg) -> float:
+        """Recompute eq.coin_weight based on [cur] only."""
+        pp = getint_compat(cfg, "cur", "pp", fallback=0)
+        gp = getint_compat(cfg, "cur", "gp", fallback=0)
+        ep = getint_compat(cfg, "cur", "ep", fallback=0)
+        sp = getint_compat(cfg, "cur", "sp", fallback=0)
+        cp = getint_compat(cfg, "cur", "cp", fallback=0)
+        coin_weight = (pp + gp + ep + sp + cp) * 0.02
+
+        if not cfg.has_section("eq"):
+            cfg.add_section("eq")
+        cfg.set("eq", "coin_weight", f"{coin_weight:.2f}")
+        return coin_weight
+
+    def _parse_amount_to_cp(self, raw: str, *, default_unit: str = "gp"):
+        """
+        Accepts:
+          - "all"
+          - "123"
+          - "123gp" / "123 gp"
+          - "12.34" (defaults to gp)
+          - "5pp" etc.
+        Returns:
+          - "ALL" sentinel, or int(cp)
+        """
+        raw = (raw or "").strip().lower()
+        if raw in {"all", "*"}:
+            return "ALL"
+
+        compact = raw.replace(" ", "")
+        m = re.fullmatch(r"(\d+(?:\.\d+)?)([a-z]+)?", compact)
+        if not m:
+            return None
+
+        amt_s, unit = m.groups()
+        unit = (unit or default_unit).strip().lower()
+        key = self._UNIT_MAP.get(unit)
+        if not key:
+            return None
+
+        try:
+            amt_dec = Decimal(amt_s)
+        except Exception:
+            return None
+
+        cp_per_unit = self._COIN_TO_CP[key]
+        raw_cp = (amt_dec * Decimal(cp_per_unit)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+        cp_amt = int(raw_cp)
+        return max(0, cp_amt)
+
+    def _fmt_wallet(self, pp: int, gp: int, ep: int, sp: int, cp: int) -> str:
+        return f"pp:{pp} gp:{gp} ep:{ep} sp:{sp} cp:{cp}"
+
+    def _wallet_breakdown(self, cfg, section: str) -> tuple[int, int, int, int, int, float]:
+        pp = getint_compat(cfg, section, "pp", fallback=0)
+        gp = getint_compat(cfg, section, "gp", fallback=0)
+        ep = getint_compat(cfg, section, "ep", fallback=0)
+        sp = getint_compat(cfg, section, "sp", fallback=0)
+        cp = getint_compat(cfg, section, "cp", fallback=0)
+        total_gp = (pp * 10) + gp + (ep * 0.5) + (sp * 0.1) + (cp * 0.01)
+        return pp, gp, ep, sp, cp, float(total_gp)
+
+    @commands.command(name="bank")
+    async def bank(self, ctx):
+        import random, nextcord
+
+        char_name = get_active(ctx.author.id)
+        if not char_name:
+            return await ctx.send("❌ No active character. Use `!char <name>` first.")
+
+        path = f"{char_name.replace(' ', '_')}.coe"
+        if not os.path.exists(path):
+            return await ctx.send(f"❌ Character file not found for **{char_name}**.")
+
+        cfg = read_cfg(path)
+        owner_id = get_compat(cfg, "info", "owner_id", fallback="")
+        if owner_id and owner_id != str(ctx.author.id):
+            return await ctx.send(f"❌ You do not own **{char_name}**.")
+
+        if not cfg.has_section("cur"):
+            cfg.add_section("cur")
+        if not cfg.has_section("bank"):
+            cfg.add_section("bank")
+
+        w_pp, w_gp, w_ep, w_sp, w_cp, w_total_gp = self._wallet_breakdown(cfg, "cur")
+        b_pp, b_gp, b_ep, b_sp, b_cp, b_total_gp = self._wallet_breakdown(cfg, "bank")
+
+        embed = nextcord.Embed(
+            title=f"🏦 {char_name}'s Bank",
+            color=random.randint(0, 0xFFFFFF),
+            description="Bank coins are stored off-person and **do not** count toward carried coin weight."
+        )
+
+        embed.add_field(
+            name="On-person (Coinpurse)",
+            value="\n".join([
+                f":pound: **{w_pp}** pp",
+                f":coin: **{w_gp}** gp",
+                f":euro: **{w_ep}** ep",
+                f":dollar: **{w_sp}** sp",
+                f":yen: **{w_cp}** cp",
+                f":purse: **{w_total_gp:.2f}** GP total",
+            ]),
+            inline=True
+        )
+
+        embed.add_field(
+            name="Bank Balance",
+            value="\n".join([
+                f":pound: **{b_pp}** pp",
+                f":coin: **{b_gp}** gp",
+                f":euro: **{b_ep}** ep",
+                f":dollar: **{b_sp}** sp",
+                f":yen: **{b_cp}** cp",
+                f":purse: **{b_total_gp:.2f}** GP total",
+            ]),
+            inline=True
+        )
+
+        embed.add_field(
+            name="Commands",
+            value="\n".join([
+                "`!deposit <amount>`  (defaults to gp; supports pp/gp/ep/sp/cp; decimals ok)",
+                "`!deposit all`",
+                "`!withdraw <amount>`",
+                "`!withdraw all`",
+                "Tip: buying/selling uses **on-person** coins; withdraw first if needed.",
+            ]),
+            inline=False
+        )
+
+        await ctx.send(embed=embed)
+
+    @commands.command(name="deposit")
+    async def deposit(self, ctx, *, amount: str = ""):
+        char_name = get_active(ctx.author.id)
+        if not char_name:
+            return await ctx.send("❌ No active character. Use `!char <name>` first.")
+
+        path = f"{char_name.replace(' ', '_')}.coe"
+        if not os.path.exists(path):
+            return await ctx.send(f"❌ Character file not found for **{char_name}**.")
+
+        cfg = read_cfg(path)
+        owner_id = get_compat(cfg, "info", "owner_id", fallback="")
+        if owner_id and owner_id != str(ctx.author.id):
+            return await ctx.send(f"❌ You do not own **{char_name}**.")
+
+        if not cfg.has_section("cur"):
+            cfg.add_section("cur")
+        if not cfg.has_section("bank"):
+            cfg.add_section("bank")
+
+        parsed = self._parse_amount_to_cp(amount, default_unit="gp")
+        if parsed is None or parsed == 0:
+            return await ctx.send("Usage: `!deposit <amount>` (e.g. `!deposit 250`, `!deposit 12.34gp`, `!deposit 3pp`, or `!deposit all`).")
+
+        old_eq_w, old_coin_w, old_total_w = self._weights_snapshot(cfg)
+
+        cur_cp = self._wallet_cp_section(cfg, "cur")
+        bank_cp = self._wallet_cp_section(cfg, "bank")
+
+        move_cp = cur_cp if parsed == "ALL" else int(parsed)
+        if move_cp <= 0:
+            return await ctx.send("❌ Amount must be positive.")
+        if move_cp > cur_cp:
+            short_gp = (move_cp - cur_cp) / 100.0
+            return await ctx.send(f"❌ Not enough on-person coins. Short by **{short_gp:.2f} gp**.")
+
+        new_cur = cur_cp - move_cp
+        new_bank = bank_cp + move_cp
+
+        w_pp, w_gp, w_ep, w_sp, w_cp = self._set_wallet_from_cp_section(cfg, "cur", new_cur)
+        b_pp, b_gp, b_ep, b_sp, b_cp = self._set_wallet_from_cp_section(cfg, "bank", new_bank)
+
+        new_coin_w = self._update_coin_weight_from_cur(cfg)
+
+        try: self._recompute_eq_weight(cfg)
+        except Exception: pass
+        try: self._recompute_move(cfg)
+        except Exception: pass
+
+        write_cfg(path, cfg)
+
+        new_eq_w, _cw, new_total_w = self._weights_snapshot(cfg)
+        amt_gp = move_cp / 100.0
+
+        await ctx.send(
+            f"🏦 **Deposited {amt_gp:.2f} gp** for **{char_name}**.\n"
+            f"On-person → {self._fmt_wallet(w_pp,w_gp,w_ep,w_sp,w_cp)} • Bank → {self._fmt_wallet(b_pp,b_gp,b_ep,b_sp,b_cp)}\n"
+            f"Weight: {self._fmt_w(old_total_w)} → **{self._fmt_w(new_total_w)}** "
+            f"(gear {self._fmt_w(old_eq_w)} → {self._fmt_w(new_eq_w)}, coins {self._fmt_coin_w(old_coin_w)} → {self._fmt_coin_w(new_coin_w)})"
+        )
+
+    @commands.command(name="withdraw")
+    async def withdraw(self, ctx, *, amount: str = ""):
+        char_name = get_active(ctx.author.id)
+        if not char_name:
+            return await ctx.send("❌ No active character. Use `!char <name>` first.")
+
+        path = f"{char_name.replace(' ', '_')}.coe"
+        if not os.path.exists(path):
+            return await ctx.send(f"❌ Character file not found for **{char_name}**.")
+
+        cfg = read_cfg(path)
+        owner_id = get_compat(cfg, "info", "owner_id", fallback="")
+        if owner_id and owner_id != str(ctx.author.id):
+            return await ctx.send(f"❌ You do not own **{char_name}**.")
+
+        if not cfg.has_section("cur"):
+            cfg.add_section("cur")
+        if not cfg.has_section("bank"):
+            cfg.add_section("bank")
+
+        parsed = self._parse_amount_to_cp(amount, default_unit="gp")
+        if parsed is None or parsed == 0:
+            return await ctx.send("Usage: `!withdraw <amount>` (e.g. `!withdraw 250`, `!withdraw 12.34gp`, `!withdraw 3pp`, or `!withdraw all`).")
+
+        old_eq_w, old_coin_w, old_total_w = self._weights_snapshot(cfg)
+
+        cur_cp = self._wallet_cp_section(cfg, "cur")
+        bank_cp = self._wallet_cp_section(cfg, "bank")
+
+        move_cp = bank_cp if parsed == "ALL" else int(parsed)
+        if move_cp <= 0:
+            return await ctx.send("❌ Amount must be positive.")
+        if move_cp > bank_cp:
+            short_gp = (move_cp - bank_cp) / 100.0
+            return await ctx.send(f"❌ Not enough in bank. Short by **{short_gp:.2f} gp**.")
+
+        new_bank = bank_cp - move_cp
+        new_cur = cur_cp + move_cp
+
+        w_pp, w_gp, w_ep, w_sp, w_cp = self._set_wallet_from_cp_section(cfg, "cur", new_cur)
+        b_pp, b_gp, b_ep, b_sp, b_cp = self._set_wallet_from_cp_section(cfg, "bank", new_bank)
+
+        new_coin_w = self._update_coin_weight_from_cur(cfg)
+
+        try: self._recompute_eq_weight(cfg)
+        except Exception: pass
+        try: self._recompute_move(cfg)
+        except Exception: pass
+
+        write_cfg(path, cfg)
+
+        new_eq_w, _cw, new_total_w = self._weights_snapshot(cfg)
+        amt_gp = move_cp / 100.0
+
+        await ctx.send(
+            f"💰 **Withdrew {amt_gp:.2f} gp** for **{char_name}**.\n"
+            f"On-person → {self._fmt_wallet(w_pp,w_gp,w_ep,w_sp,w_cp)} • Bank → {self._fmt_wallet(b_pp,b_gp,b_ep,b_sp,b_cp)}\n"
+            f"Weight: {self._fmt_w(old_total_w)} → **{self._fmt_w(new_total_w)}** "
+            f"(gear {self._fmt_w(old_eq_w)} → {self._fmt_w(new_eq_w)}, coins {self._fmt_coin_w(old_coin_w)} → {self._fmt_coin_w(new_coin_w)})"
+        )
 
 
 
