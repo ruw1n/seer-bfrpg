@@ -19,6 +19,7 @@ from cogs.initiative import (
     _load_battles, _parse_combatants, _write_combatants,
     _sorted_entries, _section_id, _format_tracker_block,
     _life_bar, _slot, _save_battles,
+    _group_init_enabled,
     _add_oil_burn, _apply_stoneskin_absorb, _choose_slot_for_effects,
     _find_ci_or_partial_name
 )
@@ -14971,11 +14972,7 @@ class Combat(commands.Cog):
                                 round_no = bcfg.getint(chan_id, "round", fallback=0)
                                 ini_score = scores.get(turn_name, 0)
 
-                                gi_on = False
-                                try:
-                                    gi_on = _group_init_enabled(bcfg, chan_id)
-                                except Exception:
-                                    gi_on = False
+                                gi_on = _group_init_enabled(bcfg, chan_id)
 
                                 if not gi_on:
                                     await ctx.send(
