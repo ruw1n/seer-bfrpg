@@ -16,6 +16,8 @@ if not TOKEN:
 # Enable the necessary intents
 intents = nextcord.Intents.default()
 intents.message_content = True  # Enable message content intent
+intents.members = True        # for adding/removing roles & on_member_join
+intents.reactions = True      # for reaction events
 
 # Initialize the bot with intents
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -33,6 +35,7 @@ initial_extensions = [
     "cogs.crafting",
     "cogs.strongholds",
     "cogs.npc",
+    "cogs.rpxp",
 ]
 
 # Event when the bot is ready
@@ -50,4 +53,3 @@ for ext in initial_extensions:
 
 
 bot.run(TOKEN)
-
