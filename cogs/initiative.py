@@ -6841,7 +6841,7 @@ class Initiative(commands.Cog):
         if msg_has_roll and pcs and mons:
             await ctx.send(
                 prefix +
-                f"🎲 **Group initiative (Round {round_num})**: PCs {pc_roll} vs MON {mon_roll} → {phase_label}\n"
+                f"⚔️ **Combat Round (Round {round_num})**: PCs {pc_roll} vs MON {mon_roll} → {phase_label}\n"
                 f"Use `!n` to switch phases.",
                 allowed_mentions=nextcord.AllowedMentions(users=True, roles=False, everyone=False),
             )
