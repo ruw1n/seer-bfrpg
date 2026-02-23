@@ -6847,7 +6847,7 @@ class Initiative(commands.Cog):
             )
         else:
             await ctx.send(
-                prefix + f"➡️ {phase_label} (Round {round_num})\nUse `!n` to switch phases.",
+                prefix + f"⚔️ **Combat Round (Round {round_num})** ➡️ {phase_label})\nUse `!n` to switch phases.",
                 allowed_mentions=nextcord.AllowedMentions(users=True, roles=False, everyone=False),
             )
 
