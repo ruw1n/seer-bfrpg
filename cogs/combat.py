@@ -385,6 +385,20 @@ def _sign(n: int) -> str:
     return f"+ {n}" if n >= 0 else f"- {abs(n)}"
 
     
+def _display_damage_spec(spec: str) -> str:
+    """For embeds only: hide non-damage rider tokens (e.g. 'disease') from the displayed dice spec.
+
+    Keeps the underlying spec intact for effect parsing.
+    """
+    s = str(spec or "").strip()
+    if not s:
+        return s
+    # Remove "disease" when used as a trailing rider after a dice expression (e.g. "1d4 disease").
+    s = re.sub(r"(?i)(\d+d\d+(?:\s*[+-]\s*\d+)?)(?:\s+disease\b)", r"\1", s)
+    s = re.sub(r"\s{2,}", " ", s).strip()
+    return s
+    
+    
 def _is_enchanted_for_items(self, chan_id: str, pretty_target: str) -> bool:
     try:
         bcfg = _load_battles()
@@ -6280,11 +6294,14 @@ class Combat(commands.Cog):
             elif sneak_applied: head = "🗡️ **SNEAK ATTACK!**"
             elif snipe_applied: head = "🏹 **SNIPER SHOT!**"
             elif charge_applied: head = "🏃 **CHARGE!**"
+            disp_spec = _display_damage_spec(dmg_spec)
 
             if head:
-                base_line = f"{head} {dmg_spec} {rolls_str}{mod_text} × {mult} = ``{display_base_total}``"
+                base_line = f"{head} {disp_spec} {rolls_str}{mod_text} × {mult} = ``{display_base_total}``"
+
             else:
-                base_line = f"{dmg_spec} {rolls_str}{mod_text} = ``{display_base_total}``"
+                base_line = f"{disp_spec} {rolls_str}{mod_text} = ``{display_base_total}``"
+
 
 
             final_damage = raw_for_mitigation
@@ -9023,7 +9040,8 @@ class Combat(commands.Cog):
         elif want_charge and hit:
             head = "🏃 **CHARGE!**"
 
-        formula = f"{dmg_spec} {rolls_str}{extra_txt}"
+        disp_spec = _display_damage_spec(dmg_spec)
+        formula = f"{disp_spec} {rolls_str}{extra_txt}"
         if mult > 1:
             formula += f" × {mult}"
         if growth_mult > 1:
