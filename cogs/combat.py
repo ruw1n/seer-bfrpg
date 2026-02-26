@@ -6296,9 +6296,9 @@ class Combat(commands.Cog):
             elif charge_applied: head = "🏃 **CHARGE!**"
             disp_spec = _display_damage_spec(dmg_spec)
 
+            disp_spec = _display_damage_spec(dmg_spec)
             if head:
                 base_line = f"{head} {disp_spec} {rolls_str}{mod_text} × {mult} = ``{display_base_total}``"
-
             else:
                 base_line = f"{disp_spec} {rolls_str}{mod_text} = ``{display_base_total}``"
 
@@ -11038,7 +11038,8 @@ class Combat(commands.Cog):
         elif want_charge and hit:
             head = "🏃 **CHARGE!**"
 
-        formula = f"{dmg_spec} {rolls_str}{extra_txt}"
+        disp_spec = _display_damage_spec(dmg_spec)
+        formula = f"{disp_spec} {rolls_str}{extra_txt}"
         if mult > 1:
             formula += f" × {mult}"
         if growth_mult > 1:
