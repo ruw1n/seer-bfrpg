@@ -1,5 +1,15 @@
 import os, re, json
+import datetime
+import random
+try:
+    from zoneinfo import ZoneInfo
+except Exception:
+    ZoneInfo = None
+
+from nextcord.ext import commands, tasks
+from utils.ini import read_cfg, write_cfg, get_compat
 from pathlib import Path
+import nextcord
 from nextcord.ext import commands
 from utils.players import (
     list_chars,
@@ -8,6 +18,33 @@ from utils.players import (
     owns_char,
     get_active,
 )
+
+# Guild → welcome channel mapping (fill in with your IDs)
+WELCOME_CHANNELS: dict[int, int] = {
+    # guild_id: welcome_channel_id
+    1438386489443745947: 1438568030610395206
+}
+
+BIRTHDAY_CHANNELS: dict[int, int] = {
+    # guild_id: channel_id   (optional)
+    # 1438386489443745947: 123456789012345678,
+}
+
+# Guild → Rules/reaction-role binding
+REACTION_RULES = {
+    1438386489443745947: {  # your server (guild) ID
+        1438640654677966989: {  # first message
+            "role_id": 1438672067745550488,  # “Adventurer” role
+            "emoji": "✅",
+        },
+        1438966689621610596: {  # second message
+            "role_id": 1438966207423184956,
+            "emoji": "👋",
+        },
+    },
+}
+
+
 
 PLAYERS_JSON = os.path.join("data", "players.json")
 
@@ -130,11 +167,224 @@ def _resolve_partial_any(candidates: list[str], token: str) -> tuple[str | None,
         return None, ties[:8]
     return None, []
 
+def _ct_now():
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if ZoneInfo:
+        return now.astimezone(ZoneInfo("America/Chicago"))
+    return now
+
+def _parse_mmdd(s: str) -> str | None:
+    raw = (s or "").strip()
+    if not raw:
+        return None
+
+    # normalize common Unicode dashes to ASCII hyphen
+    raw = raw.translate(str.maketrans({
+        "–": "-",  # en dash
+        "—": "-",  # em dash
+        "−": "-",  # minus sign
+        "-": "-",  # non-breaking hyphen
+        "‒": "-",  # figure dash
+        "‐": "-",  # hyphen
+    }))
+
+    raw = raw.replace("/", "-")
+
+    try:
+        parts = raw.split("-")
+        if len(parts) == 2:
+            m = int(parts[0]); d = int(parts[1])
+            datetime.date(2001, m, d)
+            return f"{m:02d}-{d:02d}"
+    except Exception:
+        pass
+    # allow "Feb 26" / "February 26"
+    for fmt in ("%b %d", "%B %d"):
+        try:
+            dt = datetime.datetime.strptime(raw, fmt)
+            return f"{dt.month:02d}-{dt.day:02d}"
+        except Exception:
+            continue
+    return None
+
+def _char_file_from_name(name: str) -> str:
+    # simple local resolution (matches your zap() candidates idea)
+    n = (name or "").strip()
+    cands = [
+        f"{n}.coe",
+        f"{n.replace(' ', '_')}.coe",
+        f"{n.lower().replace(' ', '_')}.coe",
+    ]
+    for p in cands:
+        if os.path.exists(p):
+            return p
+    return cands[1]  # default guess
+
+def _inv_add_stack_cfg(cfg, token: str, qty: int = 1):
+    import re
+    token = re.sub(r"\s+", "", (token or "").strip())
+    if not token:
+        return
+    if not cfg.has_section("item"):
+        cfg.add_section("item")
+    storage = (get_compat(cfg, "item", "storage", fallback="") or "").split()
+    if token.lower() not in {t.lower() for t in storage}:
+        storage.append(token)
+        cfg.set("item", "storage", " ".join(storage))
+    key = token.lower()
+    try:
+        cur = int(cfg.get("item", key, fallback="0") or "0")
+    except Exception:
+        cur = 0
+    cfg.set("item", key, str(cur + max(1, int(qty))))
+    
 
 class Players(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: nextcord.Member):
+        """
+        Fires whenever someone joins a guild where this bot is present.
+        Sends a welcome message to the configured welcome channel.
+        """
+        # Ignore bots if you don’t want to welcome them
+        if member.bot:
+            return
+
+        guild = member.guild
+        if guild is None:
+            return
+
+        # Look up the welcome channel for this guild
+        chan_id = WELCOME_CHANNELS.get(guild.id)
+        channel = None
+        if chan_id:
+            channel = guild.get_channel(chan_id)
+
+        # If we didn't configure a channel, try to be smart:
+        if channel is None:
+            # Try a channel literally named 'welcome' or 'introductions'
+            for ch in guild.text_channels:
+                if ch.name.lower() in {"welcome", "introductions", "start-here"}:
+                    channel = ch
+                    break
+
+        if channel is None:
+            return  # nowhere to send it
+
+        # Try to resolve the special channels by name so we can use proper mentions
+        verify_chan = next((c for c in guild.text_channels if c.name.lower() in {"verify", "verification"}), None)
+        rules_chan = next((c for c in guild.text_channels if c.name.lower() == "rules"), None)
+        world_guide_chan = next((c for c in guild.text_channels if c.name.lower() == "world-guide"), None)
+        bot_guide_chan = next((c for c in guild.text_channels if c.name.lower() == "bot-guide"), None)
+
+        verify_mention = verify_chan.mention if verify_chan else "#verify"
+        rules_mention = rules_chan.mention if rules_chan else "#rules"
+        world_guide_mention = world_guide_chan.mention if world_guide_chan else "#world-guide"
+        bot_guide_mention = bot_guide_chan.mention if bot_guide_chan else "#bot-guide"
+
+        # Public welcome message
+        await channel.send(
+            f"🪙⚔️ Welcome, {member.mention}!\n"
+            f"👉 **First, go to {verify_mention} and verify yourself** to unlock the server.\n"
+            f"Then please read {rules_mention} and follow the steps to get started.\n"
+            f"If you’d like to play, check {world_guide_mention} and {bot_guide_mention}."
+        )
+
+
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload: nextcord.RawReactionActionEvent):
+        """
+        Give a role when a user reacts to one of the configured reaction-role messages.
+        """
+        # Only care about guild reactions
+        if payload.guild_id is None:
+            return
+
+        guild_rules = REACTION_RULES.get(payload.guild_id)
+        if not guild_rules:
+            return
+
+        # Look up config for THIS message
+        msg_cfg = guild_rules.get(payload.message_id)
+        if not msg_cfg:
+            return  # this message isn't watched
+
+        # Ignore bot reactions
+        if self.bot.user and payload.user_id == self.bot.user.id:
+            return
+
+        emoji_str = str(payload.emoji)
+        if emoji_str != msg_cfg.get("emoji"):
+            return  # wrong emoji
+
+        guild = self.bot.get_guild(payload.guild_id)
+        if guild is None:
+            return
+
+        role = guild.get_role(msg_cfg.get("role_id"))
+        if role is None:
+            return
+
+        # payload.member is usually set on add; fallback just in case
+        member = payload.member or guild.get_member(payload.user_id)
+        if member is None or member.bot:
+            return
+
+        try:
+            if role not in member.roles:
+                await member.add_roles(role, reason="Reaction role (joined via reaction).")
+        except Exception:
+            # optional: log here
+            pass
+
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_remove(self, payload: nextcord.RawReactionActionEvent):
+        """
+        Optionally remove the role if the user removes their reaction.
+        """
+        if payload.guild_id is None:
+            return
+
+        cfg = REACTION_RULES.get(payload.guild_id)
+        if not cfg:
+            return
+
+        if payload.message_id != cfg.get("message_id"):
+            return
+
+        # Ignore bot users
+        if payload.user_id == self.bot.user.id:
+            return
+
+        emoji_str = str(payload.emoji)
+        if emoji_str != cfg.get("emoji"):
+            return
+
+        guild = self.bot.get_guild(payload.guild_id)
+        if guild is None:
+            return
+
+        role = guild.get_role(cfg.get("role_id"))
+        if role is None:
+            return
+
+        member = guild.get_member(payload.user_id)
+        if member is None or member.bot:
+            return
+
+        # Remove the role if they had it
+        try:
+            if role in member.roles:
+                await member.remove_roles(role, reason="Removed rules reaction.")
+        except Exception:
+            pass
+            
     @commands.command(name="char")
     async def char(self, ctx, *, char_name: str = None):
         """
@@ -302,6 +552,206 @@ class Players(commands.Cog):
             f"📘 Registry updated. {active_note}"
         )
 
+
+    @tasks.loop(minutes=10)
+    async def bday_daily_check(self):
+        now_ct = _ct_now()
+        today = now_ct.strftime("%m-%d")
+        if self._bday_last_mmdd == today:
+            return
+        self._bday_last_mmdd = today
+
+        reg = _load_players_registry()
+        if not reg:
+            return
+
+        # Find users whose birthday is today
+        todays = []
+        for uid, entry in reg.items():
+            if (entry.get("birthday_md") or "") == today:
+                todays.append(int(uid))
+
+        if not todays:
+            return
+
+        # Announce + DM
+        for guild in self.bot.guilds:
+            chan_id = BIRTHDAY_CHANNELS.get(guild.id)
+            channel = guild.get_channel(chan_id) if chan_id else None
+            for uid in todays:
+                member = guild.get_member(uid)
+                if not member:
+                    continue
+
+                # DM reminder (best-effort)
+                try:
+                    await member.send("🎂 It’s your birthday today! Use `!bday claim` in the server to open your birthday gift.")
+                except Exception:
+                    pass
+
+                # Public announce (optional)
+                if channel:
+                    try:
+                        await channel.send(f"🎉 Happy birthday, {member.mention}! 🎂")
+                    except Exception:
+                        pass
+
+    @bday_daily_check.before_loop
+    async def _before_bday_daily_check(self):
+        await self.bot.wait_until_ready()
+
+
+    @commands.group(name="bday", aliases=["birthday"], invoke_without_command=True)
+    async def bday(self, ctx):
+        reg = _load_players_registry()
+        entry = reg.get(str(ctx.author.id), {})
+        md = entry.get("birthday_md")
+        if md:
+            await ctx.send(f"🎂 Your birthday is set to **{md}** (MM-DD). Use `!bday claim` on that day for your gift.")
+        else:
+            await ctx.send("🎂 You don’t have a birthday set. Use `!bday set MM-DD` (example: `!bday set 02-26`).")
+
+    @bday.command(name="set")
+    async def bday_set(self, ctx, *, when: str):
+        md = _parse_mmdd(when)
+        if not md:
+            await ctx.send("❌ Couldn’t parse that date. Use `MM-DD` (example: `!bday set 02-26`).")
+            return
+        reg = _load_players_registry()
+        entry = reg.get(str(ctx.author.id), {})
+        entry["birthday_md"] = md
+        reg[str(ctx.author.id)] = entry
+        _atomic_write_json(PLAYERS_JSON, reg)
+        await ctx.send(f"✅ Birthday set to **{md}**. I’ll DM you a reminder on the day.")
+
+    @bday.command(name="clear")
+    async def bday_clear(self, ctx):
+        reg = _load_players_registry()
+        entry = reg.get(str(ctx.author.id), {})
+        entry.pop("birthday_md", None)
+        reg[str(ctx.author.id)] = entry
+        _atomic_write_json(PLAYERS_JSON, reg)
+        await ctx.send("🧹 Cleared your birthday setting.")
+
+    @bday.command(name="claim")
+    async def bday_claim(self, ctx, *, char_name: str = ""):
+        now_ct = _ct_now()
+        today = now_ct.strftime("%m-%d")
+        year = now_ct.year
+
+        reg = _load_players_registry()
+        entry = reg.get(str(ctx.author.id), {})
+        md = entry.get("birthday_md")
+
+        if not md:
+            await ctx.send("❌ You don’t have a birthday set. Use `!bday set MM-DD` first.")
+            return
+        if md != today:
+            await ctx.send(f"🎂 Your birthday is set to **{md}**, but today is **{today}** (America/Chicago).")
+            return
+
+        if int(entry.get("bday_last_claim_year") or 0) == year:
+            await ctx.send(f"🎁 You already claimed your birthday gift for **{year}**.")
+            return
+
+        # Resolve character
+        if not char_name.strip():
+            char_name = get_active(ctx.author.id) or ""
+        if not char_name:
+            await ctx.send("❌ No active character. Use `!char <name>` or `!bday claim <char>`.")
+            return
+
+        path = _char_file_from_name(char_name)
+        if not os.path.exists(path):
+            await ctx.send(f"❌ Character file not found: `{path}`")
+            return
+
+        cfg = read_cfg(path)
+
+        # Simple, safe gift table (tweak freely)
+        roll = random.randint(1, 100)
+        gp = 0
+        items = []
+
+        if roll <= 60:
+            gp = random.randint(4, 12) * 100  # 400–1200 gp
+        elif roll <= 90:
+            items.append(("Healing", 2))
+            gp = 250
+        elif roll <= 99:
+            items.append(("Speed", 2))
+            gp = 500
+        else:
+            items.append(("RareVoucher", 1))
+
+        if gp:
+            if not cfg.has_section("cur"):
+                cfg.add_section("cur")
+            try:
+                cur_gp = int(str(get_compat(cfg, "cur", "gp", fallback="0")) or "0")
+            except Exception:
+                cur_gp = 0
+            cfg.set("cur", "gp", str(cur_gp + gp))
+
+        for tok, qty in items:
+            _inv_add_stack_cfg(cfg, tok, qty)
+
+        write_cfg(path, cfg)
+
+        entry["bday_last_claim_year"] = year
+        reg[str(ctx.author.id)] = entry
+        _atomic_write_json(PLAYERS_JSON, reg)
+
+        lines = [f"🎲 d100 → **{roll:02d}**", f"👤 **{char_name}**"]
+        if gp:
+            lines.append(f"🪙 + **{gp} gp**")
+        if items:
+            lines.append("🎁 " + ", ".join(f"{t}×{q}" for t, q in items))
+        await ctx.send("🎂 **Birthday Gift Claimed!**\n" + "\n".join(lines))
+
+    @bday.command(name="upcoming")
+    async def bday_upcoming(self, ctx, days: int = 30):
+        days = max(1, min(int(days or 30), 365))
+        now_ct = _now_ct_from_ctx(ctx)
+        today = now_ct.date()
+
+        reg = _load_players_registry()
+        upcoming = []
+
+        # Only list members in *this* guild who opted in
+        for m in ctx.guild.members:
+            if m.bot:
+                continue
+            entry = reg.get(str(m.id), {})
+            md = entry.get("birthday_md")
+            if not md:
+                continue
+
+            nxt = _next_occurrence(today, md)
+            delta = (nxt - today).days
+            if delta <= days:
+                upcoming.append((delta, nxt, m.display_name, m.id))
+
+        if not upcoming:
+            await ctx.send(f"📅 No birthdays set in the next **{days}** days.\n(Players can opt in with `!bday set MM-DD`.)")
+            return
+
+        upcoming.sort(key=lambda t: (t[0], t[2].lower()))
+        lines = []
+        for delta, dt, name, _uid in upcoming[:40]:
+            label = "today" if delta == 0 else f"in {delta}d"
+            pretty = f"{dt.strftime('%b')} {dt.day}"
+            lines.append(f"• **{pretty}** ({label}) — {name}")
+
+        extra = len(upcoming) - min(len(upcoming), 40)
+        more = f"\n… and **{extra}** more." if extra > 0 else ""
+
+        await ctx.send(
+            f"🎉 **Upcoming birthdays (next {days} days, America/Chicago):**\n"
+            + "\n".join(lines)
+            + more,
+            allowed_mentions=nextcord.AllowedMentions.none(),
+        )
+
 def setup(bot):
     bot.add_cog(Players(bot))
-
