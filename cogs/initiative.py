@@ -9552,6 +9552,23 @@ class Initiative(commands.Cog):
             value=f"{expl_clock} rounds (≈ {expl_clock // 60} turns)",
             inline=False,
         )
+
+        # Group-init only: remind players what they can do on an exploration turn.
+        if gi_on:
+            embed.add_field(
+                name="What PCs can do now",
+                value=(
+                    "Per exploration turn, each PC may move up to **3×** their normal movement rate.\n"
+                    "\n"
+                    "Things you can do now:\n"
+                    "• `!door` to search for secret doors\n"
+                    "• `!trap` to search for traps\n"
+                    "• `!s listen` (or another thief skill)\n"
+                    "• RP: search for something else, map the area, devise a trap, set night watch, wait in ambush, etc."
+                ),
+                inline=False,
+            )
+        
         if not expired_by_label:
             embed.add_field(name="Expired effects", value="None this time.", inline=False)
         else:
