@@ -17944,7 +17944,7 @@ med=30
 long=50
 type=fire
 stat=dex
-desc=A flask of oil can be used as a grenade-like missile. The oil must be set afire in order to inflict damage; otherwise the oil is just slipepry. Assuming some means of igniting the oil is at hand, a direct hit to a creature deals 1d8 points of fire damage, plus in the next round the target takes an additional 1d8 points of damage. If the oil is ignited by some sort of wick or fuse, then all other creatures within 5 feet of the point of impact receive 1d6 points of fire damage from the splash. A save vs. Death Ray is allowed to avoid this damage.//A flask of oil spilled or splattered on the ground will burn for 10 rounds. Those attempting to cross the burning oil will receive 1d6 points of damage each round they are in it (with no saving throw in this case).
+desc=A flask of oil can be used as a grenade-like missile. The oil must be set afire in order to inflict damage; otherwise the oil is just slippery. Assuming some means of igniting the oil is at hand, a direct hit to a creature deals 1d8 points of fire damage, plus in the next round the target takes an additional 1d8 points of damage. If the oil is ignited by some sort of wick or fuse, then all other creatures within 5 feet of the point of impact receive 1d6 points of fire damage from the splash. A save vs. Death Ray is allowed to avoid this damage.//A flask of oil spilled or splattered on the ground will burn for 10 rounds. Those attempting to cross the burning oil will receive 1d6 points of damage each round they are in it (with no saving throw in this case).
 
 [HolyWater]
 price=10
