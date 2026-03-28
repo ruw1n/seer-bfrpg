@@ -524,6 +524,23 @@ def _monster_profile(name: str) -> dict:
 
     return out
 
+def _list_monster_templates() -> list[str]:
+    """Return all monster template basenames from MONSTER_DIR (without .ini)."""
+    if not os.path.isdir(MONSTER_DIR):
+        return []
+
+    out: list[str] = []
+    for fn in os.listdir(MONSTER_DIR):
+        if fn.lower().endswith(".ini"):
+            out.append(fn[:-4])
+
+    return sorted(out, key=lambda s: s.lower())
+
+
+def _resolve_monster_template_name(token: str) -> tuple[str | None, list[str]]:
+    """Resolve a monster template by exact/prefix/substring match."""
+    return _find_ci_or_partial_name(_list_monster_templates(), token)
+    
 async def _maybe_dm_monster_attacks(self, ctx, cfg, chan_id: str, who: str):
     """
     If enabled and 'who' is a monster, DM the DM an embed with
@@ -2814,6 +2831,7 @@ def _format_tracker_block(cfg, chan_id: str):
         return None
 
     gi_on = _group_init_enabled(cfg, chan_id)
+    party_owner_ids = set(_party_owner_ids_from_initiative(cfg, chan_id))
     lines = [header]
     for ent in entries:
         name = ent["name"]
@@ -3262,6 +3280,29 @@ def _format_tracker_block(cfg, chan_id: str):
         if eff_str is not None and eff_str <= 2:
             tail += " • [COLLAPSED]"
 
+        # Mark player-controlled monsters clearly in !list.
+        try:
+            is_monster = (
+                pcfg is not None and
+                (get_compat(pcfg, "info", "class", fallback="") or "").strip().lower() == "monster"
+            )
+        except Exception:
+            is_monster = False
+
+        if is_monster:
+            controller_name = (cfg.get(chan_id, f"{slot}.minion_by", fallback="") or "").strip()
+            if not controller_name:
+                try:
+                    controller_name = (get_compat(pcfg, "info", "controller", fallback="") or "").strip()
+                except Exception:
+                    controller_name = ""
+
+            hostile = cfg.getint(chan_id, f"{slot}.hostile", fallback=0) > 0
+
+            # Only mark allies if the monster was explicitly assigned to a controller.
+            if controller_name and not hostile:
+                tail += f" • [ALLY {controller_name}]"
+                    
         lines.append(f"{prefix}{str(init_val):>2}: {disp}{tail}")
 
     return "\n".join(lines)
@@ -5677,6 +5718,152 @@ class Initiative(commands.Cog):
         except Exception:
             await ctx.send("⚠️ I couldn't DM you. Enable DMs from server members, or ask the GM to use `!mc`.")
 
+    @commands.command(name="monsters")
+    async def monsters_folder(self, ctx, *args):
+        """
+        List monster template files in the monsters folder.
+
+        Usage:
+          !monsters
+          !monsters 2
+          !monsters dragon
+          !monsters 2 dragon
+        """
+        toks = [str(a).strip() for a in args if str(a).strip()]
+        page = 1
+
+        if toks and toks[0].isdigit():
+            page = max(1, int(toks.pop(0)))
+
+        query = " ".join(toks).strip()
+
+        names = _list_monster_templates()
+        if query:
+            q = query.lower().replace("_", " ")
+            names = [n for n in names if q in n.lower().replace("_", " ")]
+
+        if not names:
+            suffix = f" matching `{query}`" if query else ""
+            await ctx.send(f"❌ No monster templates found{suffix}.")
+            return
+
+        per_page = 24
+        total_pages = max(1, math.ceil(len(names) / per_page))
+        page = min(page, total_pages)
+
+        start = (page - 1) * per_page
+        chunk = names[start:start + per_page]
+
+        mid = math.ceil(len(chunk) / 2)
+        left = "\n".join(f"`{name}`" for name in chunk[:mid]) or "—"
+        right = "\n".join(f"`{name}`" for name in chunk[mid:]) or "—"
+
+        desc = f"Found **{len(names)}** template(s)"
+        if query:
+            desc += f" matching `{query}`"
+        desc += f". Showing page **{page}/{total_pages}**."
+
+        embed = nextcord.Embed(
+            title="👹 Monster Files",
+            description=desc,
+            color=random.randint(0, 0xFFFFFF),
+        )
+        embed.add_field(name="Files", value=left, inline=True)
+        embed.add_field(name="Files (cont.)", value=right, inline=True)
+        embed.set_footer(text="Use !monster <name> to inspect one template.")
+        await ctx.send(embed=embed)
+
+
+    @commands.command(name="monster", aliases=["mstat", "mview"])
+    async def monster_template_card(self, ctx, *, who: str):
+        """
+        Show the stats for a monster template in the monsters folder.
+
+        Usage:
+          !monster giantrat
+          !monster stormgiant
+        """
+        if not who or not str(who).strip():
+            await ctx.send("Usage: `!monster <name>`")
+            return
+
+        resolved, amb = _resolve_monster_template_name(who)
+        if amb:
+            await ctx.send("❌ Ambiguous. Did you mean: " + ", ".join(f"`{n}`" for n in amb[:12]))
+            return
+        if not resolved:
+            await ctx.send(f"❌ Monster template '{who}' not found. Use `!monsters`.")
+            return
+
+        path = _ci_find_monster_ini(resolved)
+        if not path or not os.path.exists(path):
+            await ctx.send(f"❌ Could not open template for **{resolved}**.")
+            return
+
+        cfg = read_cfg(path)
+        prof = _monster_profile(resolved)
+
+        def _b(key: str, default: str = "—") -> str:
+            val = (get_compat(cfg, "base", key, fallback="") or "").strip()
+            return val if val else default
+
+        hd = _b("hd")
+        hpmod = _b("hpmod", "0")
+        hd_show = hd
+        try:
+            hpmod_i = int(float(hpmod))
+            if hpmod_i > 0:
+                hd_show = f"{hd}+{hpmod_i}"
+            elif hpmod_i < 0:
+                hd_show = f"{hd}{hpmod_i}"
+        except Exception:
+            pass
+
+        atk_lines = [f"• **{nm}** — `{dice}`" for (nm, dice) in (prof.get("attacks") or [])]
+        spl_lines = [f"• **{sname}** ×{uses}" for (sname, uses) in (prof.get("spells") or [])]
+        special_txt = (prof.get("special") or _b("special", "")).strip()
+
+        embed = nextcord.Embed(
+            title=f"👹 Monster Template: {resolved}",
+            description=f"Spawn with `!mon {resolved}`",
+            color=random.randint(0, 0xFFFFFF),
+        )
+
+        if prof.get("attacks_per_turn") is not None:
+            embed.add_field(name="Attacks/Round", value=str(prof["attacks_per_turn"]), inline=True)
+
+        embed.add_field(name="AC", value=_b("ac"), inline=True)
+        embed.add_field(name="HD", value=hd_show, inline=True)
+        embed.add_field(name="Move", value=_b("move"), inline=True)
+        embed.add_field(name="Save As", value=_b("saveas"), inline=True)
+        embed.add_field(name="Morale", value=_b("morale"), inline=True)
+        embed.add_field(name="XP", value=_b("xp"), inline=True)
+        embed.add_field(name="Type", value=_b("type"), inline=True)
+        embed.add_field(name="Treasure", value=_b("treasure"), inline=True)
+        embed.add_field(name="Appearing", value=_b("appearing"), inline=True)
+
+        if atk_lines:
+            atk_text = "\n".join(atk_lines)
+            if len(atk_text) > 1000:
+                atk_text = atk_text[:990].rstrip() + "\n…"
+            embed.add_field(name="Attacks", value=atk_text, inline=False)
+        else:
+            embed.add_field(name="Attacks", value="_No named attacks found._", inline=False)
+
+        if spl_lines:
+            spl_text = "\n".join(spl_lines)
+            if len(spl_text) > 1000:
+                spl_text = spl_text[:990].rstrip() + "\n…"
+            embed.add_field(name="Spells", value=spl_text, inline=False)
+
+        if special_txt:
+            if len(special_txt) > 1000:
+                special_txt = special_txt[:990].rstrip() + "\n…"
+            embed.add_field(name="Special", value=special_txt, inline=False)
+
+        embed.set_footer(text=f"Source: {os.path.basename(path)}")
+        await ctx.send(embed=embed)
+        
     @commands.command(name="init")
     async def start_battle(self, ctx):
         cfg = _load_battles()
