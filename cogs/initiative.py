@@ -15,6 +15,17 @@ from utils.players import get_active, set_active, add_char
 from utils.ini import read_cfg, get_compat, getint_compat, write_cfg
 from pathlib import Path
 
+HEXCRAWL_FILE = "hexcrawl_state.lst"
+
+def _hx_tracker_weather(chan_id: str):
+    cfg = configparser.ConfigParser()
+    cfg.optionxform = str
+    cfg.read(HEXCRAWL_FILE)
+    if not cfg.has_section(chan_id):
+        return None, 0
+    desc = cfg.get(chan_id, "weather_desc", fallback="").strip()
+    vis = cfg.getint(chan_id, "weather_vis", fallback=0)
+    return (desc or None), vis
 MONSTER_DIR = "./monsters"
 
 _X_SKIP_GENERIC = {
@@ -2833,6 +2844,9 @@ def _format_tracker_block(cfg, chan_id: str):
     gi_on = _group_init_enabled(cfg, chan_id)
     party_owner_ids = set(_party_owner_ids_from_initiative(cfg, chan_id))
     lines = [header]
+    wx_desc, wx_vis = _hx_tracker_weather(chan_id)
+    if wx_desc:
+        lines.append(f"Weather: {wx_desc} • vis {wx_vis:+d}")
     for ent in entries:
         name = ent["name"]
         init_val = ent.get("init", ent.get("score", "-"))
