@@ -10219,6 +10219,164 @@ class Combat(commands.Cog):
 
         
         tokens = [t for t in re.split(r"\s+", (opts or "").strip()) if t]
+
+        repeat_times = 1
+        cleaned_tokens = []
+        i = 0
+        while i < len(tokens):
+            tok = tokens[i].lower()
+
+            if tok in ("-rr", "-repeat", "-attacks"):
+                if i + 1 < len(tokens):
+                    try:
+                        repeat_times = max(1, min(10, int(tokens[i + 1])))
+                    except Exception:
+                        repeat_times = 1
+                    i += 2
+                    continue
+                else:
+                    repeat_times = 1
+                    i += 1
+                    continue
+
+            cleaned_tokens.append(tokens[i])
+            i += 1
+
+        tokens = cleaned_tokens
+
+        # aggregate repeat mode: run the same AoO multiple times, but post one embed
+        if repeat_times > 1:
+            clean_opts = " ".join(tokens)
+
+            class _CaptureCtx:
+                def __init__(self, real_ctx):
+                    self._real = real_ctx
+                    self.embeds = []
+                    self.text = []
+
+                def __getattr__(self, name):
+                    return getattr(self._real, name)
+
+                async def send(self, *args, **kwargs):
+                    emb = kwargs.get("embed")
+                    if emb is not None:
+                        self.embeds.append(emb)
+                        return None
+
+                    content = kwargs.get("content")
+                    if content is None and args:
+                        content = args[0]
+
+                    if content:
+                        self.text.append(str(content))
+                    return None
+
+            def _first_field(embed_obj, field_name: str) -> str | None:
+                wanted = field_name.strip().lower()
+                for f in getattr(embed_obj, "fields", []):
+                    if str(f.name).strip().lower() == wanted:
+                        return str(f.value)
+                return None
+
+            def _summarize_child_embed(embed_obj) -> str:
+                parts = []
+
+                attack_roll = _first_field(embed_obj, "Attack roll")
+                result_val = _first_field(embed_obj, "Result")
+                damage_val = _first_field(embed_obj, "Damage")
+                hp_val = _first_field(embed_obj, "Target HP")
+
+                if attack_roll:
+                    parts.append(f"**Attack roll**\n{attack_roll}")
+                if result_val:
+                    parts.append(f"**Result**\n{result_val}")
+                if damage_val:
+                    parts.append(f"**Damage**\n{damage_val}")
+                if hp_val:
+                    parts.append(f"**Target HP**\n{hp_val}")
+
+                skip = {"attack roll", "result", "damage", "target hp", "bonuses", "\u200b"}
+                for f in getattr(embed_obj, "fields", []):
+                    nm = str(f.name).strip()
+                    if not nm or nm.lower() in skip:
+                        continue
+                    parts.append(f"**{nm}**\n{f.value}")
+
+                text = "\n".join(parts).strip() or "—"
+                if len(text) > 1000:
+                    text = text[:997] + "..."
+                return text
+
+            first_embed = None
+            repeat_note = None
+            shot_summaries = []
+
+            for idx in range(1, repeat_times + 1):
+                cur_tgt_name, cur_tgt_path = _resolve_char_ci(target)
+                if not cur_tgt_path:
+                    if idx == 1:
+                        await ctx.send(f"❌ Target '{target}' not found.")
+                    else:
+                        repeat_note = f"⛔ Target missing before repeat #{idx}."
+                    break
+
+                cur_tgt_cfg = read_cfg(cur_tgt_path)
+                cur_hp = getint_compat(cur_tgt_cfg, "cur", "hp", fallback=0)
+                if cur_hp <= 0:
+                    repeat_note = f"⛔ **{target}** is already down — stopping repeats at **{idx - 1}/{repeat_times}**."
+                    break
+
+                capture_ctx = _CaptureCtx(ctx)
+                await self.attack_of_opportunity(capture_ctx, attacker, target, opts=clean_opts)
+
+                if capture_ctx.text:
+                    repeat_note = capture_ctx.text[-1]
+                    break
+
+                if not capture_ctx.embeds:
+                    repeat_note = f"⚠️ No result embed was produced for attack #{idx}."
+                    break
+
+                child = capture_ctx.embeds[-1]
+                if first_embed is None:
+                    first_embed = child
+
+                summary = _summarize_child_embed(child)
+                shot_summaries.append(summary)
+
+                # stop cleanly if this shot killed the target
+                if "☠️" in summary or "DEAD" in summary:
+                    if idx < repeat_times:
+                        repeat_note = f"⛔ **{target}** was dropped on attack #{idx} — stopping repeats at **{idx}/{repeat_times}**."
+                    break
+
+            if not shot_summaries:
+                if repeat_note:
+                    await ctx.send(repeat_note)
+                return
+
+            agg_title = (first_embed.title if first_embed and first_embed.title
+                         else f"{atk_name} (AoO) attacks {tgt_name}!")
+            agg_title += f" ×{len(shot_summaries)}"
+
+            agg_color = (first_embed.color if first_embed and getattr(first_embed, "color", None)
+                         else random.randint(0, 0xFFFFFF))
+
+            agg = nextcord.Embed(title=agg_title, color=agg_color)
+
+            first_bonus = _first_field(first_embed, "Bonuses") if first_embed else None
+            if first_bonus:
+                agg.add_field(name="Bonuses", value=first_bonus[:1024], inline=False)
+
+            for idx, summary in enumerate(shot_summaries, start=1):
+                agg.add_field(name=f"Attack #{idx}", value=summary, inline=False)
+
+            if repeat_note:
+                agg.add_field(name="Repeat", value=repeat_note[:1024], inline=False)
+
+            await ctx.send(embed=agg)
+            return
+
         i = 0
         while i < len(tokens):
             tok = tokens[i].lower()
@@ -13716,6 +13874,268 @@ class Combat(commands.Cog):
         await ctx.send(f"🗑️ **{char_name}** drops **{canon} x{dropped}**{tail}")
 
 
+
+    @commands.command(name="torch")
+    async def torch(self, ctx, *, target: str = ""):
+        """Light a torch: consume Torch x1, roll 1d4+4 turns, and start a tracker timer.
+
+        Usage:
+          !torch
+          !torch <combatant>   # track the torch on a specific combatant in this channel
+          !torch <combatant> -i  # ignore inventory (GM helper / no consume)
+        """
+
+        # Parse flags from the free-form tail (supports: !torch Priscilla -i)
+        toks = [t for t in str(target or "").split() if t]
+        ignore_inv = any(t.lower() in {"-i", "-ignore", "ignoreinv", "ignoreinventory"} for t in toks)
+        toks = [t for t in toks if t.lower() not in {"-i", "-ignore", "ignoreinv", "ignoreinventory"}]
+        target = " ".join(toks).strip()
+        is_gm = bool(getattr(getattr(ctx.author, "guild_permissions", None), "manage_guild", False))
+
+        # --- active character + ownership ---
+        char_name = get_active(ctx.author.id)
+        if not char_name:
+            await ctx.send("❌ No active character. Use `!char <name>` first.")
+            return
+
+        path = f"{char_name.replace(' ', '_')}.coe"
+        if not os.path.exists(path):
+            await ctx.send(f"❌ Character file not found for **{char_name}**.")
+            return
+
+        cfg = read_cfg(path)
+        owner_id = get_compat(cfg, "info", "owner_id", fallback="")
+        if owner_id and owner_id != str(ctx.author.id):
+            await ctx.send(f"❌ You do not own **{char_name}**.")
+            return
+
+        # --- require initiative (timers live in battle.lst) ---
+        bcfg = _load_battles()
+        chan_id = _section_id(ctx.channel)
+        if not bcfg.has_section(chan_id):
+            await ctx.send("❌ No initiative here. Use `!init` first (timers live on the initiative tracker).")
+            return
+
+        # --- resolve target (optional) ---
+        names, _scores = _parse_combatants(bcfg, chan_id)
+        who = (target or "").strip() or char_name
+        resolved, amb = _find_ci_or_partial_name(names, who)
+        if resolved is None:
+            if amb:
+                await ctx.send("❌ Ambiguous target. Did you mean: " + ", ".join(amb[:10]) + ("…" if len(amb) > 10 else ""))
+            else:
+                await ctx.send(f"❌ Target '{who}' not found in initiative here.")
+            return
+
+        # --- consume Torch x1 from bag (unless -i) ---
+        canon_t, _it_t = self._item_lookup("torch")
+        if not canon_t:
+            await ctx.send("❌ Couldn't find 'Torch' in item.lst.")
+            return
+
+        if not cfg.has_section("item"):
+            cfg.add_section("item")
+
+        base_lc = canon_t.lower()
+        try:
+            base_count = int(str(cfg.get("item", base_lc, fallback="0")).strip() or "0")
+        except Exception:
+            base_count = 0
+
+        # If -i is used, we still require the item unless caller is a GM (Manage Server).
+        if base_count <= 0 and not (ignore_inv and is_gm):
+            await ctx.send(f"⚠️ **{canon_t}** isn’t in your inventory.")
+            return
+
+        if not ignore_inv:
+            storage_line = get_compat(cfg, "item", "storage", fallback="") or ""
+            stor = [s for s in storage_line.split() if s]
+            new_count = base_count - 1
+            if new_count <= 0:
+                if cfg.has_option("item", base_lc):
+                    try:
+                        cfg.remove_option("item", base_lc)
+                    except Exception:
+                        cfg.set("item", base_lc, "0")
+                stor = [s for s in stor if s.lower() != base_lc]
+            else:
+                cfg.set("item", base_lc, str(new_count))
+
+            cfg.set("item", "storage", " ".join(stor))
+            write_cfg(path, cfg)
+
+        # --- roll duration: 1d4+4 turns ---
+        d4 = random.randint(1, 4)
+        turns = d4 + 4
+        rounds = turns * 60
+
+        # --- set tracker effect (x_torch) ---
+        slot = _slot(resolved)
+        tag = "torch"
+        bcfg.set(chan_id, f"{slot}.x_{tag}", str(rounds))
+        bcfg.set(chan_id, f"{slot}.x_{tag}_label", "Torch")
+        bcfg.set(chan_id, f"{slot}.x_{tag}_code", "TOR")
+        bcfg.set(chan_id, f"{slot}.x_{tag}_emoji", "🔥")
+        bcfg.set(chan_id, f"{slot}.x_{tag}_by", char_name)
+        _save_battles(bcfg)
+
+        # best-effort: update the pinned tracker message immediately
+        try:
+            init_cog = ctx.bot.get_cog("Initiative")
+            if init_cog and hasattr(init_cog, "_update_tracker_message"):
+                await init_cog._update_tracker_message(ctx, bcfg, chan_id)
+        except Exception:
+            pass
+
+        mins = turns * 10
+        emb = nextcord.Embed(
+            title="🔥 Torch",
+            description=(
+                f"**{char_name}** lights a torch and drops it.\n"
+                f"Light: **30 ft** bright, **+20 ft** dim\n"
+                f"Duration roll: `1d4+4` → `{d4}+4 = {turns}` turns (**~{mins} min**)"
+            ),
+            color=nextcord.Color.blurple(),
+        )
+        consumed_txt = (f"{canon_t} x1" if not ignore_inv else f"{canon_t} x0 (ignored -i)")
+        emb.add_field(name="Consumed", value=consumed_txt, inline=True)
+        emb.add_field(name="Tracking", value=f"On **{resolved}**: **{rounds} rounds** (TOR)", inline=True)
+        await ctx.send(embed=emb)
+
+
+    @commands.command(name="lantern")
+    async def lantern(self, ctx, *, target: str = ""):
+        """Light a lantern: consume Oil x1, roll 18+1d6 turns, and start a tracker timer.
+
+        Usage:
+          !lantern
+          !lantern <combatant>   # track the lantern on a specific combatant in this channel
+          !lantern <combatant> -i  # ignore inventory (GM helper / no consume)
+        """
+
+        # Parse flags from the free-form tail (supports: !lantern Priscilla -i)
+        toks = [t for t in str(target or "").split() if t]
+        ignore_inv = any(t.lower() in {"-i", "-ignore", "ignoreinv", "ignoreinventory"} for t in toks)
+        toks = [t for t in toks if t.lower() not in {"-i", "-ignore", "ignoreinv", "ignoreinventory"}]
+        target = " ".join(toks).strip()
+        is_gm = bool(getattr(getattr(ctx.author, "guild_permissions", None), "manage_guild", False))
+
+        char_name = get_active(ctx.author.id)
+        if not char_name:
+            await ctx.send("❌ No active character. Use `!char <name>` first.")
+            return
+
+        path = f"{char_name.replace(' ', '_')}.coe"
+        if not os.path.exists(path):
+            await ctx.send(f"❌ Character file not found for **{char_name}**.")
+            return
+
+        cfg = read_cfg(path)
+        owner_id = get_compat(cfg, "info", "owner_id", fallback="")
+        if owner_id and owner_id != str(ctx.author.id):
+            await ctx.send(f"❌ You do not own **{char_name}**.")
+            return
+
+        bcfg = _load_battles()
+        chan_id = _section_id(ctx.channel)
+        if not bcfg.has_section(chan_id):
+            await ctx.send("❌ No initiative here. Use `!init` first (timers live on the initiative tracker).")
+            return
+
+        names, _scores = _parse_combatants(bcfg, chan_id)
+        who = (target or "").strip() or char_name
+        resolved, amb = _find_ci_or_partial_name(names, who)
+        if resolved is None:
+            if amb:
+                await ctx.send("❌ Ambiguous target. Did you mean: " + ", ".join(amb[:10]) + ("…" if len(amb) > 10 else ""))
+            else:
+                await ctx.send(f"❌ Target '{who}' not found in initiative here.")
+            return
+
+        # Require a Lantern item (not consumed) and consume Oil x1
+        canon_l, _it_l = self._item_lookup("lantern")
+        if not canon_l:
+            await ctx.send("❌ Couldn't find 'Lantern' in item.lst.")
+            return
+        canon_o, _it_o = self._item_lookup("oil")
+        if not canon_o:
+            await ctx.send("❌ Couldn't find 'Oil' in item.lst.")
+            return
+
+        if not cfg.has_section("item"):
+            cfg.add_section("item")
+
+        def _stack_count(key_lc: str) -> int:
+            try:
+                return int(str(cfg.get("item", key_lc, fallback="0")).strip() or "0")
+            except Exception:
+                return 0
+
+        have_lantern = _stack_count(canon_l.lower()) > 0
+        if not have_lantern and not (ignore_inv and is_gm):
+            await ctx.send(f"⚠️ **{canon_l}** isn’t in your inventory.")
+            return
+
+        oil_lc = canon_o.lower()
+        oil_count = _stack_count(oil_lc)
+        if oil_count <= 0 and not (ignore_inv and is_gm):
+            await ctx.send(f"⚠️ You need **{canon_o} x1** to fuel a lantern.")
+            return
+
+        if not ignore_inv:
+            storage_line = get_compat(cfg, "item", "storage", fallback="") or ""
+            stor = [s for s in storage_line.split() if s]
+            new_oil = oil_count - 1
+            if new_oil <= 0:
+                if cfg.has_option("item", oil_lc):
+                    try:
+                        cfg.remove_option("item", oil_lc)
+                    except Exception:
+                        cfg.set("item", oil_lc, "0")
+                stor = [s for s in stor if s.lower() != oil_lc]
+            else:
+                cfg.set("item", oil_lc, str(new_oil))
+
+            cfg.set("item", "storage", " ".join(stor))
+            write_cfg(path, cfg)
+
+        # duration: 18 + 1d6 turns
+        d6 = random.randint(1, 6)
+        turns = 18 + d6
+        rounds = turns * 60
+
+        slot = _slot(resolved)
+        tag = "lantern"
+        bcfg.set(chan_id, f"{slot}.x_{tag}", str(rounds))
+        bcfg.set(chan_id, f"{slot}.x_{tag}_label", "Lantern")
+        bcfg.set(chan_id, f"{slot}.x_{tag}_code", "LAN")
+        bcfg.set(chan_id, f"{slot}.x_{tag}_emoji", "🏮")
+        bcfg.set(chan_id, f"{slot}.x_{tag}_by", char_name)
+        _save_battles(bcfg)
+
+        try:
+            init_cog = ctx.bot.get_cog("Initiative")
+            if init_cog and hasattr(init_cog, "_update_tracker_message"):
+                await init_cog._update_tracker_message(ctx, bcfg, chan_id)
+        except Exception:
+            pass
+
+        mins = turns * 10
+        emb = nextcord.Embed(
+            title="🏮 Lantern",
+            description=(
+                f"**{char_name}** lights a lantern.\n"
+                f"Light: **30 ft** bright, **+20 ft** dim\n"
+                f"Duration roll: `18+1d6` → `18+{d6} = {turns}` turns (**~{mins} min**)"
+            ),
+            color=nextcord.Color.blurple(),
+        )
+        consumed_txt = (f"{canon_o} x1" if not ignore_inv else f"{canon_o} x0 (ignored -i)")
+        emb.add_field(name="Consumed", value=consumed_txt, inline=True)
+        emb.add_field(name="Tracking", value=f"On **{resolved}**: **{rounds} rounds** (LAN)", inline=True)
+        await ctx.send(embed=emb)
+
+
     @commands.command(name="give")
     async def give(self, ctx, who: str, *, item_and_qty: str):
         """
@@ -13846,6 +14266,12 @@ class Combat(commands.Cog):
 
             base = token.split("@", 1)[0]
             canon, it = self._item_lookup(base)
+            if _norm(canon or base) == "spellscroll":
+                await ctx.send(
+                    "❌ Spell Scrolls can’t be transferred with `!give`.\n"
+                    "Use `!givescroll <who> <id>` or `!gscroll` instead."
+                )
+                return
             ch_key = None
                                                 
             try:
@@ -13906,6 +14332,14 @@ class Combat(commands.Cog):
         canon, it = self._item_lookup(raw_name)
         if not canon:
             await ctx.send(f"❌ Unknown item **{raw_name}**."); return
+
+        if _norm(canon) == "spellscroll":
+            await ctx.send(
+                "❌ Spell Scrolls can’t be transferred with `!give`.\n"
+                "Use `!givescroll <who> <id>` or `!gscroll` instead."
+            )
+            return
+
         base_lc = canon.lower()
 
                                       
@@ -23129,7 +23563,7 @@ class Combat(commands.Cog):
             weapon_name="Spiritual Hammer",
             weapon_type="force",                                   
             t_cfg=t_cfg,
-            is_magical=true,
+            is_magical=True,
         )
 
                   
@@ -23588,7 +24022,7 @@ class Combat(commands.Cog):
             weapon_name="Shillelagh",
             weapon_type="bludgeoning",
             t_cfg=t_cfg,
-            is_magical=true,
+            is_magical=True,
         )
 
                   
