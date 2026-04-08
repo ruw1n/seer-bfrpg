@@ -14944,6 +14944,22 @@ class Combat(commands.Cog):
         except Exception:
             cur_cnt = 0
         cfg.set("item", lower_key, str(cur_cnt + qty))
+        # If this item is already being carried, grow that carried stack too.
+        try:
+            if cfg.has_section("eq"):
+                want = normalize_name(canon)
+                for opt, val in cfg.items("eq"):
+                    if opt.startswith("carry") and not opt.endswith("_qty"):
+                        if normalize_name((val or "").strip()) == want:
+                            qkey = f"{opt}_qty"
+                            try:
+                                cur_carry = int(cfg.get("eq", qkey, fallback="1"))
+                            except Exception:
+                                cur_carry = 1
+                            cfg.set("eq", qkey, str(max(1, cur_carry) + qty))
+                            break
+        except Exception:
+            pass
         storage_line = cfg.get("item", "storage", fallback="")
         tokens = [t for t in storage_line.split() if t]
         if canon.lower() not in {t.lower() for t in tokens}:
